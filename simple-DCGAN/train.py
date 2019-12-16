@@ -1,8 +1,10 @@
 import os
 import argparse
 import tqdm
+import sys
 
 import torch
+import torchvision as tv
 import torchvision.transforms as transforms
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
@@ -11,7 +13,6 @@ from torchvision import datasets
 from config import opt
 from model import NetD, NetG
 from torchnet.meter import AverageValueMeter
-import ipdb
 
 
 def train():
@@ -83,7 +84,9 @@ def train():
         fix_noises, noises = fix_noises.cuda(), noises.cuda()
 
     for epoch in range(opt.max_epoch):
-        for ii, (img, _) in tqdm.tqdm(enumerate(dataloader)):
+        print("epoch:",epoch, end='\r')
+        sys.stdout.flush()
+        for ii, (img, _) in enumerate(dataloader):
             real_img = Variable(img)
             if torch.cuda.is_available():
                 real_img = real_img.cuda()
@@ -119,7 +122,7 @@ def train():
                 error_g.backward()
                 optimizer_g.step()
 
-                error_g.add(error_g.item())
+                errorg_meter.add(error_g.item())
 
             if opt.vis and ii % opt.plot_every == opt.plot_every - 1:
                 # 进行可视化
@@ -147,44 +150,6 @@ def train():
             errord_meter.reset()
             errorg_meter.reset()
 
-
-@torch.no_grad()
-def generate():
-    """
-    随机生成动漫头像，并根据netd的分数选择较好的
-    """
-    # for k_, v_ in kwargs.items():
-    #     setattr(opt, k_, v_)
-
-    device = t.device('cuda') if opt.gpu else t.device('cpu')
-
-    netg, netd = NetG(opt).eval(), NetD(opt).eval()
-
-    noises = t.randn(opt.gen_search_num, opt.nz, 1,
-                     1).normal_(opt.gen_mean, opt.gen_std)
-    noises = noises.to(device)
-
-    map_location = lambda storage, loc: storage
-    netd.load_state_dict(t.load(opt.netd_path, map_location=map_location))
-    netg.load_state_dict(t.load(opt.netg_path, map_location=map_location))
-
-    netd.to(device)
-    netg.to(device)
-
-    # 生成图片，并计算图片在判别器的分数
-    fake_img = netg(noises)
-    scores = netd(fake_img).detach()
-
-    # 挑选最好的某几张
-    indexs = scores.topk(opt.gen_num)[1]
-    result = []
-    for ii in indexs:
-        result.append(fake_img.data[ii])
-    # 保存图片
-    tv.utils.save_image(t.stack(result),
-                        opt.gen_img,
-                        normalize=True,
-                        range=(-1, 1))
 
 if __name__ == "__main__":
     train()

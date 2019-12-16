@@ -4,7 +4,7 @@ class Config(object):
     num_workers = 2
     image_size = 96
     batch_size = 64
-    max_epoch = 120
+    max_epoch = 300
 
     lr1 = 2e-4
     lr2 = 2e-4
