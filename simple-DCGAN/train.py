@@ -1,16 +1,23 @@
+import os
+import argparse
+import tqdm
+
 import torch
 import torchvision.transforms as transforms
-from torchvision import datasets
+from torch.autograd import Variable
 from torch.utils.data import DataLoader
+from torchvision import datasets
+
 from config import opt
 from model import NetD, NetG
-from torch.autograd import Variable
+from torchnet.meter import AverageValueMeter
+import ipdb
 
 
-def train(**kwargs):
+def train():
     # change opt
-    for k_, v_ in kwargs.items():
-        setattr(opt, k_, v_)
+    # for k_, v_ in kwargs.items():
+    #     setattr(opt, k_, v_)
 
     device = torch.device('cuda') if torch.cuda.is_available else torch.device(
         'cpu')
@@ -21,12 +28,13 @@ def train(**kwargs):
 
     # rescale to -1~1
     transform = transforms.Compose([
-        transforms.Scale(opt.image_size),
+        transforms.Resize(opt.image_size),
         transforms.CenterCrop(opt.image_size),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
-    dataset = datasets.ImageFolder(opt.data_path, transforms=transform)
+    dataset = datasets.ImageFolder(opt.data_path, transform=transform)
+
     dataloader = DataLoader(dataset,
                             batch_size=opt.batch_size,
                             shuffle=True,
@@ -43,17 +51,19 @@ def train(**kwargs):
         netg.load_state_dict(torch.load(opt.netg_path),
                              map_location=map_location)
 
-    netd.to(device)
-    netg.to(device)
+    if torch.cuda.is_available():
+        netd.to(device)
+        netg.to(device)
 
     # 定义优化器和损失
-    optimizer_g = t.optim.Adam(netg.parameters(),
+    optimizer_g = torch.optim.Adam(netg.parameters(),
                                opt.lr1,
                                betas=(opt.beta1, 0.999))
-    optimizer_d = t.optim.Adam(netd.parameters(),
-                               opt.lr2,
-                               betas=(opt.beta1, 0.999))
-    criterion = t.nn.BCELoss().to(device)
+    optimizer_d = torch.optim.Adam(netd.parameters(),
+                                   opt.lr2,
+                                   betas=(opt.beta1, 0.999))
+
+    criterion = torch.nn.BCELoss().to(device)
 
     # 真label为1， noises是输入噪声
     true_labels = Variable(torch.ones(opt.batch_size))
@@ -62,18 +72,119 @@ def train(**kwargs):
     fix_noises = Variable(torch.randn(opt.batch_size, opt.nz, 1, 1))
     noises = Variable(torch.randn(opt.batch_size, opt.nz, 1, 1))
 
+    errord_meter = AverageValueMeter()
+    errorg_meter = AverageValueMeter()
+
     if torch.cuda.is_available():
         netd.cuda()
         netg.cuda()
         criterion.cuda()
-        true_labels,fake_labels = true_labels.cuda(), fake_labels.cuda()
+        true_labels, fake_labels = true_labels.cuda(), fake_labels.cuda()
         fix_noises, noises = fix_noises.cuda(), noises.cuda()
-    
-    for ii, (img, _) in tqdm.tqdm(enumerate(dataloader)):
-        real_img = Variable(img)
-        if torch.cuda.is_available:
-            real_img = real_img.cuda()
-        
-        if (ii+1)%opt.d_every == 0:
-            optimizer_d.zero_grad()
-            
+
+    for epoch in range(opt.max_epoch):
+        for ii, (img, _) in tqdm.tqdm(enumerate(dataloader)):
+            real_img = Variable(img)
+            if torch.cuda.is_available():
+                real_img = real_img.cuda()
+
+            # 训练判别器, real -> 1, fake -> 0
+            if (ii + 1) % opt.d_every == 0:
+                # real
+                optimizer_d.zero_grad()
+                output = netd(real_img)
+                # print(output.shape, true_labels.shape)
+                error_d_real = criterion(output, true_labels)
+                error_d_real.backward()
+                # fake
+                noises.data.copy_(torch.randn(opt.batch_size, opt.nz, 1, 1))
+                fake_img = netg(noises).detach()  # 随机噪声生成假图
+                fake_output = netd(fake_img)
+                error_d_fake = criterion(fake_output, fake_labels)
+                error_d_fake.backward()
+                # update optimizer
+                optimizer_d.step()
+
+                error_d = error_d_fake + error_d_real
+
+                errord_meter.add(error_d.item())
+
+            # 训练生成器, 让生成器得到的图片能够被判别器判别为真
+            if (ii + 1) % opt.g_every == 0:
+                optimizer_g.zero_grad()
+                noises.data.copy_(torch.randn(opt.batch_size, opt.nz, 1, 1))
+                fake_img = netg(noises)
+                fake_output = netd(fake_img)
+                error_g = criterion(fake_output, true_labels)
+                error_g.backward()
+                optimizer_g.step()
+
+                error_g.add(error_g.item())
+
+            if opt.vis and ii % opt.plot_every == opt.plot_every - 1:
+                # 进行可视化
+                # if os.path.exists(opt.debug_file):
+                #     import ipdb
+                #     ipdb.set_trace()
+
+                fix_fake_img = netg(fix_noises)
+                vis.images(fix_fake_img.detach().cpu().numpy()[:opt.batch_size] * 0.5 +
+                           0.5,
+                           win='fixfake')
+                vis.images(real_img.data.cpu().numpy()[:opt.batch_size] * 0.5 + 0.5,
+                           win='real')
+                vis.plot('errord', errord_meter.value()[0])
+                vis.plot('errorg', errorg_meter.value()[0])
+
+        if (epoch + 1) % opt.save_every == 0:
+            # 保存模型、图片
+            tv.utils.save_image(fix_fake_imgs.data[:opt.batch_size],
+                                '%s/%s.png' % (opt.save_path, epoch),
+                                normalize=True,
+                                range=(-1, 1))
+            t.save(netd.state_dict(), 'checkpoints/netd_%s.pth' % epoch)
+            t.save(netg.state_dict(), 'checkpoints/netg_%s.pth' % epoch)
+            errord_meter.reset()
+            errorg_meter.reset()
+
+
+@torch.no_grad()
+def generate():
+    """
+    随机生成动漫头像，并根据netd的分数选择较好的
+    """
+    # for k_, v_ in kwargs.items():
+    #     setattr(opt, k_, v_)
+
+    device = t.device('cuda') if opt.gpu else t.device('cpu')
+
+    netg, netd = NetG(opt).eval(), NetD(opt).eval()
+
+    noises = t.randn(opt.gen_search_num, opt.nz, 1,
+                     1).normal_(opt.gen_mean, opt.gen_std)
+    noises = noises.to(device)
+
+    map_location = lambda storage, loc: storage
+    netd.load_state_dict(t.load(opt.netd_path, map_location=map_location))
+    netg.load_state_dict(t.load(opt.netg_path, map_location=map_location))
+
+    netd.to(device)
+    netg.to(device)
+
+    # 生成图片，并计算图片在判别器的分数
+    fake_img = netg(noises)
+    scores = netd(fake_img).detach()
+
+    # 挑选最好的某几张
+    indexs = scores.topk(opt.gen_num)[1]
+    result = []
+    for ii in indexs:
+        result.append(fake_img.data[ii])
+    # 保存图片
+    tv.utils.save_image(t.stack(result),
+                        opt.gen_img,
+                        normalize=True,
+                        range=(-1, 1))
+
+if __name__ == "__main__":
+    train()

@@ -1,9 +1,11 @@
 class Config(object):
-    data_path = "./data/faces/faces"
+    data_path = "./data/faces"
+
     num_workers = 2
     image_size = 96
-    batch_size = 16
+    batch_size = 64
     max_epoch = 120
+
     lr1 = 2e-4
     lr2 = 2e-4
 
@@ -24,7 +26,7 @@ class Config(object):
 
     d_every = 1
     g_every = 5
-    decay_every = 10
+    save_every = 10
 
     netd_path = None
     netg_path = None
