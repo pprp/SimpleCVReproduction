@@ -85,7 +85,7 @@ def train():
 
     for epoch in range(opt.max_epoch):
         print("epoch:",epoch, end='\r')
-        sys.stdout.flush()
+        # sys.stdout.flush()
         for ii, (img, _) in enumerate(dataloader):
             real_img = Variable(img)
             if torch.cuda.is_available():
@@ -141,12 +141,12 @@ def train():
 
         if (epoch + 1) % opt.save_every == 0:
             # 保存模型、图片
-            tv.utils.save_image(fix_fake_imgs.data[:opt.batch_size],
+            tv.utils.save_image(fix_fake_img.data[:opt.batch_size],
                                 '%s/%s.png' % (opt.save_path, epoch),
                                 normalize=True,
                                 range=(-1, 1))
-            t.save(netd.state_dict(), 'checkpoints/netd_%s.pth' % epoch)
-            t.save(netg.state_dict(), 'checkpoints/netg_%s.pth' % epoch)
+            torch.save(netd.state_dict(), 'checkpoints/netd_%s.pth' % epoch)
+            torch.save(netg.state_dict(), 'checkpoints/netg_%s.pth' % epoch)
             errord_meter.reset()
             errorg_meter.reset()
 
