@@ -17,7 +17,7 @@ def train():
 
 if __name__ == "__main__":
     train_transforms = transforms.Compose([
-        transforms.Reisze((512, 512)),
+        transforms.Resize((512, 512)),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
