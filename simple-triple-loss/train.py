@@ -11,10 +11,10 @@ from torchvision import datasets, models, transforms
 from torch.optim import lr_scheduler
 import torch.nn.functional as F
 
+from model.models import ResNet18
 from config import cfg
 from data.tripletFolder import TripleFolder
 from utils.visdom import Visualizer
-from model.model import Res18
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -75,7 +75,7 @@ def train(model, criterion, optimizer, scheduler, max_epochs=100):
             # pos_bs, c, h, w
             pos = pos.view(4 * cfg.BATCH_SIZE, c, h, w)
             pos_labels = pos_labels.repeat(4).reshape(4, cfg.BATCH_SIZE)
-            pos_labels = pos_labels.transpose(0, 1).reshape()
+            pos_labels = pos_labels.transpose(0, 1).reshape(cfg.BATCH_SIZE*4)
             #[7 7 7 7 10 10 10 10]
 
             if use_gpu:
@@ -147,7 +147,7 @@ def train(model, criterion, optimizer, scheduler, max_epochs=100):
             optimizer.step()
 
             running_loss += loss_triplet.item()
-            running_corrects += float(torch.sun(pscore > nscore + cfg.MARGIN))
+            running_corrects += float(torch.sum(pscore > nscore + cfg.MARGIN))
             running_margin += float(torch.sum(pscore - nscore))
             running_reg += reg
 
@@ -158,69 +158,76 @@ def train(model, criterion, optimizer, scheduler, max_epochs=100):
         epoch_margin = running_margin / datasize
 
         #if epoch_acc>0.75:
-        #    opt.margin = min(opt.margin+0.02, 1.0)
+        #    cfg.margin = min(cfg.margin+0.02, 1.0)
         print(
             'epoch:%d|margin:%.4f|loss:%.4f|reg:%.4f|acc:%.4f|meanMargin:%.4f'
             % (epoch, cfg.MARGIN, epoch_loss, epoch_reg, epoch_acc,
                epoch_margin))
 
         if epoch % 10 == 0 and epoch != 0:
-            model.save(os.path.join(cfg.SAVE_PATH, "%d.pth" % epoch))
+            file_path = os.path.join(cfg.SAVE_PATH, "%d.pth" % epoch)
+            model.save(file_path)
+
+        vis.plot_many_stack({"loss": epoch_loss})
+        # vis.plot_many_stack({"reg": epoch_reg})
+        vis.plot_many_stack({"acc": epoch_acc})
+        vis.plot_many_stack({"margin": epoch_margin})
+
 
 if __name__ == "__main__":
-    model = Res18(len(class_names))
+    model = ResNet18(len(class_names))
     if use_gpu:
         model = model.cuda()
 
     criterion = nn.CrossEntropyLoss()
 
-    ignored_params = list(map(id, model.model.fc.parameters()))
+    ignored_params = list(map(id, model.base.fc.parameters()))
     ignored_params += (
-        list(map(id, model.classifier0.parameters())) +
-        list(map(id, model.classifier1.parameters())) +
-        list(map(id, model.classifier2.parameters())) +
-        list(map(id, model.classifier3.parameters())) +
-        list(map(id, model.classifier4.parameters())) +
-        list(map(id, model.classifier5.parameters()))
+        list(map(id, model.classifier.parameters())) 
+        # list(map(id, model.classifier1.parameters())) +
+        # list(map(id, model.classifier2.parameters())) +
+        # list(map(id, model.classifier3.parameters())) +
+        # list(map(id, model.classifier4.parameters())) +
+        # list(map(id, model.classifier5.parameters()))
         #+list(map(id, model.classifier6.parameters() ))
         #+list(map(id, model.classifier7.parameters() ))
     )
     base_params = filter(lambda p: id(p) not in ignored_params,
                          model.parameters())
-    optimizer = optim.SGD(
+    optimizer = torch.optim.SGD(
         [
             {
                 'params': base_params,
                 'lr': 0.001
             },
             {
-                'params': model.model.fc.parameters(),
+                'params': model.base.fc.parameters(),
                 'lr': 0.01
             },
             {
-                'params': model.classifier0.parameters(),
+                'params': model.classifier.parameters(),
                 'lr': 0.01
             },
-            {
-                'params': model.classifier1.parameters(),
-                'lr': 0.01
-            },
-            {
-                'params': model.classifier2.parameters(),
-                'lr': 0.01
-            },
-            {
-                'params': model.classifier3.parameters(),
-                'lr': 0.01
-            },
-            {
-                'params': model.classifier4.parameters(),
-                'lr': 0.01
-            },
-            {
-                'params': model.classifier5.parameters(),
-                'lr': 0.01
-            },
+            # {
+            #     'params': model.classifier1.parameters(),
+            #     'lr': 0.01
+            # },
+            # {
+            #     'params': model.classifier2.parameters(),
+            #     'lr': 0.01
+            # },
+            # {
+            #     'params': model.classifier3.parameters(),
+            #     'lr': 0.01
+            # },
+            # {
+            #     'params': model.classifier4.parameters(),
+            #     'lr': 0.01
+            # },
+            # {
+            #     'params': model.classifier5.parameters(),
+            #     'lr': 0.01
+            # },
             #{'params': model.classifier6.parameters(), 'lr': 0.01},
             #{'params': model.classifier7.parameters(), 'lr': 0.01}
         ],

@@ -29,12 +29,12 @@ class ClassBlock(nn.Module):
         return x, f
 
 
-class Res18(nn.Module):
+class ResNet18(nn.Module):
     def __init__(self, num_classes):
-        super(Res18, self).__init__()
+        super(ResNet18, self).__init__()
         self.base = models.resnet18(pretrained=False)
         self.base.avgpool = nn.AdaptiveAvgPool2d(1)
-        self.classifier = ClassBlock(2048,
+        self.classifier = ClassBlock(1000,
                                      num_classes,
                                      dropout=False,
                                      relu=False)
@@ -45,5 +45,10 @@ class Res18(nn.Module):
         x, f = self.classifier(x)
         return x, f
 
-    def save(self, filename):
-        self.save(filename)
+    def save(self, file_path):
+        if file_path is not None:
+            torch.save(self.state_dict(), file_path)
+
+    def load(self, weight_path):
+        if weight_path is not None:
+            self.load_state_dict(torch.load(weight_path))
