@@ -58,11 +58,11 @@ class TripleFolder(datasets.ImageFolder):
         c, h, w = pos0.shape
 
         pos_list = torch.cat(
-            (pos0.view(1, c, h, w),
-            pos1.view(1, c, h, w),
-            pos2.view(1, c, h, w),
-            pos3.view(1, c, h, w)), 0)
-        return sample, target, pos_list
+            (pos0.view(1, c, h, w), pos1.view(1, c, h, w), pos2.view(
+                1, c, h, w), pos3.view(1, c, h, w)), 0)
+        # torch.Size([2, 3, 512, 512]) torch.Size([2]) torch.Size([2, 4, 3, 512, 512])
+        return sample, target, pos_list, target
+
 
 if __name__ == "__main__":
     train_transforms = transforms.Compose([
@@ -72,9 +72,19 @@ if __name__ == "__main__":
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     datasets = TripleFolder(
-        r'D:\GitHub\SimpleCVReproduction\simple-triple-loss\Market\train', train_transforms)
+        r'D:\GitHub\SimpleCVReproduction\simple-triple-loss\Market\train',
+        train_transforms)
 
     # a,b,c = TripleFolder[0]
-    dataloaders = DataLoader(datasets, batch_size=2, shuffle=True, num_workers=0)
-    for a, b , c in dataloaders:
-        print(a.shape,b.shape,c.shape)
+    dataloaders = DataLoader(datasets,
+                             batch_size=2,
+                             shuffle=True,
+                             num_workers=0)
+    for a, b, c, d in dataloaders:
+        print(a.shape, b.shape, c.shape, d.shape)
+        bs, cc, h, w = a.shape
+        print(c.view(2 * 4, cc, h, w).shape)
+        d = d.repeat(4).reshape(4, 2)
+        print('=',d.shape)
+        d = d.transpose(0, 1).reshape(4*2)
+        print('+', d.shape)

@@ -44,3 +44,6 @@ class Res18(nn.Module):
         x = torch.squeeze(x)
         x, f = self.classifier(x)
         return x, f
+
+    def save(self, filename):
+        self.save(filename)

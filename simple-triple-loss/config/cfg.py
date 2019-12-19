@@ -18,3 +18,9 @@ POOL_SIZE = 128
 
 # 学习率
 LEARNING_RATE = 1e-3
+
+# margin
+MARGIN = 0.3
+
+# alpha
+ALPHA = 0.0
