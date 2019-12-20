@@ -2,6 +2,7 @@ import argparse
 import os
 import random
 import numpy as np
+import time
 
 import torch
 import torch.nn as nn
@@ -66,6 +67,8 @@ def train(model, criterion, optimizer, scheduler, max_epochs=100):
         running_margin = 0.0
         running_reg = 0.0
 
+        start = time.time()
+
         for inputs, labels, pos, pos_labels in train_dataloader:
             bs, c, h, w = inputs.shape
 
@@ -75,7 +78,7 @@ def train(model, criterion, optimizer, scheduler, max_epochs=100):
             # pos_bs, c, h, w
             pos = pos.view(4 * cfg.BATCH_SIZE, c, h, w)
             pos_labels = pos_labels.repeat(4).reshape(4, cfg.BATCH_SIZE)
-            pos_labels = pos_labels.transpose(0, 1).reshape(cfg.BATCH_SIZE*4)
+            pos_labels = pos_labels.transpose(0, 1).reshape(cfg.BATCH_SIZE * 4)
             #[7 7 7 7 10 10 10 10]
 
             if use_gpu:
@@ -156,13 +159,13 @@ def train(model, criterion, optimizer, scheduler, max_epochs=100):
         epoch_reg = cfg.ALPHA * running_reg / datasize
         epoch_acc = running_corrects / datasize
         epoch_margin = running_margin / datasize
-
+        epoch_time = time.time() - start()
         #if epoch_acc>0.75:
         #    cfg.margin = min(cfg.margin+0.02, 1.0)
         print(
-            'epoch:%d|margin:%.4f|loss:%.4f|reg:%.4f|acc:%.4f|meanMargin:%.4f'
+            'epoch:%d|margin:%.4f|loss:%.4f|reg:%.4f|acc:%.4f|meanMargin:%.4f|time:%d'
             % (epoch, cfg.MARGIN, epoch_loss, epoch_reg, epoch_acc,
-               epoch_margin))
+               epoch_margin, epoch_time))
 
         if epoch % 10 == 0 and epoch != 0:
             file_path = os.path.join(cfg.SAVE_PATH, "%d.pth" % epoch)
@@ -181,17 +184,8 @@ if __name__ == "__main__":
 
     criterion = nn.CrossEntropyLoss()
 
-    ignored_params = list(map(id, model.base.fc.parameters()))
-    ignored_params += (
-        list(map(id, model.classifier.parameters())) 
-        # list(map(id, model.classifier1.parameters())) +
-        # list(map(id, model.classifier2.parameters())) +
-        # list(map(id, model.classifier3.parameters())) +
-        # list(map(id, model.classifier4.parameters())) +
-        # list(map(id, model.classifier5.parameters()))
-        #+list(map(id, model.classifier6.parameters() ))
-        #+list(map(id, model.classifier7.parameters() ))
-    )
+    ignored_params = list(map(id, model.model.fc.parameters()))
+    ignored_params += (list(map(id, model.classifier.parameters())))
     base_params = filter(lambda p: id(p) not in ignored_params,
                          model.parameters())
     optimizer = torch.optim.SGD(
@@ -201,7 +195,7 @@ if __name__ == "__main__":
                 'lr': 0.001
             },
             {
-                'params': model.base.fc.parameters(),
+                'params': model.model.fc.parameters(),
                 'lr': 0.01
             },
             {
