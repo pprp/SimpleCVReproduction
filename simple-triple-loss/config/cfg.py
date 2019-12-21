@@ -2,7 +2,7 @@
 TOTAL_EPOCH = 120
 
 # 保存位置
-SAVE_PATH = './checkpoints'
+SAVE_PATH = './weights'
 
 # 模型名称
 MODEL_NAME = 'resnet18'

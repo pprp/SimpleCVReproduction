@@ -159,7 +159,7 @@ def train(model, criterion, optimizer, scheduler, max_epochs=100):
         epoch_reg = cfg.ALPHA * running_reg / datasize
         epoch_acc = running_corrects / datasize
         epoch_margin = running_margin / datasize
-        epoch_time = time.time() - start()
+        epoch_time = time.time() - start
         #if epoch_acc>0.75:
         #    cfg.margin = min(cfg.margin+0.02, 1.0)
         print(
@@ -167,7 +167,7 @@ def train(model, criterion, optimizer, scheduler, max_epochs=100):
             % (epoch, cfg.MARGIN, epoch_loss, epoch_reg, epoch_acc,
                epoch_margin, epoch_time))
 
-        if epoch % 10 == 0 and epoch != 0:
+        if epoch % 5 == 0 and epoch != 0:
             file_path = os.path.join(cfg.SAVE_PATH, "%d.pth" % epoch)
             model.save(file_path)
 

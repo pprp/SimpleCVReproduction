@@ -2,7 +2,10 @@ import argparse
 import os
 import random
 import sys
+from pathlib import Path
 
+import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch.autograd import Variable
@@ -22,23 +25,12 @@ test_transforms = transforms.Compose([
 
 gallery_datasets = datasets.ImageFolder(os.path.join(cfg.DATA_PATH, "gallery"),
                                         transform=test_transforms)
-query_datasets = datasets.ImageFolder(os.path.join(cfg.DATA_PATH, "query"),
-                                      transform=test_transforms)
-
 gallery_dataloader = DataLoader(gallery_datasets,
                                 batch_size=cfg.BATCH_SIZE,
                                 drop_last=False,
                                 shuffle=False,
                                 num_workers=1)
-
-query_dataloader = DataLoader(query_datasets,
-                              batch_size=cfg.BATCH_SIZE,
-                              drop_last=False,
-                              shuffle=False,
-                              num_workers=1)
-
 use_gpu = torch.cuda.is_available()
-
 class_names = gallery_datasets.classes
 
 
@@ -49,6 +41,29 @@ def fliplr(img):
     return img_flip
 
 
+def extract_single_image(model, img_path):
+    img = cv2.imread(img_path)
+    img = torch.FloatTensor(img)
+    img = img.unsqueeze(0)
+    img = img.permute(0, 3, 1, 2)
+    bs, c, h, w = img.size()
+    ff = torch.FloatTensor(1, 512).zero_()
+    for i in range(2):
+        if i == 1:
+            img = fliplr(img)
+        if use_gpu:
+            input_img = Variable(img.cuda())
+        else:
+            input_img = Variable(img)
+
+        outputs, feature = model(input_img)
+        feature = feature.data.cpu()
+        ff = ff + feature
+    fnorm = torch.norm(ff, p=2, dim=1, keepdim=True)
+    ff = ff.div(fnorm.expand_as(ff))
+    return ff
+
+
 def extract_features(model, dataloader):
     features = torch.FloatTensor()
     count = 0
@@ -56,14 +71,17 @@ def extract_features(model, dataloader):
         img, label = data
         bs, c, h, w = img.size()
         count += bs
-        ff = torch.FloatTensor(bs, 2048).zero_()
+        ff = torch.FloatTensor(bs, 512).zero_()
         print(count, end='\r')
         sys.stdout.flush()
         # add two features
         for i in range(2):
             if i == 1:
                 img = fliplr(img)
-            input_img = Variable(img.cuda())
+            if use_gpu:
+                input_img = Variable(img.cuda())
+            else:
+                input_img = Variable(img)
             outputs, feature = model(input_img)
             feature = feature.data.cpu()
             ff = ff + feature
@@ -87,36 +105,34 @@ def get_label(img_path):
     return labels
 
 
-def compute_mAP(index, good_index, junk_index):
-    ap = 0
-    cmc = torch.IntTensor(len(index)).zero_()  #len = 20 得到前20个
-    if good_index.size == 0:
-        cmc[0] = -1
-        return ap, cmc
+def plot_images(imgs, paths=None, fname='images.jpg'):
+    # Plots training images overlaid with targets
+    imgs = imgs.cpu().numpy()
+    # targets = targets.cpu().numpy()
+    # targets = targets[targets[:, 1] == 21]  # plot only one class
 
-    # remove junk index
-    mask = np.in1d(index, junk_index, invert=True)
-    index = index[mask]
+    fig = plt.figure(figsize=(10, 10))
+    bs, _, h, w = imgs.shape  # batch size, _, height, width
+    bs = min(bs, 16)  # limit plot to 16 images
+    ns = np.ceil(bs**0.5)  # number of subplots
 
-    # find good index
-    ngood = len(good_index)
-    mask = np.in1d(index, good_index)
-    rows_good = np.argwhere(mask == True)
-    rows_good = rows_good.flatten()
-
-    cmc[rows_good[0]:] = 1
-    for i in range(ngood):
-        d_recall = 1.0 / ngood
-        precision = (i + 1) * 1.0 / (rows_good[i] + 1)
-        if rows_good[i] != 0:
-            old_precision = i * 1.0 / rows_good[i]
-        else:
-            old_precision = 1.0
-        ap = ap + d_recall * (old_precision + precision) / 2
-    return ap, cmc
+    for i in range(bs):
+        # boxes = xywh2xyxy(targets[targets[:, 0] == i, 2:6]).T
+        # boxes[[0, 2]] *= w
+        # boxes[[1, 3]] *= h
+        plt.subplot(ns, ns, i + 1).imshow(imgs[i].transpose(1, 2, 0))
+        # plt.plot(boxes[[0, 2, 2, 0, 0]], boxes[[1, 1, 3, 3, 1]], '.-')
+        plt.axis('off')
+        if paths is not None:
+            s = Path(paths[i]).name
+            plt.title(s[:min(len(s), 40)],
+                      fontdict={'size': 8})  # limit to 40 characters
+    fig.tight_layout()
+    fig.savefig(fname, dpi=200)
+    plt.close()
 
 
-def evaluate(qf, ql, gf, gl):
+def topN(qf, gf, gl, n, img_paths):
     query = qf.view(-1, 1)  # query 是一张图
     score = torch.mm(gf, query)  # 计算得分[1, num]
     score = score.squeeze(1).cpu()
@@ -124,23 +140,39 @@ def evaluate(qf, ql, gf, gl):
     #predict index
     index = np.argsort(score)
     index = index[::-1]  # index 倒过来
-    # 得到前20个
-    # index = index[0:20]
+    # 得到前n个
+    assert n > 0, "n 必须大于0"
+    index = index[0:n]
 
-    # good index , label一致
-    good_index = np.argwhere(gl == ql)
-    # print("good_index", gl, '\n', ql, gl == ql, type(gl))
-    junk_index = np.argwhere(gl == -1)
+    container = torch.zeros(n, 512, 512, 3)
+    img_paths_list = []
+    for cnt, i in enumerate(index):
+        print("top%d\tid:%s\tname:%s" %
+              (cnt, gl[i], os.path.basename(img_paths[i][0])))
+        img_paths_list.append(img_paths[i][0])
+        img = cv2.imread(img_paths[i][0])
+        # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = torch.tensor(img)
+        img = img / 255.0
+        print(img.shape, container.shape)
+        container[cnt] = img
 
-    CMC = compute_mAP(index, good_index, junk_index)
-    return CMC
+    print(container.shape)
+    container.transpose(0,3,1,2)
+
+    plot_images(container, img_paths_list)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser('help')
-    parser.add_argument('--weight_path',
+    parser.add_argument('--weight_path', type=str, default="./weights/110.pth")
+    parser.add_argument('--img_path',
                         type=str,
-                        default="./checkpoints/10.pth")
+                        default="./Market/query/10/10_c1s1_18_01.jpg")
+    parser.add_argument('--vis',
+                        action="store_true",
+                        help='whether show results')
+    parser.add_argument('--num', type=int, default=15, help="top N")
     args = parser.parse_args()
 
     model = ResNet18(len(class_names))
@@ -150,31 +182,14 @@ if __name__ == "__main__":
     if use_gpu:
         model = model.cuda()
 
+    query_features = extract_single_image(model, args.img_path)
     gallery_features = extract_features(model, gallery_dataloader)
-    query_features = extract_features(model, query_dataloader)
 
     gallery_label = np.array(get_label(gallery_datasets.imgs))
-    query_label = np.array(get_label(query_datasets.imgs))
 
     if use_gpu:
         gallery_features = gallery_features.cuda()
         query_features = query_features.cuda()
-    # print(gallery_features.shape)
-    # print(query_features.shape)
 
-    CMC = torch.IntTensor(len(gallery_label)).zero_()
-    ap = 0.0
-    for i in range(len(query_label)):
-        ap_tmp, CMC_tmp = evaluate(query_features[i], query_label[i],
-                                   gallery_features, gallery_label)
-        if CMC_tmp[0] == -1:
-            continue
-        CMC = CMC + CMC_tmp
-        # print(i, ":",ap_tmp)
-        ap += ap_tmp
-
-    CMC = CMC.float()
-    CMC = CMC / len(query_label)
-
-    print("Rank@1:%f|Rank@5:%f|Rank@10:%f|mAP:%f" %
-          (CMC[0], CMC[4], CMC[9], ap / len(query_label)))
+    topN(query_features, gallery_features, gallery_label, args.num,
+         gallery_datasets.imgs)

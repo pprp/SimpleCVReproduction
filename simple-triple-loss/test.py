@@ -56,7 +56,7 @@ def extract_features(model, dataloader):
         img, label = data
         bs, c, h, w = img.size()
         count += bs
-        ff = torch.FloatTensor(bs, 2048).zero_()
+        ff = torch.FloatTensor(bs, 512).zero_()# 2048 if res50 
         print(count, end='\r')
         sys.stdout.flush()
         # add two features
@@ -64,6 +64,7 @@ def extract_features(model, dataloader):
             if i == 1:
                 img = fliplr(img)
             input_img = Variable(img.cuda())
+            # print("=", input_img.shape)
             outputs, feature = model(input_img)
             feature = feature.data.cpu()
             ff = ff + feature
@@ -140,7 +141,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser('help')
     parser.add_argument('--weight_path',
                         type=str,
-                        default="./checkpoints/10.pth")
+                        default="./weights/10.pth")
     args = parser.parse_args()
 
     model = ResNet18(len(class_names))

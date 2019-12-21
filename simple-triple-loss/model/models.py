@@ -57,18 +57,20 @@ class ClassBlock(nn.Module):
                  num_bottleneck=512):
         super(ClassBlock, self).__init__()
         add_block = []
-        #add_block += [nn.Linear(input_dim, num_bottleneck)]
-        num_bottleneck = input_dim
-        add_block += [nn.BatchNorm1d(num_bottleneck)]
+        add_block += [nn.BatchNorm1d(input_dim)]
+        # add_block += [nn.Linear(input_dim, num_bottleneck)]
+        # num_bottleneck = input_dim
+
         if relu:
             add_block += [nn.LeakyReLU(0.1)]
         if dropout:
             add_block += [nn.Dropout(p=0.5)]
+        
         add_block = nn.Sequential(*add_block)
         add_block.apply(weights_init_kaiming)
 
         classifier = []
-        classifier += [nn.Linear(num_bottleneck, class_num)]
+        classifier += [nn.Linear(input_dim, class_num)]
         classifier = nn.Sequential(*classifier)
         classifier.apply(weights_init_classifier)
 
@@ -86,9 +88,9 @@ class ClassBlock(nn.Module):
 class ResNet18(nn.Module):
     def __init__(self, num_classes):
         super(ResNet18, self).__init__()
-        self.model = models.resnet50(pretrained=False)
+        self.model = models.resnet18(pretrained=False)
         self.model.avgpool = nn.AdaptiveAvgPool2d((1,1))
-        self.classifier = ClassBlock(2048,
+        self.classifier = ClassBlock(512,
                                      num_classes,
                                      dropout=False,
                                      relu=False)
@@ -103,7 +105,11 @@ class ResNet18(nn.Module):
         x = self.model.layer3(x)
         x = self.model.layer4(x)
         x = self.model.avgpool(x)
+        # bs, c, h, w
         x = torch.squeeze(x)
+        if len(x) >= 512:
+            x = x.unsqueeze(0)
+        # print("res18: x:", x.shape, len(x))
         x, f = self.classifier(x)
         return x, f
 
@@ -113,7 +119,7 @@ class ResNet18(nn.Module):
 
     def load(self, weight_path):
         if weight_path is not None:
-            self.load_state_dict(torch.load(weight_path))
+            self.load_state_dict(torch.load(weight_path, map_location='cpu'))
             print("Loading %s sucessfully!" % weight_path)
         else:
             print("Occur errors in loading %s" % weight_path)
