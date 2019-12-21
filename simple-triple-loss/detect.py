@@ -120,7 +120,7 @@ def plot_images(imgs, paths=None, fname='images.jpg'):
         # boxes = xywh2xyxy(targets[targets[:, 0] == i, 2:6]).T
         # boxes[[0, 2]] *= w
         # boxes[[1, 3]] *= h
-        plt.subplot(ns, ns, i + 1).imshow(imgs[i].transpose(1, 2, 0))
+        plt.subplot(ns, ns, i + 1).imshow(imgs[i])#.transpose(1, 2, 0))
         # plt.plot(boxes[[0, 2, 2, 0, 0]], boxes[[1, 1, 3, 3, 1]], '.-')
         plt.axis('off')
         if paths is not None:
@@ -154,18 +154,17 @@ def topN(qf, gf, gl, n, img_paths):
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = torch.tensor(img)
         img = img / 255.0
-        print(img.shape, container.shape)
+        # print(img.shape, container.shape)
         container[cnt] = img
 
-    print(container.shape)
-    container.transpose(0,3,1,2)
+    # print(container.shape)
 
     plot_images(container, img_paths_list)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser('help')
-    parser.add_argument('--weight_path', type=str, default="./weights/110.pth")
+    parser.add_argument('--weight_path', type=str, default="./weights/70.pth")
     parser.add_argument('--img_path',
                         type=str,
                         default="./Market/query/10/10_c1s1_18_01.jpg")
