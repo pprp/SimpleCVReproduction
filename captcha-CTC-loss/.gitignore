@@ -1,0 +1,4 @@
+pretrained/
+log/
+data/
+*.pyc
