@@ -37,9 +37,7 @@ class CaptchaDataset(data.Dataset):
 
             name = os.path.splitext(img_path)[0]
 
-            label_seq = name[name.find('-')+1:]
-
-            print(label_seq)
+            label_seq = name.split('-')[-1]
 
             label_seq = [int(x)+1 for x in label_seq]
             
