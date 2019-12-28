@@ -85,13 +85,17 @@ if __name__ == '__main__':
     #     k = cv2.waitKey(0) & 0xFF
     #     if (k == 113):  # q is pressed
     #         break
-    h,w = frame.shape[0], frame.shape[1]
-    for i in range(3):
-        bboxes.append((randint(0,w),randint(0,h),
-                        randint(0,w), randint(0,h)))
-        colors.append((randint(64, 255), randint(64, 255), randint(64, 255)))
-    # bboxes.append((774, 508, 117, 272))
-    # colors.append((randint(64, 255), randint(64, 255), randint(64, 255)))
+
+
+
+    # h,w = frame.shape[0], frame.shape[1]
+    # for i in range(3):
+    #     bboxes.append((randint(0,w),randint(0,h),
+    #                     randint(0,w), randint(0,h)))
+    #     colors.append((randint(64, 255), randint(64, 255), randint(64, 255)))
+    
+    bboxes.append((774, 508, 117, 272))
+    colors.append((randint(64, 255), randint(64, 255), randint(64, 255)))
 
     print('Selected bounding boxes {}'.format(bboxes))
 
