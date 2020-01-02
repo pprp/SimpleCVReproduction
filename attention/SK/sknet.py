@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch
 
 class SKConv(nn.Module):
     def __init__(self, features, WH, M, G, r, stride=1, L=32):
@@ -28,6 +29,7 @@ class SKConv(nn.Module):
                               groups=G), nn.BatchNorm2d(features),
                     nn.ReLU(inplace=False)))
         # self.gap = nn.AvgPool2d(int(WH/stride))
+        print("D:", d)
         self.fc = nn.Linear(features, d)
         self.fcs = nn.ModuleList([])
         for i in range(M):
@@ -46,7 +48,9 @@ class SKConv(nn.Module):
         fea_s = fea_U.mean(-1).mean(-1)
         fea_z = self.fc(fea_s)
         for i, fc in enumerate(self.fcs):
+            print(i, fea_z.shape)
             vector = fc(fea_z).unsqueeze_(dim=1)
+            print(i, vector.shape)
             if i == 0:
                 attention_vectors = vector
             else:
@@ -56,3 +60,9 @@ class SKConv(nn.Module):
         attention_vectors = attention_vectors.unsqueeze(-1).unsqueeze(-1)
         fea_v = (feas * attention_vectors).sum(dim=1)
         return fea_v
+
+if __name__ == "__main__":
+    t = torch.ones((32, 256, 24,24))
+    sk = SKConv(256,WH=1,M=2,G=1,r=2)
+    out = sk(t)
+    print(out.shape)
