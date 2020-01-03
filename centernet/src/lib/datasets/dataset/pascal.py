@@ -11,7 +11,7 @@ import os
 import torch.utils.data as data
 
 class PascalVOC(data.Dataset):
-  num_classes = 20
+  num_classes = 1
   default_resolution = [384, 384]
   mean = np.array([0.485, 0.456, 0.406],
                    dtype=np.float32).reshape(1, 1, 3)
@@ -27,10 +27,7 @@ class PascalVOC(data.Dataset):
       self.data_dir, 'annotations', 
       'pascal_{}.json').format(_ann_name[split])
     self.max_objs = 50
-    self.class_name = ['__background__', "aeroplane", "bicycle", "bird", "boat",
-     "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", 
-     "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", 
-     "train", "tvmonitor"]
+    self.class_name = ['__background__', "cow"]
     self._valid_ids = np.arange(1, 21, dtype=np.int32)
     self.cat_ids = {v: i for i, v in enumerate(self._valid_ids)}
     self._data_rng = np.random.RandomState(123)
