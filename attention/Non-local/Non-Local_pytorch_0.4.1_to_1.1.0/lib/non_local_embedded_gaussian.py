@@ -4,6 +4,14 @@ from torch.nn import functional as F
 
 
 class _NonLocalBlockND(nn.Module):
+    """
+    NONLocalBlock2D(in_channels=32),
+    super(NONLocalBlock2D, self).__init__(in_channels,
+            inter_channels=inter_channels,
+            dimension=2, sub_sample=sub_sample,
+            bn_layer=bn_layer)
+
+    """
     def __init__(self, in_channels, inter_channels=None, dimension=3, sub_sample=True, bn_layer=True):
         super(_NonLocalBlockND, self).__init__()
 
@@ -17,6 +25,7 @@ class _NonLocalBlockND(nn.Module):
 
         if self.inter_channels is None:
             self.inter_channels = in_channels // 2
+            # 进行压缩得到channel个数
             if self.inter_channels == 0:
                 self.inter_channels = 1
 
@@ -61,7 +70,7 @@ class _NonLocalBlockND(nn.Module):
 
     def forward(self, x):
         '''
-        :param x: (b, c, t, h, w)
+        :param x: (b, c,  h, w)
         :return:
         '''
 
@@ -127,5 +136,3 @@ if __name__ == '__main__':
         net = NONLocalBlock3D(3, sub_sample=sub_sample, bn_layer=bn_layer)
         out = net(img)
         print(out.size())
-
-
