@@ -5,12 +5,12 @@ from torch.nn import functional as F
 
 class _NonLocalBlockND(nn.Module):
     """
+    调用过程
     NONLocalBlock2D(in_channels=32),
     super(NONLocalBlock2D, self).__init__(in_channels,
             inter_channels=inter_channels,
             dimension=2, sub_sample=sub_sample,
             bn_layer=bn_layer)
-
     """
     def __init__(self,
                  in_channels,
@@ -94,7 +94,7 @@ class _NonLocalBlockND(nn.Module):
 
         batch_size = x.size(0)
 
-        g_x = self.g(x).view(batch_size, self.inter_channels, -1)
+        g_x = self.g(x).view(batch_size, self.inter_channels, -1)#[bs, c, w*h]
         g_x = g_x.permute(0, 2, 1)
 
         theta_x = self.theta(x).view(batch_size, self.inter_channels, -1)
@@ -103,6 +103,9 @@ class _NonLocalBlockND(nn.Module):
         phi_x = self.phi(x).view(batch_size, self.inter_channels, -1)
         
         f = torch.matmul(theta_x, phi_x)
+
+        print(f.shape)
+
         f_div_C = F.softmax(f, dim=-1)
 
         y = torch.matmul(f_div_C, g_x)
@@ -110,7 +113,6 @@ class _NonLocalBlockND(nn.Module):
         y = y.view(batch_size, self.inter_channels, *x.size()[2:])
         W_y = self.W(y)
         z = W_y + x
-
         return z
 
 
@@ -158,17 +160,17 @@ if __name__ == '__main__':
 
     for (sub_sample, bn_layer) in [(True, True), (False, False), (True, False),
                                    (False, True)]:
-        img = torch.zeros(2, 3, 20)
-        net = NONLocalBlock1D(3, sub_sample=sub_sample, bn_layer=bn_layer)
-        out = net(img)
-        print(out.size())
+        # img = torch.zeros(2, 3, 20)
+        # net = NONLocalBlock1D(3, sub_sample=sub_sample, bn_layer=bn_layer)
+        # out = net(img)
+        # print(out.size())
 
-        img = torch.zeros(2, 3, 20, 20)
+        img = torch.zeros(4, 3, 64, 64)
         net = NONLocalBlock2D(3, sub_sample=sub_sample, bn_layer=bn_layer)
         out = net(img)
         print(out.size())
 
-        img = torch.randn(2, 3, 8, 20, 20)
-        net = NONLocalBlock3D(3, sub_sample=sub_sample, bn_layer=bn_layer)
-        out = net(img)
-        print(out.size())
+        # img = torch.randn(2, 3, 8, 20, 20)
+        # net = NONLocalBlock3D(3, sub_sample=sub_sample, bn_layer=bn_layer)
+        # out = net(img)
+        # print(out.size())

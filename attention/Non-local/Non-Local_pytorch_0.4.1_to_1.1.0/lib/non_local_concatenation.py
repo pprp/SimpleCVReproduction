@@ -83,6 +83,7 @@ class _NonLocalBlockND(nn.Module):
 
         h = theta_x.size(2)
         w = phi_x.size(3)
+        
         theta_x = theta_x.repeat(1, 1, 1, w)
         phi_x = phi_x.repeat(1, 1, h, 1)
 
