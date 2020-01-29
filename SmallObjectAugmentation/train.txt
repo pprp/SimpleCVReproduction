@@ -1,0 +1,2 @@
+./background/img00000.jpg
+./background/img00001.jpg
