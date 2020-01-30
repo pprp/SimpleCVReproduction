@@ -12,6 +12,9 @@ jpg_list = glob.glob(root_dir + "/*.jpg")
 
 fo = open("dpj_small.txt", "w")
 
+max_s = -1
+min_s = 1000
+
 for jpg_path in jpg_list:
     # jpg_path = jpg_list[3]
     txt_path = jpg_path.replace("jpg", "txt")
@@ -25,6 +28,7 @@ for jpg_path in jpg_list:
 
     file_contents = f.readlines()
 
+
     for num, file_content in enumerate(file_contents):
         print(num)
         clss, xc, yc, w, h = file_content.split()
@@ -34,6 +38,9 @@ for jpg_path in jpg_list:
         yc *= height
         w *= width
         h *= height
+
+        max_s = max(w*h, max_s)
+        min_s = min(w*h, min_s)
 
         half_w, half_h = w // 2, h // 2
 
@@ -51,3 +58,5 @@ for jpg_path in jpg_list:
     f.close()
 
 fo.close()
+
+print(max_s, min_s)

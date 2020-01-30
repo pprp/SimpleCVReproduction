@@ -22,17 +22,23 @@ def convert_all_boxes(shape, anno_infos, yolo_label_txt_dir):
         target_id, x1, y1, x2, y2 = anno_info
         b = (float(x1), float(x2), float(y1), float(y2))
         bb = convert((width, height), b)
-        label_file.write(str(target_id) + " " + " ".join([str(a) for a in bb]) + '\n')
+        label_file.write(
+            str(target_id) + " " + " ".join([str(a) for a in bb]) + '\n')
 
 
 def save_crop_image(save_crop_base_dir, image_dir, idx, roi):
     crop_save_dir = join(save_crop_base_dir, find_str(image_dir))
     check_dir(crop_save_dir)
-    crop_img_save_dir = join(crop_save_dir, basename(image_dir)[:-3] + '_crop_' + str(idx) + '.jpg')
+    crop_img_save_dir = join(
+        crop_save_dir,
+        basename(image_dir)[:-3] + '_crop_' + str(idx) + '.jpg')
     cv2.imwrite(crop_img_save_dir, roi)
 
 
-def copysmallobjects(image_dir, label_dir, save_base_dir, save_crop_base_dir=None,
+def copysmallobjects(image_dir,
+                     label_dir,
+                     save_base_dir,
+                     save_crop_base_dir=None,
                      save_annoation_base_dir=None):
     image = cv2.imread(image_dir)
 
@@ -48,10 +54,17 @@ def copysmallobjects(image_dir, label_dir, save_base_dir, save_crop_base_dir=Non
         rescale_label_height, rescale_label_width = rescale_label[4] - rescale_label[2], rescale_label[3] - \
                                                     rescale_label[1]
 
-        if (issmallobject((rescale_label_height, rescale_label_width), thresh=64 * 64) and rescale_label[0] == '1'):
-            roi = image[rescale_label[2]:rescale_label[4], rescale_label[1]:rescale_label[3]]
+        if (issmallobject(
+            (rescale_label_height, rescale_label_width), thresh=64 * 64)
+                and rescale_label[0] == '1'):
+            roi = image[rescale_label[2]:rescale_label[4], rescale_label[1]:
+                        rescale_label[3]]
 
-            new_bboxes = random_add_patches(rescale_label, rescale_labels, image.shape, paste_number=2, iou_thresh=0.2)
+            new_bboxes = random_add_patches(rescale_label,
+                                            rescale_labels,
+                                            image.shape,
+                                            paste_number=2,
+                                            iou_thresh=0.2)
             count = 0
 
             # 将新生成的位置加入到label,并在相应位置画出物体
@@ -70,8 +83,11 @@ def copysmallobjects(image_dir, label_dir, save_base_dir, save_crop_base_dir=Non
     dir_name = find_str(image_dir)
     save_dir = join(save_base_dir, dir_name)
     check_dir(save_dir)
-    yolo_txt_dir = join(save_dir, basename(image_dir.replace('.jpg', '_augment.txt')))
-    cv2.imwrite(join(save_dir, basename(image_dir).replace('.jpg', '_augment.jpg')), image)
+    yolo_txt_dir = join(save_dir,
+                        basename(image_dir.replace('.jpg', '_aug.txt')))
+    cv2.imwrite(
+        join(save_dir,
+             basename(image_dir).replace('.jpg', '_aug.jpg')), image)
     convert_all_boxes(image.shape, all_boxes, yolo_txt_dir)
 
 
@@ -89,37 +105,48 @@ def suo_fang(image, area_max=2000, area_min=1000):
     # 改变图片大小
     height, width, channels = image.shape
 
-    while (height*width) > area_max:
-        image = cv2.resize(image, (int(width * 0.9),int(height * 0.9)))
+    while (height * width) > area_max:
+        image = cv2.resize(image, (int(width * 0.9), int(height * 0.9)))
         height, width, channels = image.shape
-        height,width = int(height*0.9),int(width*0.9)
+        height, width = int(height * 0.9), int(width * 0.9)
 
-    while (height*width) < area_min:
-        image = cv2.resize(image, (int(width * 1.1),int(height * 1.1)))
+    while (height * width) < area_min:
+        image = cv2.resize(image, (int(width * 1.1), int(height * 1.1)))
         height, width, channels = image.shape
-        height,width = int(height*1.1),int(width*1.1)
+        height, width = int(height * 1.1), int(width * 1.1)
 
     return image
 
 
-def copysmallobjects2(image_dir, label_dir, save_base_dir, small_img_dir):
+def copysmallobjects2(image_dir, label_dir, save_base_dir, small_img_dir,
+                      times):
     image = cv2.imread(image_dir)
     labels = read_label_txt(label_dir)
     if len(labels) == 0:
         return
+
+    # 转化为x1y1x2y2
     rescale_labels = rescale_yolo_labels(labels, image.shape)  # 转换坐标表示
     all_boxes = []
+
     for _, rescale_label in enumerate(rescale_labels):
         all_boxes.append(rescale_label)
 
     for small_img_dirs in small_img_dir:
+        # print(small_img_dir)
         image_bbox = cv2.imread(small_img_dirs)
         #roi = image_bbox
         # TODO
-        roi = suo_fang(image_bbox,area_max=3000,area_min=1500)
+        # from 3000 to 1500
+        roi = suo_fang(image_bbox, area_max=1000, area_min=200)
 
-        new_bboxes = random_add_patches2(roi.shape, rescale_labels, image.shape, paste_number=1, iou_thresh=0)
+        new_bboxes = random_add_patches2(roi.shape,
+                                         rescale_labels,
+                                         image.shape,
+                                         paste_number=1,
+                                         iou_thresh=0)
         count = 0
+        # print("end patch")
         for new_bbox in new_bboxes:
             count += 1
 
@@ -127,10 +154,10 @@ def copysmallobjects2(image_dir, label_dir, save_base_dir, small_img_dir):
                                                                new_bbox[4]
             #roi = GaussianBlurImg(roi)  # 高斯模糊
             height, width, channels = roi.shape
-            center = (int(width / 2),int(height / 2))
+            center = (int(width / 2), int(height / 2))
             #ran_point = (int((bbox_top+bbox_bottom)/2),int((bbox_left+bbox_right)/2))
             mask = 255 * np.ones(roi.shape, roi.dtype)
-
+            # print("before try")
             try:
                 if count > 1:
                     roi = flip_bbox(roi)
@@ -143,16 +170,27 @@ def copysmallobjects2(image_dir, label_dir, save_base_dir, small_img_dir):
                 #print(str(bbox_bottom-bbox_top) + "|" + str(bbox_right-bbox_left))
                 #print(roi.shape)
                 #print(mask.shape)
-                image[bbox_top:bbox_bottom, bbox_left:bbox_right] = cv2.seamlessClone(roi, image[bbox_top:bbox_bottom, bbox_left:bbox_right],
-                                                                                      mask, center, cv2.NORMAL_CLONE)
+                image[bbox_top:bbox_bottom, bbox_left:
+                      bbox_right] = cv2.seamlessClone(
+                          roi,
+                          image[bbox_top:bbox_bottom, bbox_left:bbox_right],
+                          mask, center, cv2.NORMAL_CLONE)
                 all_boxes.append(new_bbox)
                 rescale_labels.append(new_bbox)
+
+                # print("end try")
             except ValueError:
                 print("---")
                 continue
+    # print("end for")
     dir_name = find_str(image_dir)
     save_dir = join(save_base_dir, dir_name)
     check_dir(save_dir)
-    yolo_txt_dir = join(save_dir, basename(image_dir.replace('.jpg', '_augment.txt')))
-    cv2.imwrite(join(save_dir, basename(image_dir).replace('.jpg', '_augment.jpg')), image)
+    yolo_txt_dir = join(
+        save_dir,
+        basename(image_dir.replace('.jpg', '_aug_%s.txt' % str(times))))
+    cv2.imwrite(
+        join(save_dir,
+             basename(image_dir).replace('.jpg', '_aug_%s.jpg' % str(times))),
+        image)
     convert_all_boxes(image.shape, all_boxes, yolo_txt_dir)

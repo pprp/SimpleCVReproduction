@@ -178,8 +178,9 @@ def sampling_new_bbox_center_point2(img_shape, bbox):
     search_x_left, search_y_left, search_x_right, search_y_right = width * 0.55 , height * 0.5 , \
                                                                    width * 0.9 , height * 0.95
     '''
-    search_x_left, search_y_left, search_x_right, search_y_right = width * 0.35 , height * 0.6 , \
-                                                                   width * 1 , height * 0.95
+    # 修改区域
+    search_x_left, search_y_left, search_x_right, search_y_right = width * 0.1 , height * 0.1 , \
+                                                                   width * 0.9, height * 0.9
 
     return [search_x_left, search_y_left, search_x_right, search_y_right]
 
@@ -198,6 +199,7 @@ def random_add_patches2(bbox_img, rescale_boxes, shape, paste_number, iou_thresh
     # print(center_search_space,'+')
 
     while success_num < paste_number:
+        # print(success_num)
         new_bbox_x_center, new_bbox_y_center = norm_sampling(center_search_space)   # 随机生成点坐标
         if new_bbox_x_center-0.5*bbox_w < 0 or new_bbox_x_center+0.5*bbox_w > img_w:
             continue
@@ -211,8 +213,10 @@ def random_add_patches2(bbox_img, rescale_boxes, shape, paste_number, iou_thresh
 
         ious = [bbox_iou(new_bbox, bbox_t) for bbox_t in rescale_boxes]
         ious2 = [bbox_iou(new_bbox,bbox_t1) for bbox_t1 in new_bboxes]
+
         if ious2 == []:
             ious2.append(0)
+            
         if max(ious) <= iou_thresh and max(ious2) <= iou_thresh:
             success_num += 1
             temp.append(new_bbox)
