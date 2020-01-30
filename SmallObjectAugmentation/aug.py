@@ -115,6 +115,7 @@ def copysmallobjects2(image_dir, label_dir, save_base_dir, small_img_dir):
     for small_img_dirs in small_img_dir:
         image_bbox = cv2.imread(small_img_dirs)
         #roi = image_bbox
+        # TODO
         roi = suo_fang(image_bbox,area_max=3000,area_min=1500)
 
         new_bboxes = random_add_patches2(roi.shape, rescale_labels, image.shape, paste_number=1, iou_thresh=0)

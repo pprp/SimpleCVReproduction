@@ -109,7 +109,14 @@ def swap(x1, x2):
 def norm_sampling(search_space):
     # 随机生成点
     search_x_left, search_y_left, search_x_right, search_y_right = search_space
+
+    search_x_left = int(search_x_left)
+    search_x_right = int(search_x_right)
+    search_y_left = int(search_y_left)
+    search_y_right = int(search_y_right)
+
     new_bbox_x_center = random.randint(search_x_left, search_x_right)
+    # print(search_y_left, search_y_right, '=')
     new_bbox_y_center = random.randint(search_y_left, search_y_right)
     return [new_bbox_x_center, new_bbox_y_center]
 
@@ -186,7 +193,10 @@ def random_add_patches2(bbox_img, rescale_boxes, shape, paste_number, iou_thresh
     center_search_space = sampling_new_bbox_center_point2(shape, bbox_img)  # 选取生成随机点区域
     success_num = 0
     new_bboxes = []
-    cl = 1
+    cl = 0
+
+    # print(center_search_space,'+')
+
     while success_num < paste_number:
         new_bbox_x_center, new_bbox_y_center = norm_sampling(center_search_space)   # 随机生成点坐标
         if new_bbox_x_center-0.5*bbox_w < 0 or new_bbox_x_center+0.5*bbox_w > img_w:
