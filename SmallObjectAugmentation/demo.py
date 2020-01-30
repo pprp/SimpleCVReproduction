@@ -14,14 +14,13 @@ save_base_dir = join(base_dir, 'dpjsave')
 
 check_dir(save_base_dir)
 
-imgs_dir = [f.strip() for f in open(join(base_dir, 'sea_sky.txt')).readlines()]
+imgs_dir = [f.strip() for f in open(join(base_dir, 'sea.txt')).readlines()]
 labels_dir = hp.replace_labels(imgs_dir)
 
 small_imgs_dir = [f.strip() for f in open(join(base_dir, 'dpj_small.txt')).readlines()]
 random.shuffle(small_imgs_dir)
 
-times = 10
-
+times = 3
 
 for image_dir, label_dir in zip(imgs_dir, labels_dir):
     print(image_dir, label_dir)
