@@ -19,3 +19,5 @@ opencv-mot/out.avi
 deep_sort-master/deep_sort-master/mars-small128.pb
 deep_sort-master/deep_sort-master/MOT16-02.npy
 deep_sort-master/deep_sort-master/MOT16-01.npy
+*.txt
+*.npy
