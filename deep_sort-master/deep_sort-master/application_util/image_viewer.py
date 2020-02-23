@@ -22,7 +22,7 @@ def is_in_bounds(mat, roi):
     -------
     bool
         Returns true if the ROI is contain in mat.
-
+    ps: 主要用于限制边界
     """
     if roi[0] < 0 or roi[0] + roi[2] >= mat.shape[1]:
         return False
