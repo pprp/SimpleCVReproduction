@@ -180,7 +180,9 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         detections = [detections[i] for i in indices]
 
         # Update tracker.
+        # 确认track的各种状态的正常，目前还没有tracker,还没有进行状态检查
         tracker.predict()
+        # 利用检测结果更新tracker
         tracker.update(detections)
 
         # Update visualization.
