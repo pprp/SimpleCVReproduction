@@ -21,3 +21,7 @@ deep_sort-master/deep_sort-master/MOT16-02.npy
 deep_sort-master/deep_sort-master/MOT16-01.npy
 *.txt
 *.npy
+*.log
+*.aux
+*.log
+*.gz

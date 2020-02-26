@@ -57,10 +57,7 @@ string.""",
                         type=str,
                         help='Log level',
                         default='info')
-    parser.add_argument('--fmt',
-                        type=str,
-                        help='Data format',
-                        default='mot16')
+    parser.add_argument('--fmt', type=str, help='Data format', default='mot16')
     parser.add_argument('--solver',
                         type=str,
                         help='LAP solver to use for matching between frames.')
@@ -95,7 +92,7 @@ def compare_dataframes(gts, ts):
     return accs, names
 
 
-def main():
+if __name__ == '__main__':
     # pylint: disable=missing-function-docstring
     args = parse_args()
 
@@ -115,6 +112,8 @@ def main():
         if not os.path.basename(f).startswith('eval')
     ]
 
+    print(gtfiles, tsfiles)
+
     logging.info('Found %d groundtruths and %d test files.', len(gtfiles),
                  len(tsfiles))
     logging.info('Available LAP solvers %s', str(mm.lap.available_solvers))
@@ -127,10 +126,14 @@ def main():
     ts = OrderedDict([(os.path.splitext(Path(f).parts[-1])[0],
                        mm.io.loadtxt(f, fmt=args.fmt)) for f in tsfiles])
 
+    print("after:\n ", gt, ts)
+
     mh = mm.metrics.create()
+    # print(mh)
     accs, names = compare_dataframes(gt, ts)
 
     metrics = list(mm.metrics.motchallenge_metrics)
+    # print(metrics)
     if args.exclude_id:
         metrics = [x for x in metrics if not x.startswith('id')]
 
@@ -147,7 +150,3 @@ def main():
                              formatters=mh.formatters,
                              namemap=mm.io.motchallenge_metric_names))
     logging.info('Completed')
-
-
-if __name__ == '__main__':
-    main()
