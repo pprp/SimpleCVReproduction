@@ -159,7 +159,7 @@ def ap_per_class(tp, conf, pred_cls, target_cls):
             ap.append(compute_ap(recall_curve, precision_curve))
 
             # Plot
-            # plt.plot(recall_curve, precision_curve)
+            plt.plot(recall_curve, precision_curve)
 
     # Compute F1 score (harmonic mean of precision and recall)
     p, r, ap = np.array(p), np.array(r), np.array(ap)

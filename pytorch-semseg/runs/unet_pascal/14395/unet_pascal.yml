@@ -1,0 +1,29 @@
+model:
+    arch: unet
+data:
+    dataset: pascal
+    #train_split: train_aug
+    train_split: train
+    val_split: val
+    img_rows: 256
+    img_cols: 256
+    #path: /private/home/meetshah/datasets/VOC/060817/VOCdevkit/VOC2012/
+    path: ./datasets/GRAPE2020/
+    #sbd_path: /private/home/meetshah/datasets/VOC/benchmark_RELEASE/
+training:
+    train_iters: 50
+    batch_size: 2
+    val_interval: 500
+    n_workers: 2
+    print_interval: 9
+    optimizer:
+        name: 'sgd'
+        lr: 1e-6
+        weight_decay: 0.0005
+        momentum: 0.99
+    loss:
+        name: 'cross_entropy'
+        size_average: False
+    lr_schedule:
+    #resume: fcn8s_pascal_best_model.pkl
+    resume: unet_pascal_best_model.pkl
