@@ -96,9 +96,11 @@ def train(
 
     else:  # Initialize model with backbone (optional)
         if '-tiny.cfg' in cfg:
-            cutoff = load_darknet_weights(model, weights + 'yolov3-tiny.conv.15')
+            #cutoff = load_darknet_weights(model, weights + 'yolov3-tiny.conv.15')
+            pass
         else:
-            cutoff = load_darknet_weights(model, weights + 'darknet53.conv.74')
+            #cutoff = load_darknet_weights(model, weights + 'darknet53.conv.74')
+            pass
 
     # Scheduler https://github.com/ultralytics/yolov3/issues/238
     # lf = lambda x: 1 - x / epochs  # linear ramp to zero
@@ -271,10 +273,10 @@ def print_mutation(hyp, results):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=273, help='number of epochs')
-    parser.add_argument('--batch-size', type=int, default=16, help='size of each image batch')
+    parser.add_argument('--batch-size', type=int, default=1, help='size of each image batch')
     parser.add_argument('--accumulate', type=int, default=1, help='accumulate gradient x batches before optimizing')
-    parser.add_argument('--cfg', type=str, default='cfg/yolov3-spp.cfg', help='cfg file path')
-    parser.add_argument('--data-cfg', type=str, default='data/coco.data', help='coco.data file path')
+    parser.add_argument('--cfg', type=str, default='cfg/yolov3-tiny.cfg', help='cfg file path')
+    parser.add_argument('--data-cfg', type=str, default='data/voc.data', help='coco.data file path')
     parser.add_argument('--multi-scale', action='store_true', help='random image sizes per batch 320 - 608')
     parser.add_argument('--img-size', type=int, default=416, help='pixels')
     parser.add_argument('--resume', action='store_true', help='resume training flag')
