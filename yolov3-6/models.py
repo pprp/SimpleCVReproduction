@@ -61,8 +61,8 @@ def create_modules(module_defs):
         elif module_def['type'] == 'cem':
             # format : from=-1,-3
             filters = int(module_def['filters'])
-            conv1 = Conv1x1(in_channels=output_filters[-1],
-                            out_channels=filters)
+            conv1 = Conv1x1(in_channels=output_filters[-4],
+                            out_channels=output_filters[-1])
             up2 = nn.Upsample(scale_factor=2)
             avgpool = nn.AdaptiveMaxPool2d(1)
             modules.add_module(
@@ -88,6 +88,7 @@ def create_modules(module_defs):
                                    stride=stride,
                                    padding= int((kernel_size - 1) // 2))
             modules.add_module('maxpool_%d' % i, maxpool)
+
         elif module_def['type'] == 'osmaxpool':
             kernel_size = int(module_def['size'])
             stride = int(module_def['stride'])
@@ -260,7 +261,7 @@ class Darknet(nn.Module):
         for i, (module_def,
                 module) in enumerate(zip(self.module_defs, self.module_list)):
             mtype = module_def['type']
-            print(i,'='*10 ,mtype)
+            # print(i,'='*10 ,mtype, x.shape)
             if mtype in ['convolutional', 'upsample', 'maxpool', 'osblock']:
                 x = module(x)
             elif mtype == 'route':
@@ -274,19 +275,24 @@ class Darknet(nn.Module):
                 x = layer_outputs[-1] + layer_outputs[layer_i]
             elif mtype == 'cem':
                 # conv1x1, upsample, avgpool
-                layer_i = [int(x) for x in module_def['from']]
+                layer_i = [int(x) for x in module_def['from'].split(',')]
+                # print(layer_i)
                 # -1 --> 10x10
                 x1 = layer_outputs[layer_i[0]]
+                # print("x1:",x1.shape)
                 # -4 --> 20x20
                 x2 = layer_outputs[layer_i[1]]
+                # print("x2:",x2.shape)
                 b, c, h, w = x2.size()
                 # conv 1x1
-                x1 = module[0](x1)
                 x2 = module[0](x2)
                 # upsample
+                # print("before upsample:",x1.shape)
                 x3 = module[1](x1)
+                # print("After upsample:",x3.shape)
                 # avgpool
                 x4 = module[2](x1).expand_as(x2)
+                # print(x2.size(), x3.size(), x4.size())
                 x = x2 + x3 + x4
 
             elif mtype == 'yolo':
