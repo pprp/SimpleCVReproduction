@@ -160,7 +160,10 @@ def main():
                                            non_blocking=True)
 
             outputs = model(batch['image'])
+            
+            # 得到heat map, reg, wh 三个变量
             hmap, regs, w_h_ = zip(*outputs)
+
             regs = [
                 _tranpose_and_gather_feature(r, batch['inds']) for r in regs
             ]
@@ -168,9 +171,12 @@ def main():
                 _tranpose_and_gather_feature(r, batch['inds']) for r in w_h_
             ]
 
+            # 分别计算loss
             hmap_loss = _neg_loss(hmap, batch['hmap'])
             reg_loss = _reg_loss(regs, batch['regs'], batch['ind_masks'])
             w_h_loss = _reg_loss(w_h_, batch['w_h_'], batch['ind_masks'])
+
+            # 进行loss加权，得到最终loss
             loss = hmap_loss + 1 * reg_loss + 0.1 * w_h_loss
 
             optimizer.zero_grad()
