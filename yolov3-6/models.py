@@ -10,6 +10,28 @@ ONNX_EXPORT = False
 from osnet import OSBlock, Conv1x1
 
 
+class DWConv(nn.Module):
+    def __init__(self, in_plane, out_plane):
+        super(DWConv, self).__init__()
+        self.depth_conv = nn.Conv2d(in_channels=in_plane,
+                                    out_channels=in_plane,
+                                    kernel_size=3,
+                                    stride=1,
+                                    padding=1,
+                                    groups=in_plane)
+        self.point_conv = nn.Conv2d(in_channels=in_plane,
+                                    out_channels=out_plane,
+                                    kernel_size=1,
+                                    stride=1,
+                                    padding=0,
+                                    groups=1)
+
+    def forward(self, x):
+        x = self.depth_conv(x)
+        x = self.point_conv(x)
+        return x
+
+
 def create_modules(module_defs):
     """
     Constructs module list of layer blocks from module configuration in module_defs
@@ -34,6 +56,24 @@ def create_modules(module_defs):
                           stride=int(module_def['stride']),
                           padding=pad,
                           bias=not bn))
+            if bn:
+                modules.add_module('batch_norm_%d' % i,
+                                   nn.BatchNorm2d(filters))
+            if module_def['activation'] == 'leaky':
+                modules.add_module('leaky_%d' % i,
+                                   nn.LeakyReLU(0.1, inplace=True))
+            elif module_def['activation'] == 'relu':
+                modules.add_module('relu_%d' % i, nn.ReLU(inplace=True))
+
+        elif module_def['type'] == 'dwconv':
+            bn = int(module_def['batch_normalize'])
+            filters = int(module_def['filters'])
+            kernel_size = int(module_def['size'])
+            pad = (kernel_size - 1) // 2 if int(module_def['pad']) else 0
+            modules.add_module(
+                'conv_%d' % i,
+                DWConv(in_plane=output_filters[-1],
+                          out_plane=filters))
             if bn:
                 modules.add_module('batch_norm_%d' % i,
                                    nn.BatchNorm2d(filters))
@@ -262,7 +302,7 @@ class Darknet(nn.Module):
                 module) in enumerate(zip(self.module_defs, self.module_list)):
             mtype = module_def['type']
             # print(i,'='*10 ,mtype, x.shape)
-            if mtype in ['convolutional', 'upsample', 'maxpool', 'osblock']:
+            if mtype in ['convolutional', 'upsample', 'maxpool', 'osblock','dwconv']:
                 x = module(x)
             elif mtype == 'route':
                 layer_i = [int(x) for x in module_def['layers'].split(',')]

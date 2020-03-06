@@ -26,3 +26,5 @@ deep_sort-master/deep_sort-master/MOT16-01.npy
 *.log
 *.gz
 *.png
+*.h5
+*.h5
