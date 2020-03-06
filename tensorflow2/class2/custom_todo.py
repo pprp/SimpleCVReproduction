@@ -34,13 +34,13 @@ model = tf.keras.Model(inputs=inputs, outputs=outputs, name="linear")
 
 model.summary()
 #try "tf.keras.losses.MeanSquaredError" without "()" as well?
-loss_object = tf.keras.losses.MeanSquaredError
+loss_object = tf.keras.losses.MeanSquaredError()
 optimizer = tf.keras.optimizers.Adam(0.01)
 train_loss = tf.keras.metrics.Mean(name='train_loss')
 test_loss = tf.keras.metrics.Mean(name='test_loss')
 
 #try not use tf.function to debug,time?
-@tf.function
+# @tf.function
 def train_step(data, labels):
     with tf.GradientTape() as tape:
         predictions = model(data)
@@ -49,7 +49,7 @@ def train_step(data, labels):
     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
     train_loss(loss)
 
-@tf.function
+# @tf.function
 def test_step(data, labels):
     predictions = model(data)
     t_loss = loss_object(labels, predictions)
