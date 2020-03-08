@@ -16,7 +16,8 @@ if __name__ == "__main__":
     test_trans = transforms.Compose([
         transforms.ToTensor(),
         transforms.Lambda(lambda x: x.repeat(1, 1, 1)),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        transforms.Normalize([0.4100, 0.4100, 0.4100],
+                             [0.1165, 0.1165, 0.1165])
     ])
     test_datasets = ImageFolder(os.path.join("ROI_data", "test"),
                                 transform=test_trans)
@@ -25,4 +26,3 @@ if __name__ == "__main__":
     test_dataloader = DataLoader(test_datasets, batch_size=32, shuffle=False)
     criterion = torch.nn.CrossEntropyLoss()
     acc = test(model, test_dataloader, criterion)
-

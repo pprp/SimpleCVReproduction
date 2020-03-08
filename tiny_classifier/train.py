@@ -5,9 +5,10 @@ import torchvision
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 
-from model import TinyModel,DeepTinyModel,ShallowTinyModel
+from model import TinyModel, DeepTinyModel, ShallowTinyModel
 from focal_loss import FocalLoss
 from torch.autograd import Variable
+
 
 def train(model, dataloader, epoch, optimizer, criterion):
     model.train()
@@ -23,8 +24,7 @@ def train(model, dataloader, epoch, optimizer, criterion):
             print("epoch:%2d|step:%04d|loss:%.6f" % (epoch, itr, loss.item()))
 
 
-def test(model, dataloader: torchvision.datasets.ImageFolder,
-         criterion):
+def test(model, dataloader: torchvision.datasets.ImageFolder, criterion):
     model.eval()
     total_num = len(dataloader.dataset)
     right_num = 0
@@ -46,17 +46,20 @@ def test(model, dataloader: torchvision.datasets.ImageFolder,
     print("Test acc: %.3f" % (float(right_num) / total_num))
     return float(right_num) / total_num
 
+
 if __name__ == "__main__":
     train_trans = transforms.Compose([
         transforms.ToTensor(),
         transforms.Lambda(lambda x: x.repeat(1, 1, 1)),
-        transforms.Normalize((.5, .5, .5), (.5, .5, .5))
+        transforms.Normalize([0.4100, 0.4100, 0.4100],
+                             [0.1165, 0.1165, 0.1165])
     ])
 
     test_trans = transforms.Compose([
         transforms.ToTensor(),
         transforms.Lambda(lambda x: x.repeat(1, 1, 1)),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        transforms.Normalize([0.4100, 0.4100, 0.4100],
+                             [0.1165, 0.1165, 0.1165])
     ])
     train_datasets = ImageFolder(os.path.join("ROI_data", "train"),
                                  transform=train_trans)
@@ -74,7 +77,7 @@ if __name__ == "__main__":
     model = TinyModel()
     optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
     # criterion = torch.nn.CrossEntropyLoss()
-    criterion = FocalLoss(2, alpha=torch.Tensor([1,1]), gamma=3)
+    criterion = FocalLoss(2, alpha=torch.Tensor([1, 1]), gamma=3)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                                 step_size=30,
                                                 gamma=0.1)
@@ -83,10 +86,11 @@ if __name__ == "__main__":
 
     for epoch in range(total_epoch):
         train(model, train_dataloader, epoch, optimizer, criterion)
-        acc=test(model, test_dataloader, criterion)
+        acc = test(model, test_dataloader, criterion)
         best_acc = max(best_acc, acc)
         scheduler.step()
         if epoch % 10 == 0:
-            torch.save(model.state_dict(), "checkpoints/epoch_%d_%.3f.pt" % (epoch, acc))
+            torch.save(model.state_dict(),
+                       "checkpoints/epoch_%d_%.3f.pt" % (epoch, acc))
 
     print("best accuracy:%.3f" % best_acc)
