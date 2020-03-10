@@ -7,9 +7,11 @@ import random
 import argparse
 import numpy as np
 import torch.nn as nn
+import matplotlib.pyplot as plt
 
 from torch.utils import data
 from tqdm import tqdm
+
 
 from ptsemseg.models import get_model
 from ptsemseg.loss import get_loss_function
@@ -43,6 +45,7 @@ def train(cfg, writer, logger):
     data_loader = get_loader(cfg["data"]["dataset"])
     data_path = cfg["data"]["path"]
 
+    #数据
     t_loader = data_loader(
         data_path,
         is_transform=True,
@@ -59,6 +62,7 @@ def train(cfg, writer, logger):
     )
 
     n_classes = t_loader.n_classes
+
     trainloader = data.DataLoader(
         t_loader,
         batch_size=cfg["training"]["batch_size"],
@@ -66,31 +70,33 @@ def train(cfg, writer, logger):
         #shuffle=True,
         shuffle=False,
     )
-
     valloader = data.DataLoader(
         v_loader, batch_size=cfg["training"]["batch_size"], num_workers=cfg["training"]["n_workers"]
     )
 
-    print("num of classes:", n_classes)
+    print("Num of classes:", n_classes)
 
     # Setup Metrics
     running_metrics_val = runningScore(n_classes)
 
+    #模型
     # Setup Model
     model = get_model(cfg["model"], n_classes).to(device)
-
     model = torch.nn.DataParallel(model, device_ids=range(torch.cuda.device_count()))
 
+    #优化
     # Setup optimizer, lr_scheduler and loss function
     optimizer_cls = get_optimizer(cfg)
     optimizer_params = {k: v for k, v in cfg["training"]["optimizer"].items() if k != "name"}
-
     optimizer = optimizer_cls(model.parameters(), **optimizer_params)
+    #optimizer = torch.optim.Adam(model.parameters(), lr = cfg["training"]["optimizer"]["lr"])
+    #weight_decay = cfg["training"]["optimizer"]["weight_decay"]
+    
     logger.info("Using optimizer {}".format(optimizer))
     print("Using optimizer: {}".format(optimizer))
 
     scheduler = get_scheduler(optimizer, cfg["training"]["lr_schedule"])
-
+    #损失函数
     loss_fn = nn.CrossEntropyLoss()  #get_loss_function(cfg)
     logger.info("Using loss {}".format(loss_fn))
     print("Using loss: {}".format(loss_fn))
@@ -135,10 +141,28 @@ def train(cfg, writer, logger):
             images = images.to(device)
             labels = labels.to(device)
 
+             #输出训练模型图片
+            '''
+            print("开始输出模型图片")
+            plt.ion()
+            with torch.no_grad():
+                for x, _ in trainloader:
+                    x = x.to(device)
+                    y = model(x)
+                    img_y = torch.squeeze(y).numpy()
+                    plt.imshow(img_y)
+                    plt.savefig("./results/output_%d.jpg" % random.randint(0, 100))
+                    plt.pause(0.01)
+                plt.show()
+            print("模型图片输出完毕")
+            '''
+
+
             optimizer.zero_grad()
             outputs = model(images)
 
-            print("outputs:", outputs.shape, "\n labels:", labels.shape)
+
+            # print("outputs:", outputs.shape, "\n labels:", labels.shape)
             loss = loss_fn(input=outputs, target=labels)
 
             loss.backward()
@@ -165,6 +189,8 @@ def train(cfg, writer, logger):
                 "train_iters"
             ]:
                 model.eval()
+
+
                 with torch.no_grad():
                     for i_val, (images_val, labels_val) in tqdm(enumerate(valloader)):
                         images_val = images_val.to(device)
@@ -183,6 +209,8 @@ def train(cfg, writer, logger):
                 logger.info("Iter %d Loss: %.4f" % (i + 1, val_loss_meter.avg))
 
                 score, class_iou = running_metrics_val.get_scores()
+                #print("train190score:", score)
+                #print("train190class_io:", class_iou)
                 for k, v in score.items():
                     print(k, v)
                     logger.info("{}: {}".format(k, v))
@@ -209,10 +237,12 @@ def train(cfg, writer, logger):
                         "{}_{}_best_model.pkl".format(cfg["model"]["arch"], cfg["data"]["dataset"]),
                     )
                     torch.save(state, save_path)
+            
 
             if (i + 1) == cfg["training"]["train_iters"]:
                 flag = False
                 break
+
 
 
 if __name__ == "__main__":
@@ -230,7 +260,7 @@ if __name__ == "__main__":
     with open(args.config) as fp:
         cfg = yaml.load(fp)
 
-    run_id = random.randint(1, 100000)
+    run_id = random.randint(3700, 3799)
     logdir = os.path.join("runs", os.path.basename(args.config)[:-4], str(run_id))
     writer = SummaryWriter(log_dir=logdir)
 

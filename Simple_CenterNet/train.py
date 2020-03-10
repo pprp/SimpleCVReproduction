@@ -160,7 +160,7 @@ def main():
                                            non_blocking=True)
 
             outputs = model(batch['image'])
-            
+
             # 得到heat map, reg, wh 三个变量
             hmap, regs, w_h_ = zip(*outputs)
 

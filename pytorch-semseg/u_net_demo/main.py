@@ -21,7 +21,7 @@ x_transforms = transforms.Compose([
 y_transforms = transforms.ToTensor()
 
 
-def train_model(model, criterion, optimizer, dataload, num_epochs=200):
+def train_model(model, criterion, optimizer, dataload, num_epochs=5):
     for epoch in range(num_epochs):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
@@ -78,6 +78,7 @@ def test(args):
     with torch.no_grad():
         for x, _ in dataloaders:
             y = model(x)
+            print("y的shape", y.shape())
             img_y = torch.squeeze(y).numpy()
             plt.imshow(img_y)
             plt.savefig("./results/output_%d.jpg" % random.randint(0, 100))

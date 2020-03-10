@@ -51,6 +51,8 @@ def validate(cfg, args):
         if args.eval_flip:
             outputs = model(images)
 
+            print("outputs:", outputs.shape, "\n labels:", labels.shape)
+
             # Flip images in numpy (not support in tensor)
             outputs = outputs.data.cpu().numpy()
             flipped_images = np.copy(images.data.cpu().numpy()[:, :, :, ::-1])
@@ -91,14 +93,16 @@ if __name__ == "__main__":
         "--config",
         nargs="?",
         type=str,
-        default="configs/fcn8s_pascal.yml",
+        #default="configs/fcn8s_pascal.yml",
+        default="configs/unet_pascal.yml",
         help="Config file to be used",
     )
     parser.add_argument(
         "--model_path",
         nargs="?",
         type=str,
-        default="fcn8s_pascal_1_26.pkl",
+        #default="fcn8s_pascal_1_26.pkl",
+        default="unet_pascal_1_26.pkl",
         help="Path to the saved model",
     )
     parser.add_argument(

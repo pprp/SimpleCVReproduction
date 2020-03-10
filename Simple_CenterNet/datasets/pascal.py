@@ -13,10 +13,11 @@ import pycocotools.coco as coco
 from utils.image import get_border, get_affine_transform, affine_transform, color_aug
 from utils.image import draw_umich_gaussian, gaussian_radius
 
-VOC_NAMES = ['__background__', "aeroplane", "bicycle", "bird", "boat",
-             "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog",
-             "horse", "motorbike", "person", "pottedplant", "sheep", "sofa",
-             "train", "tvmonitor"]
+VOC_NAMES = ['__background__', 'dim target']
+# ['__background__', "aeroplane", "bicycle", "bird", "boat",
+#              "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog",
+#              "horse", "motorbike", "person", "pottedplant", "sheep", "sofa",
+#              "train", "tvmonitor"]
 
 # 均值和方差
 VOC_MEAN = [0.485, 0.456, 0.406]
@@ -32,10 +33,10 @@ VOC_EIGEN_VECTORS = [[-0.58752847, -0.69563484, 0.41340352],
 class PascalVOC(data.Dataset):
   def __init__(self, data_dir, split, img_size=384, **kwargs):
     super(PascalVOC, self).__init__()
-    self.num_classes = 20
+    self.num_classes = 1
     self.class_names = VOC_NAMES
 
-    self.valid_ids = np.arange(1, 21, dtype=np.int32)
+    self.valid_ids = np.arange(1, 2, dtype=np.int32) # 21 to 3 
     self.cat_ids = {v: i for i, v in enumerate(self.valid_ids)}
 
     self.data_rng = np.random.RandomState(123)
@@ -48,7 +49,7 @@ class PascalVOC(data.Dataset):
     self.split = split#?
     self.data_dir = os.path.join(data_dir, 'voc')
     self.img_dir = os.path.join(self.data_dir, 'images')
-    _ann_name = {'train': 'trainval0712', 'val': 'test2007'}
+    _ann_name = {'train': 'train2020', 'val': 'test2020'}
     # 意思是需要json格式数据集
     self.annot_path = os.path.join(self.data_dir, 'annotations', 'pascal_%s.json' % _ann_name[split])
 
@@ -83,6 +84,7 @@ class PascalVOC(data.Dataset):
 
     bboxes[:, 2:] += bboxes[:, :2]  # xywh to xyxy
 
+    # print("===============", img_path)
     img = cv2.imread(img_path)
     height, width = img.shape[0], img.shape[1]
     # 获取中心坐标p
@@ -215,6 +217,7 @@ class PascalVOC_eval(PascalVOC):
       for j in range(1, self.num_classes + 1):
         if len(all_bboxes[img_id][j]) > 0:
           for bbox in all_bboxes[img_id][j]:
+            # print("===",len(detections), bbox)
             detections[j - 1].append((img_name, bbox[-1], *bbox[:-1]))
     detections = {cls: det for cls, det in zip(self.class_names[1:], detections)}
     return detections
@@ -355,9 +358,11 @@ class eval_mAP:
 
     # first load gt
     if not os.path.isdir(cachedir):
-      os.mkdir(cachedir)
+      os.makedirs(cachedir)
     cachefile = os.path.join(cachedir, 'annots.pkl')
     # read list of images
+
+    print(imagesetfile,'==')
     with open(imagesetfile, 'r') as f:
       lines = f.readlines()
     imagenames = [x.strip() for x in lines]

@@ -1,0 +1,1 @@
+python test.py --model_path runs/unet_pascal/3744/unet_pascal_best_model.pkl --dataset pascal --img_path datasets/GRAPE2020/JPEGImages/139_96.png --out_path datasets/GRAPE2020/modelresults/139_96_model.png

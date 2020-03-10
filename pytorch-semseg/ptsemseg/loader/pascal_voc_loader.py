@@ -48,7 +48,7 @@ class pascalVOCLoader(data.Dataset):
         sbd_path=None,
         split="train_aug",
         is_transform=False,
-        img_size=512,
+        img_size=256,
         augmentations=None,
         img_norm=True,
         test_mode=False,
@@ -121,34 +121,13 @@ class pascalVOCLoader(data.Dataset):
         """Load the mapping that associates pascal classes with label colors
 
         Returns:
-            np.ndarray with dimensions (21, 3)
+            np.ndarray with dimensions (21, 3)#(2,1)
+        voc的标签是三通道，我的数据标签二值的
         """
         return np.asarray(
             [
                 [0, 0, 0],
                 [255, 255, 255],
-                '''
-                [128, 0, 0],
-                [0, 128, 0],
-                [128, 128, 0],
-                [0, 0, 128],
-                [128, 0, 128],
-                [0, 128, 128],
-                [128, 128, 128],
-                [64, 0, 0],
-                [192, 0, 0],
-                [64, 128, 0],
-                [192, 128, 0],
-                [64, 0, 128],
-                [192, 0, 128],
-                [64, 128, 128],
-                [192, 128, 128],
-                [0, 64, 0],
-                [128, 64, 0],
-                [0, 192, 0],
-                [128, 192, 0],
-                [0, 64, 128],
-                '''
             ]
         )
 
@@ -169,7 +148,7 @@ class pascalVOCLoader(data.Dataset):
             label_mask[np.where(np.all(mask == label, axis=-1))[:2]] = ii
         label_mask = label_mask.astype(int)
         return label_mask
-
+    
     def decode_segmap(self, label_mask, plot=False):
         """Decode segmentation class labels into a color image
 
@@ -199,7 +178,22 @@ class pascalVOCLoader(data.Dataset):
             plt.show()
         else:
             return rgb
-    
+    '''
+    def decode_segmap(self, label_mask, plot=False):
+        label_colours = self.get_pascal_labels()
+        g = label_mask.copy()
+        for ll in range(0, self.n_classes):
+            g[label_mask == ll] = label_colours[ll, 0]
+        gr = np.zeros((label_mask.shape[0], label_mask.shape[1])) 
+        print("pascal_voc_loader.py_188_gr.shape:", gr.shape)
+        gr[:, :] = g #也可能是 gr[:, :] = g / 255.0
+        print("pascal_voc_loader.py_190输出赋值给模型的数值gr：", gr)
+        if plot:
+            plt.imshow(gr)
+            plt.show()
+        else:
+            return gr
+    '''
     def setup_annotations(self):
         """Sets up Berkley annotations by adding image indices to the
         `train_aug` split and pre-encode all segmentation labels into the

@@ -57,7 +57,6 @@ class unet(nn.Module):
         d0 = self.decode0(d1) # 64,256,256
         # print('--------', d0.shape)
         out = self.conv_last(d0) # 1,256,256
-        # print('----', out.shape)
         return out
 
 

@@ -40,9 +40,9 @@ def convert_state_dict(state_dict):
     """
     if not next(iter(state_dict)).startswith("module."):
         return state_dict  # abort if dict is not a DataParallel model_state
-    new_state_dict = OrderedDict()
+    new_state_dict = OrderedDict()  #排序
     for k, v in state_dict.items():
-        name = k[7:]  # remove `module.`
+        name = k[7:]  # 消去 `module.`
         new_state_dict[name] = v
     return new_state_dict
 
