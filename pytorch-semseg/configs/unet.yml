@@ -9,19 +9,17 @@ data:
     img_cols: 256
     path: ./datasets/GRAPE2020/
 training:
-    train_iters: 3000000  #250
-    batch_size: 4
-    val_interval: 900
+    train_iters: 30000  #250
+    batch_size: 8
+    val_interval: 500
     n_workers: 2
     print_interval: 25
     optimizer:
-        #name: 'sgd'
-        name: 'adam'     #beta,weigth_dacay等参数不用写，已经默认了
-        lr: 1.0e-6
-        #momentum: 0.99  #换成adam之后会报错,adam没有这个参数
+        name: 'sgd'
+        # name: 'adam'     #beta,weigth_dacay等参数不用写，已经默认了
+        lr: 1.0e-10
     loss:
         name: 'cross_entropy'
         size_average: False
     lr_schedule:
-    #resume: fcn8s_pascal_best_model.pkl
     resume: unet_pascal_best_model.pkl

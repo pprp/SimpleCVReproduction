@@ -97,7 +97,7 @@ def train(cfg, writer, logger):
 
     scheduler = get_scheduler(optimizer, cfg["training"]["lr_schedule"])
     #损失函数
-    loss_fn = nn.CrossEntropyLoss()  #get_loss_function(cfg)
+    loss_fn = get_loss_function(cfg)
     logger.info("Using loss {}".format(loss_fn))
     print("Using loss: {}".format(loss_fn))
 
@@ -126,7 +126,6 @@ def train(cfg, writer, logger):
     best_iou = -100.0
     i = start_iter
     flag = True
-    #print("117train!!!!!!!!!!!!!!!!", cfg["training"]["train_iters"])
     #loyo = 1
     while i <= cfg["training"]["train_iters"] and flag:
         #loyo += 1
@@ -251,7 +250,7 @@ if __name__ == "__main__":
         "--config",
         nargs="?",
         type=str,
-        default="configs/unet_pascal.yml",
+        default="configs/unet.yml",
         help="Configuration file to use",
     )
 

@@ -41,17 +41,16 @@ class pascalVOCLoader(data.Dataset):
                    the validation set used in FCN PAMI paper, but with VOC 2012
                    rather than VOC 2011) - 904 images
     """
-
     def __init__(
-        self,
-        root,
-        sbd_path=None,
-        split="train_aug",
-        is_transform=False,
-        img_size=256,
-        augmentations=None,
-        img_norm=True,
-        test_mode=False,
+            self,
+            root,
+            sbd_path=None,
+            split="train",
+            is_transform=False,
+            img_size=256,
+            augmentations=None,
+            img_norm=True,
+            test_mode=False,
     ):
         self.root = root
         self.sbd_path = sbd_path
@@ -60,57 +59,49 @@ class pascalVOCLoader(data.Dataset):
         self.augmentations = augmentations
         self.img_norm = img_norm
         self.test_mode = test_mode
-        #self.n_classes = 21
         self.n_classes = 2
         self.mean = np.array([104.00699, 116.66877, 122.67892])
         self.files = collections.defaultdict(list)
-        self.img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
+        self.img_size = img_size if isinstance(img_size, tuple) else (img_size,
+                                                                      img_size)
 
         if not self.test_mode:
-            for split in ["train", "val", "trainval"]:
-                path = pjoin(self.root, "ImageSets/Segmentation", split + ".txt")
+            for split in ["train", "val"]:
+                path = pjoin(self.root, "ImageSets/Segmentation",
+                             split + ".txt")
                 file_list = tuple(open(path, "r"))
                 file_list = [id_.rstrip() for id_ in file_list]
                 self.files[split] = file_list
             #self.setup_annotations()
 
-        self.tf = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-            ]
-        )
+        self.tf = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ])
 
     def __len__(self):
-        #return len(self.files[self.split])
-        return len(self.files[self.split])-1
+        return len(self.files[self.split])
 
     def __getitem__(self, index):
         im_name = self.files[self.split][index]
         im_path = pjoin(self.root, "JPEGImages/" + im_name + ".png")
-        #print("im_path:", im_path)
-        #im_path = pjoin(self.root, "JPEGImages/%s.png" %im_name)
-        lbl_path = pjoin(self.root, "SegmentationClass/pre_encoded", im_name + ".png")
-        # print("lbl_path:", lbl_path)
+        lbl_path = pjoin(self.root, "SegmentationClass", im_name + ".png")
         im = Image.open(im_path)
-        # im = im.convert('RGB')       #自己添加的
         lbl = Image.open(lbl_path)
         lbl = lbl.convert('L')
-        # lbl = cv2.imread(lbl_path)
 
-        
         if self.augmentations is not None:
             im, lbl = self.augmentations(im, lbl)
         if self.is_transform:
             im, lbl = self.transform(im, lbl)
-        # print(lbl)
         return im, lbl
 
     def transform(self, img, lbl):
-        if self.img_size == ("same", "same"):
+        if self.img_size == (256, 256):
             pass
         else:
-            img = img.resize((self.img_size[0], self.img_size[1]))  # uint8 with RGB mode
+            img = img.resize(
+                (self.img_size[0], self.img_size[1]))  # uint8 with RGB mode
             lbl = lbl.resize((self.img_size[0], self.img_size[1]))
         img = self.tf(img)
         lbl = torch.from_numpy(np.array(lbl)).long()
@@ -124,12 +115,10 @@ class pascalVOCLoader(data.Dataset):
             np.ndarray with dimensions (21, 3)#(2,1)
         voc的标签是三通道，我的数据标签二值的
         """
-        return np.asarray(
-            [
-                [0, 0, 0],
-                [255, 255, 255],
-            ]
-        )
+        return np.asarray([
+            [255, 255, 255],
+            [0, 0, 0]
+        ])
 
     def encode_segmap(self, mask):
         """Encode segmentation label images as pascal classes
@@ -148,7 +137,7 @@ class pascalVOCLoader(data.Dataset):
             label_mask[np.where(np.all(mask == label, axis=-1))[:2]] = ii
         label_mask = label_mask.astype(int)
         return label_mask
-    
+
     def decode_segmap(self, label_mask, plot=False):
         """Decode segmentation class labels into a color image
 
@@ -178,22 +167,7 @@ class pascalVOCLoader(data.Dataset):
             plt.show()
         else:
             return rgb
-    '''
-    def decode_segmap(self, label_mask, plot=False):
-        label_colours = self.get_pascal_labels()
-        g = label_mask.copy()
-        for ll in range(0, self.n_classes):
-            g[label_mask == ll] = label_colours[ll, 0]
-        gr = np.zeros((label_mask.shape[0], label_mask.shape[1])) 
-        print("pascal_voc_loader.py_188_gr.shape:", gr.shape)
-        gr[:, :] = g #也可能是 gr[:, :] = g / 255.0
-        print("pascal_voc_loader.py_190输出赋值给模型的数值gr：", gr)
-        if plot:
-            plt.imshow(gr)
-            plt.show()
-        else:
-            return gr
-    '''
+
     def setup_annotations(self):
         """Sets up Berkley annotations by adding image indices to the
         `train_aug` split and pre-encode all segmentation labels into the
@@ -202,7 +176,7 @@ class pascalVOCLoader(data.Dataset):
         according to the description in the class docstring
         """
         sbd_path = self.sbd_path
-        target_path = pjoin(self.root, "SegmentationClass/pre_encoded")
+        target_path = pjoin(self.root, "SegmentationClass")
         if not os.path.exists(target_path):
             os.makedirs(target_path)
         path = pjoin(sbd_path, "dataset/train.txt")
@@ -211,13 +185,16 @@ class pascalVOCLoader(data.Dataset):
         train_aug = self.files["train"] + sbd_train_list
 
         # keep unique elements (stable)
-        train_aug = [train_aug[i] for i in sorted(np.unique(train_aug, return_index=True)[1])]
+        train_aug = [
+            train_aug[i]
+            for i in sorted(np.unique(train_aug, return_index=True)[1])
+        ]
         self.files["train_aug"] = train_aug
         set_diff = set(self.files["val"]) - set(train_aug)  # remove overlap
         self.files["train_aug_val"] = list(set_diff)
 
         pre_encoded = glob.glob(pjoin(target_path, "*.png"))
-        expected = np.unique(self.files["train_aug"] + self.files["val"]).size
+        expected = np.unique(self.files["train"] + self.files["val"]).size
 
         if len(pre_encoded) != expected:
             print("Pre-encoding segmentation masks...")
@@ -228,15 +205,15 @@ class pascalVOCLoader(data.Dataset):
                 lbl = m.toimage(lbl, high=lbl.max(), low=lbl.min())
                 m.imsave(pjoin(target_path, ii + ".png"), lbl)
 
-            for ii in tqdm(self.files["trainval"]):
+            for ii in tqdm(self.files["train"]):
                 fname = ii + ".png"
                 lbl_path = pjoin(self.root, "SegmentationClass", fname)
                 lbl = self.encode_segmap(m.imread(lbl_path))
                 lbl = m.toimage(lbl, high=lbl.max(), low=lbl.min())
                 m.imsave(pjoin(target_path, fname), lbl)
 
-        assert expected == 9733, "unexpected dataset sizes"
-    
+        # assert expected == 9733, "unexpected dataset sizes"
+
 
 # Leave code for debugging purposes
 # import ptsemseg.augmentations as aug

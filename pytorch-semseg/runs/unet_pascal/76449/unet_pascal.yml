@@ -7,18 +7,22 @@ data:
     val_split: val
     img_rows: 256
     img_cols: 256
+    #path: /private/home/meetshah/datasets/VOC/060817/VOCdevkit/VOC2012/
     path: ./datasets/GRAPE2020/
+    #sbd_path: /private/home/meetshah/datasets/VOC/benchmark_RELEASE/
 training:
-    train_iters: 3000000  #250
-    batch_size: 4
-    val_interval: 900
+    train_iters: 1000  #50
+    batch_size: 2
+    val_interval: 500
     n_workers: 2
-    print_interval: 25
+    print_interval: 9
     optimizer:
         #name: 'sgd'
-        name: 'adam'     #beta,weigth_dacay等参数不用写，已经默认了
+        name: 'adam'
         lr: 1.0e-6
+        weight_decay: 0.0005
         #momentum: 0.99  #换成adam之后会报错,adam没有这个参数
+        #betas: (0.9, 0.99)
     loss:
         name: 'cross_entropy'
         size_average: False
