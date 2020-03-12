@@ -34,28 +34,28 @@ parser.add_argument('--dist', action='store_true')
 
 parser.add_argument('--root_dir', type=str, default='./')
 parser.add_argument('--data_dir', type=str, default='./data')
-parser.add_argument('--log_name', type=str, default='test')
+parser.add_argument('--log_name', type=str, default='pascal_small_hourglass_512_dp')
 parser.add_argument('--pretrain_name', type=str, default='pretrain')
 
 parser.add_argument('--dataset',
                     type=str,
-                    default='coco',
+                    default='pascal',
                     choices=['coco', 'pascal'])
-parser.add_argument('--arch', type=str, default='large_hourglass')
+parser.add_argument('--arch', type=str, default='small_hourglass')
 
 parser.add_argument('--img_size', type=int, default=512)
 parser.add_argument('--split_ratio', type=float, default=1.0)
 
 parser.add_argument('--lr', type=float, default=5e-4)
 parser.add_argument('--lr_step', type=str, default='90,120')
-parser.add_argument('--batch_size', type=int, default=48)
+parser.add_argument('--batch_size', type=int, default=32)
 parser.add_argument('--num_epochs', type=int, default=140)
 
 parser.add_argument('--test_topk', type=int, default=100)
 
 parser.add_argument('--log_interval', type=int, default=100)
 parser.add_argument('--val_interval', type=int, default=5)
-parser.add_argument('--num_workers', type=int, default=2)
+parser.add_argument('--num_workers', type=int, default=4)
 
 cfg = parser.parse_args()
 

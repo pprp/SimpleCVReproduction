@@ -253,6 +253,7 @@ class COCO_eval(COCO):
     return detections
 
   def run_eval(self, results, save_dir=None):
+    print("+"*30)
     detections = self.convert_eval_format(results)
 
     if save_dir is not None:
@@ -264,6 +265,7 @@ class COCO_eval(COCO):
     coco_eval.evaluate()
     coco_eval.accumulate()
     coco_eval.summarize()
+    print("recall",coco_eval.eval['recall'])
     return coco_eval.stats
 
   @staticmethod
