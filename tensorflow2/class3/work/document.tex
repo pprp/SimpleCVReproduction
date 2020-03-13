@@ -1,0 +1,255 @@
+% -*- coding: utf-8 -*-
+\documentclass{article}
+\usepackage{listings}
+\usepackage{ctex}
+\usepackage{graphicx}
+\usepackage[a4paper, body={18cm,22cm}]{geometry}
+\usepackage{amsmath,amssymb,amstext,wasysym,enumerate,graphicx}
+\usepackage{float,abstract,booktabs,indentfirst,amsmath}
+\usepackage{array}
+\usepackage{booktabs} %调整表格线与上下内容的间隔
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{diagbox}
+\renewcommand\arraystretch{1.4}
+\usepackage{indentfirst}
+\setlength{\parindent}{2em}
+
+\usepackage{listings}
+\usepackage{xcolor}
+\lstset{
+    numbers=left, 
+    numberstyle= \tiny, 
+    keywordstyle= \color{ blue!70},
+    commentstyle= \color{red!50!green!50!blue!50}, 
+    frame=shadowbox, % 阴影效果
+    rulesepcolor= \color{ red!20!green!20!blue!20} ,
+    escapeinside=``, % 英文分号中可写入中文
+    xleftmargin=2em,xrightmargin=2em, aboveskip=1em,
+    basicstyle=\footnotesize,
+    framexleftmargin=2em
+} 
+
+
+\geometry{left=2.8cm,right=2.2cm,top=2.5cm,bottom=2.5cm}
+%\geometry{left=3.18cm,right=3.18cm,top=2.54cm,bottom=2.54cm}
+
+\graphicspath{{figures/}}
+
+\title{\heiti 实验一 远程过程调用中间件及数据访问中间件 }
+
+\begin{document}
+    \maketitle
+    %\tableofcontents
+    
+    \begin{center}
+        %\LARGE{{\textbf{\heiti 实验一 远程过程调用中间件及数据访问中间件}}}
+        %\newline
+        %\newline
+        %\date{2019年4月2日}
+        \begin{table}[H]
+            \centering
+            \begin{tabular}{p{3cm}p{4cm}<{\centering}p{3cm}p{4cm}<{\centering}}
+                班\quad 级: & ****** & 学\qquad 号:   & ***** \\ \cline{2-2} \cline{4-4} 
+                姓\quad 名: & ****       & 指导老师: & *****        \\ \cline{2-2} \cline{4-4} 
+            \end{tabular}
+        \end{table}
+    \end{center}
+    
+    \section{实习目的}
+    
+    
+    \section{实习要求}
+       
+    \section{实习过程}
+
+        
+
+\section{实习总结}
+    
+        
+    
+\end{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%Library%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% 1. 脚注用法
+    LaTeX\footnote{Latex is Latex} is a good software
+
+%2. 强调
+    \emph{center of percussion} %[Brody 1986], %\lipsum[5]
+
+%3. 随便生成一段话
+    \lipsum[4]
+
+%4. 列条目
+    \begin{itemize}
+    \item the angular velocity of the bat,
+    \item the velocity of the ball, and
+    \item the position of impact along the bat.
+    \end{itemize}
+
+%5. 表格用法
+    \begin{table}[h]
+    \centering  
+    \begin{tabular}{c|cc}
+        \hline
+        年份 & \multicolumn{2}{c}{指标}\\
+        \hline
+        2017 & 0.9997 & 0.0555 \\
+        2018 & 0.9994 & 0      \\
+        2019 & 0.9993 & 0      \\
+        \hline
+    \end{tabular}
+    \caption{NAME}\label{SIGN}
+    \end{table}
+
+    \begin{center}
+        \begin{tabular}{c|cclcrcc}
+            \hline
+            Year & theta & $S_1^-$ & $S_2^-$ & $S_3^-$ & $S_4^+$ & $S_5^+$ & $S_6^+$ \\%表格标题
+            \hline
+            2016 & 1      & 0      & 0 & 0.0001 & 0      & 0      & 0 \\
+            2017 & 0.9997 & 0.0555 & 0 & 0.2889 & 0.1844 & 0.463  & 0 \\
+            2018 & 0.9994 & 0      & 0 & 0.0012 & 0.3269 & 0.7154 & 0 \\
+            2019 & 0.9993 & 0      & 0 & 0      & 0.4325 & 1.0473 & 0 \\
+            2020 & 0.9991 & 0      & 0 & 0      & 0.5046 & 1.2022 & 0 \\
+            2021 & 0.999  & 0      & 0 & 0      & 0.5466 & 1.2827 & 0 \\
+            2022 & 0.9989 & 0.0017 & 0 & 0.3159 & 0.562  & 1.2995 & 0 \\
+            2023 & 0.9989 & 0      & 0 & 0.0109 & 0.5533 & 1.2616 & 0 \\
+            2024 & 0.9989 & 0      & 0 & 0      & 0.5232 & 1.1769 & 0 \\
+            2025 & 0.9989 & 0      & 0 & 0.1009 & 0.4738 & 1.0521 & 0 \\
+            2026 & 0.9991 & 0      & 0 & 0      & 0.4071 & 0.8929 & 0 \\
+            2027 & 0.9992 & 0.0004 & 0 & 0.1195 & 0.3248 & 0.7042 & 0 \\
+            2028 & 0.9994 & 0.0164 & 0 & 0.046  & 0.2287 & 0.4902 & 0 \\
+            2029 & 0.9997 & 0      & 0 & 0.0609 & 0.12   & 0.2545 & 0 \\
+            2030 & 1      & 0      & 0 & 0      & 0      & 0      & 0 \\
+            \hline
+        \end{tabular}
+    \end{center}
+
+%6. 数学公式
+    \begin{equation}
+        a^2 = a * a\label{aa}
+    \end{equation}
+    
+    \[
+    \begin{pmatrix}{*{20}c}
+    {a_{11} } & {a_{12} } & {a_{13} }  \\
+    {a_{21} } & {a_{22} } & {a_{23} }  \\
+    {a_{31} } & {a_{32} } & {a_{33} }  \\
+    \end{pmatrix}
+    = \frac{{Opposite}}{{Hypotenuse}}\cos ^{ - 1} \theta \arcsin \theta
+    \]
+    
+    \[
+    p_{j}=\begin{cases} 0,&\text{if $j$ is odd}\\
+    r!\,(-1)^{j/2},&\text{if $j$ is even}
+    \end{cases}
+    \]
+    
+    
+    \[
+    \arcsin \theta  =
+    \mathop{{\int\!\!\!\!\!\int\!\!\!\!\!\int}\mkern-31.2mu
+        \bigodot}\limits_\varphi
+    {\mathop {\lim }\limits_{x \to \infty } \frac{{n!}}{{r!\left( {n - r}
+                \right)!}}} \eqno (1)
+    \]
+
+%7. 双图并行
+    \begin{figure}[h]
+        % 一个2*2图片的排列
+        \begin{minipage}[h]{0.5\linewidth}
+            \centering
+            \includegraphics[width=0.8\textwidth]{./figures/0.jpg}
+            \caption{Figure example 2}
+        \end{minipage}
+        \begin{minipage}[h]{0.5\linewidth}
+            \centering
+            \includegraphics[width=0.8\textwidth]{./figures/0.jpg}
+            \caption{Figure example 3}
+        \end{minipage}
+    \end{figure}
+
+%8. 单张图片部分
+    \begin{figure}[h]
+        %\small
+        \centering
+        \includegraphics[width=12cm]{./figures/mcmthesis-aaa.eps}
+        \caption{Figure example 1} \label{fig:aa}
+    \end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{minipage}{0.5\linewidth}
+    \begin{tabular}{|c|c|c|}
+        \hline
+        \multicolumn{2}{|c|}{\multirow{2}{*}{合并}}&测试\\
+        \cline{3-3}
+        \multicolumn{2}{|c|}{}& 0.9997  \\
+        \hline
+        2019 & 0.9993 & 0 \\
+        \hline
+    \end{tabular}
+\end{minipage}
+
+\begin{minipage}{0.5\linewidth}
+    \begin{tabular}{c|ccc}
+        \hline
+        年份 & \multicolumn{3}{c}{指标}\\
+        \hline
+        \multirow{3}{*}{合并}&2017 & 0.9997 & 0.0555 \\
+        &2018 & 0.9994 & 0      \\
+        &2019 & 0.9993 & 0      \\
+        \hline
+    \end{tabular}
+\end{minipage}
+
+
+
+    \begin{table}[h]
+    \centering  
+    \begin{Large}
+        \begin{tabular}{p{4scm} p{8cm} < {\centering}}
+            \hline
+            院\qquad 系: & 信息工程学院 \\
+            \hline
+            团队名称: & PlantBook Team \\
+            \hline
+            分\qquad 组: & 第0组1号 \\
+            \hline
+            日\qquad 期: & 2017年10月28日 \\
+            \hline
+            指导教师: & 吱吱吱\\
+            \hline
+        \end{tabular}
+    \end{Large}
+\end{table}
+
+
+\ctexset{
+    section={
+        format+=\heiti \raggedright,
+        name={,、},
+        number=\chinese{section},
+        beforeskip=1.0ex plus 0.2ex minus .2ex,
+        afterskip=1.0ex plus 0.2ex minus .2ex,
+        aftername=\hspace{0pt}
+    },
+}
+
+    \begin{table}[h]
+    \centering
+    \begin{Large}
+        \begin{tabular}{p{3cm} p{7cm}<{\centering}}
+            院  \qquad  系: & ***          \\ \cline{2-2}
+        \end{tabular}
+    \end{Large}     
+\end{table}
+\thispagestyle{empty}
+\newpage
+\thispagestyle{empty}
+\tableofcontents
+\thispagestyle{empty}
+\newpage
+\setcounter{page}{1}

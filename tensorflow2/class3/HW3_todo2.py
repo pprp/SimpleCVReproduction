@@ -1,46 +1,42 @@
-# coding=utf-8
-# TF2.0 应用model fit训练mnist的简单案例,官方案例
-
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
-
-import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import Model, Sequential
-from tensorflow.keras.layers import Conv2D, Dense, Flatten
+from tensorflow.keras.layers import Dense, Flatten, Conv2D
+from tensorflow.keras import Model
 
-num_classes=10
-mnist = tf.keras.datasets.mnist
+mnist = keras.datasets.mnist
 
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 x_train, x_test = x_train / 255.0, x_test / 255.0
-# y_train = tf.one_hot(y_train, num_classes)
-# y_test = tf.one_hot(y_test, num_classes)
-x_train=x_train.reshape((60000,-1))
-x_test=x_test.reshape((10000,-1))
-# 添加一个通道维度
-#x_train = x_train[..., tf.newaxis]
-#x_test = x_test[..., tf.newaxis]
+
+x_train = x_train[..., tf.newaxis]
+x_test = x_test[..., tf.newaxis]
 
 train_ds = tf.data.Dataset.from_tensor_slices(
-    (x_train, y_train)).shuffle(10000).batch(64)
-#print(train_ds)
-test_ds = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(64)
+    (x_train, y_train)).shuffle(10000).batch(32)
+test_ds = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(32)
+
+class MyModel(Model):
+    def __init__(self):
+        super(MyModel, self).__init__()
+        self.conv1 = Conv2D(32, 3, activation='relu')
+        self.flatten = Flatten()
+        self.d1 = Dense(128, activation='relu')
+        self.d2 = Dense(10, activation='softmax')
+
+    def call(self, x):
+        x = self.conv1(x)
+        x = self.flatten(x)
+        x = self.d1(x)
+        return self.d2(x)
 
 
-model=Sequential()
-model.add(Dense(num_classes,activation='softmax'))
+model = MyModel()
 
-#try SparseCategoricalCrossentropy without one-hot
-loss_object = tf.keras.losses.sparse_categorical_crossentropy
-#categorical_crossentropy
+loss_object = tf.keras.losses.SparseCategoricalCrossentropy()
 
-optimizer = tf.keras.optimizers.SGD(0.01)
+optimizer = tf.keras.optimizers.Adam()
 
-#why not accuracy?
 train_loss = tf.keras.metrics.Mean(name='train_loss')
-#try SparseCategoricalAccuracy
 train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
     name='train_accuracy')
 
@@ -48,18 +44,18 @@ test_loss = tf.keras.metrics.Mean(name='test_loss')
 test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(
     name='test_accuracy')
 
-#try not use tf.function to debug
+
 @tf.function
 def train_step(images, labels):
     with tf.GradientTape() as tape:
         predictions = model(images)
-        #print(predictions)
         loss = loss_object(labels, predictions)
     gradients = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
     train_loss(loss)
     train_accuracy(labels, predictions)
+
 
 @tf.function
 def test_step(images, labels):
@@ -69,10 +65,10 @@ def test_step(images, labels):
     test_loss(t_loss)
     test_accuracy(labels, predictions)
 
-EPOCHS = 50
+
+EPOCHS = 5
 
 for epoch in range(EPOCHS):
-    # 在下一个epoch开始时，重置评估指标
     train_loss.reset_states()
     train_accuracy.reset_states()
     test_loss.reset_states()
@@ -85,8 +81,8 @@ for epoch in range(EPOCHS):
         test_step(test_images, test_labels)
 
     template = 'Epoch {}, Loss: {}, Accuracy: {}, Test Loss: {}, Test Accuracy: {}'
-    print (template.format(epoch+1,
-                           train_loss.result(),
-                           train_accuracy.result()*100,
-                           test_loss.result(),
-                           test_accuracy.result()*100))
+    print(template.format(epoch+1,
+                          train_loss.result(),
+                          train_accuracy.result()*100,
+                          test_loss.result(),
+                          test_accuracy.result()*100))
