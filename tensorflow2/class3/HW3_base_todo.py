@@ -106,6 +106,8 @@ for epoch in range(total_epoch):
 #4. draw weights of 10 classes
 train_weights=siamese_net.get_layer('seq1').get_layer('D1').kernel.numpy()
 
+print(train_weights.shape)
+
 num = np.arange(0, 392, 1, dtype="float")
 num = num.reshape((14, 28))
 plt.figure(num='Weights', figsize=(10, 10))  # 创建一个名为Weights的窗口,并设置大小
