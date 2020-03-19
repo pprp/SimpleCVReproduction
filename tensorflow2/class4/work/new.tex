@@ -36,7 +36,7 @@
 
 \graphicspath{{figures/}}
 
-\title{\heiti 实验一 远程过程调用中间件及数据访问中间件 }
+\title{\heiti 作业四 \qquad 连体网络MNIST优化}
 
 \begin{document}
 \maketitle
@@ -50,16 +50,44 @@
 	\begin{table}[H]
 		\centering
 		\begin{tabular}{p{3cm}p{4cm}<{\centering}p{3cm}p{4cm}<{\centering}}
-			班\quad 级: & ****** & 学\qquad 号: & ***** \\ \cline{2-2} \cline{4-4}
-			姓\quad 名: & ****   & 指导老师:    & ***** \\ \cline{2-2} \cline{4-4}
+			年\quad 级: & 2020	 & 学\qquad 号: & 2016012963 \\ \cline{2-2} \cline{4-4}
+			姓\quad 名: & 董佩杰   & 指导老师:    & 牛新 \\ \cline{2-2} \cline{4-4}
 		\end{tabular}
 	\end{table}
 \end{center}
 
-\section{实习目的}
-
-
 \section{实习要求}
+
+1. 构建平衡测试集：
+
+（1）正例（同一数字对）、反例（不同数字对）样例比为1：1。
+
+（2）正例中，10个数字类型各占1/10。反例中，不同数字对的所有组合共$C^2_{10}=45$种，要求比例也为相同，即反例中，45种组合每个组合比例为1/45。测试集正反例总数不少于9000个。
+
+
+（3）写一个测试集打印脚本，打印出构建好的测试集中类型数量信息，例如下：
+
+\begin{lstlisting}
+Positive (0,0): 450
+Positive (1,1): 450
+…
+Positive (9,9): 450
+Pos Total:4500
+Negtive (0,1): 100
+Negtive (0,2): 100
+…	
+Negtive (8,9): 100	
+Neg Total:4500	
+Total: 9000
+\end{lstlisting}
+
+2. 训练好网络后，在如上定义的测试集上测试精度Accuracy>0.9
+
+提交内容需要有：
+代码，文档（运行截图，结果截图（包括PR曲线，测试集数量统计打印列表等））
+
+注意：孪生网络的输出是距离特征距离$e_w$，训练目的是用给定loss调整样本对的距离$e_w$,使得两个同样数字组成的样本对（正样本对）特征距离$e_w$近！两个不同数字组成的样本对（负样本对）的距离$e_w$远！。分类，是特征距离$e_w$孪生网络训练好之后的网络应用，用来判断输入是正样本对，还是负样本对。分类时，采用一个距离阈值t作为正、负样本对，$t<e_w$时，判定输入是正样本对，$t>e_w$时，判定为负样本对。t的选取可以通过网络在test数据集上的roc或pr曲线获得，一般取曲线的拐点。
+
 
 \section{实习过程}
 
