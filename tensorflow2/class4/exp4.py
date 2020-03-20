@@ -10,8 +10,8 @@ tf.keras.backend.set_floatx('float64')
 mnist = keras.datasets.mnist
 
 ######################
-EPOCHS = 100
-BATCH_SIZE = 1000
+EPOCHS = 1000
+BATCH_SIZE = 10000
 
 lr = 3e-4
 e_w = 1.0
@@ -58,8 +58,6 @@ class TFLeNet(tf.keras.Model):
         return self.dense3(x)
 
 # 查看mnist 图片
-
-
 def minist_draw(im):
     im = im.reshape(28, 28)
     fig = plt.figure()
@@ -71,7 +69,9 @@ def minist_draw(im):
     plt.close()
 
 
-def balanced_batch(batch_x, batch_y, num_cls):
+def balanced_batch(batch_x, batch_y, num_cls=10):
+    batch_x = np.array(batch_x)
+    batch_y = np.array(batch_y)
     # batch_x MNIST样本 batch_y, MNIST标签 num_cls 
     # （数字类型个数，10，为了让10个数字类型都充分采样正负样本对）
     batch_size = len(batch_y)
@@ -80,7 +80,7 @@ def balanced_batch(batch_x, batch_y, num_cls):
     pos_per_cls_e *= 2
 
     # 根据y进行排序
-    index = batch_y.argsort()
+    index = np.array(batch_y).argsort()
     ys_1 = batch_y[index]
 
     num_class = []
@@ -108,18 +108,18 @@ def balanced_batch(batch_x, batch_y, num_cls):
         cur_ind += num_class[-1]
 
     neg_samples = list(neg_samples)
-    
+
     x1_index = pos_samples[::2]
     x2_index = pos_samples[1:len(pos_samples)+1:2]
 
     x1_index.extend(neg_samples[::2])
     x2_index.extend(neg_samples[1:len(neg_samples)+1:2])
-    
+
     p_index = np.random.permutation(len(x1_index))  # shuffle操作
-    
+
     x1_index = np.array(x1_index)[p_index]
     x2_index = np.array(x2_index)[p_index]
-    
+
     r_x1_batch = batch_x[x1_index]
     r_x2_batch = batch_x[x2_index]
     # 得到最终重排后的结果
@@ -130,35 +130,6 @@ def balanced_batch(batch_x, batch_y, num_cls):
     return r_x1_batch, r_x2_batch, r_y_batch
 
 
-def balance_sample(train_ds, test_ds, train=True):
-    train_ds = iter(train_ds)
-    test_ds = iter(test_ds)
-    if train:
-        x1, y1 = next(train_ds)
-        x2, y2 = next(train_ds)
-    else:
-        x1, y1 = next(test_ds)
-        x2, y2 = next(test_ds)
-
-    y1 = y1[..., np.newaxis]
-    y2 = y2[..., np.newaxis]
-
-    idx_same = np.where(y1 == y2)  # 找到相同的下角标
-    idx_rand = np.random.randint(BATCH_SIZE, size=len(idx_same))  # 随机取样
-    index = np.union1d(idx_same, idx_rand).astype(np.int64)  # 所有需要取样的样本
-
-    data_list = []
-    label_list = []
-
-    judge = np.array(y1 != y2)
-
-    for ix in index:
-        data_list.append([x1[ix], x2[ix]])
-        label_list.append(judge[ix])
-
-    return np.array(data_list), np.array(label_list)
-
-
 def dist(output1, output2):
     E = K.sqrt(K.sum(K.square(output1 - output2), 1))  # dim=1
     return E
@@ -167,14 +138,7 @@ def dist(output1, output2):
 def loss_object(Y, E, Q=1):
     pos_loss = 2 * (1 - Y) * (E**2) / Q
     neg_loss = Y * 2 * Q * K.exp((-2.77 * E) / Q)
-    return pos_loss + neg_loss
-
-
-def loss(label_pair, e_w, Q=1):
-    loss_p = (1 - label_pair) * 2 / Q * e_w ** 2
-    loss_n = label_pair * 2 * Q * K.exp(-2.77 / Q * e_w)
-    loss = K.mean(loss_p + loss_n)
-    return loss
+    return K.mean(pos_loss + neg_loss)
 
 
 model = TFLeNet()
@@ -188,37 +152,33 @@ test_loss = tf.keras.metrics.Mean(name='test_loss')
 test_accuracy = tf.keras.metrics.Accuracy(name='test_accuracy')
 
 # @tf.function
+def train_epoch(images, labels):
+    with tf.GradientTape() as tape:
+        data1, data2, label = balanced_batch(images, labels)
+        output1 = model(data1)
+        output2 = model(data2)
+        E = dist(output1, output2)
 
+        # label = np.squeeze(label, 1)
 
-def train_epoch(train_ds):
-    for i in range(iters):
-        with tf.GradientTape() as tape:
-            data, label = balance_sample(train_ds, test_ds, train=True)
-            output1 = model(data[:, 0])
-            output2 = model(data[:, 1])
-            E = dist(output1, output2)
-
-            label = np.squeeze(label, 1)
-
-            loss = loss_object(label, E)
-        gradients = tape.gradient(loss, model.trainable_variables)
-        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-        E = K.cast(E >= e_w, dtype='float64')
-        train_loss(loss)
-        train_accuracy(label, E)
+        loss = loss_object(label, E)
+    gradients = tape.gradient(loss, model.trainable_variables)
+    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+    E = K.cast(E >= e_w, dtype='float64')
+    train_loss(loss)
+    train_accuracy(label, E)
 
 
 # @tf.function
-def test_epoch(test_ds):
-    for i in range(iters):
-        data, label = balance_sample(train_ds, test_ds, train=False)
-        output1 = model(data[:, 0])
-        output2 = model(data[:, 1])
-        E = dist(output1, output2)
-        loss = loss_object(label, E)
-        E = K.cast(E >= e_w, dtype='float64')
-        test_loss(loss)
-        test_accuracy(label, E)
+def test_epoch(images, labels):
+    data1, data2, label = balanced_batch(images, labels)
+    output1 = model(data1)
+    output2 = model(data2)
+    E = dist(output1, output2)
+    loss = loss_object(label, E)
+    E = K.cast(E >= e_w, dtype='float64')
+    test_loss(loss)
+    test_accuracy(label, E)
 
 
 for epoch in range(EPOCHS):
@@ -227,8 +187,11 @@ for epoch in range(EPOCHS):
     test_loss.reset_states()
     test_accuracy.reset_states()
 
-    train_epoch(train_ds)
-    test_epoch(test_ds)
+    for images, labels in train_ds:
+        train_epoch(images, labels)
+    
+    for images, labels in test_ds:
+        test_epoch(images, labels)
 
     print('Epoch {}, Train Loss: {:.3f}, Train acc: {:.3f} Test Loss: {:.3f} Test acc: {:.3f}'.
           format(epoch + 1, train_loss.result(), train_accuracy.result(),
