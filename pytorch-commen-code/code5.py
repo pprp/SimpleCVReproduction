@@ -43,3 +43,35 @@ X = torch.nn.functional.normalize(X)                  # L2 normalization
 
 sync_bn = torch.nn.SyncBatchNorm(num_features, eps=1e-05, momentum=0.1, affine=True, 
                                  track_running_stats=True)
+
+# 将所有的bn改为同步bn
+def convertBNtoSyncBN(module, process_group=None):
+    '''Recursively replace all BN layers to SyncBN layer.
+
+    Args:
+        module[torch.nn.Module]. Network
+    '''
+    if isinstance(module, torch.nn.modules.batchnorm._BatchNorm):
+        sync_bn = torch.nn.SyncBatchNorm(module.num_features, module.eps, module.momentum, 
+                                         module.affine, module.track_running_stats, process_group)
+        sync_bn.running_mean = module.running_mean
+        sync_bn.running_var = module.running_var
+        if module.affine:
+            sync_bn.weight = module.weight.clone().detach()
+            sync_bn.bias = module.bias.clone().detach()
+        return sync_bn
+    else:
+        for name, child_module in module.named_children():
+            setattr(module, name) = convert_syncbn_model(child_module, process_group=process_group))
+        return module
+
+# 类似 BN 滑动平均
+
+class BN(torch.nn.Module)
+    def __init__(self):
+        ...
+        self.register_buffer('running_mean', torch.zeros(num_features))
+
+    def forward(self, X):
+        ...
+        self.running_mean += momentum * (current - self.running_mean)

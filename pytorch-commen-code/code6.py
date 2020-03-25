@@ -57,3 +57,4 @@ new_model = nn.Sequential(*list(model.children())[:2]
 for layer in model.named_modules():
     if isinstance(layer[1],nn.Conv2d):
          conv_model.add_module(layer[0],layer[1])
+
