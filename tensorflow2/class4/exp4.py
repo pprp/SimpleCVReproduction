@@ -5,6 +5,10 @@ from tensorflow.keras import Model
 from tensorflow.keras import backend as K
 from tensorflow.keras.layers import Conv2D, Dense, Flatten
 import matplotlib.pyplot as plt
+from sklearn.metrics import precision_recall_curve
+from sklearn import metrics
+import matplotlib
+matplotlib.use('Agg')
 
 tf.keras.backend.set_floatx('float64')
 mnist = keras.datasets.mnist
@@ -13,7 +17,7 @@ mnist = keras.datasets.mnist
 EPOCHS = 1000
 BATCH_SIZE = 10000
 
-lr = 3e-4
+lr = 1e-3
 e_w = 1.0
 iters = 5
 ######################
@@ -58,6 +62,8 @@ class TFLeNet(tf.keras.Model):
         return self.dense3(x)
 
 # 查看mnist 图片
+
+
 def minist_draw(im):
     im = im.reshape(28, 28)
     fig = plt.figure()
@@ -72,10 +78,10 @@ def minist_draw(im):
 def balanced_batch(batch_x, batch_y, num_cls=10):
     batch_x = np.array(batch_x)
     batch_y = np.array(batch_y)
-    # batch_x MNIST样本 batch_y, MNIST标签 num_cls 
+    # batch_x MNIST样本 batch_y, MNIST标签 num_cls
     # （数字类型个数，10，为了让10个数字类型都充分采样正负样本对）
     batch_size = len(batch_y)
-    
+
     pos_per_cls_e = round(batch_size/2/num_cls/2)  # bs最少40+
     pos_per_cls_e *= 2
 
@@ -90,7 +96,7 @@ def balanced_batch(batch_x, batch_y, num_cls=10):
     cur_ind = 0
 
     for item in set(ys_1):
-        num_class.append((ys_1 == item).sum()) 
+        num_class.append((ys_1 == item).sum())
         # 记录有多少个一样的
         num_pos = pos_per_cls_e
 
@@ -104,7 +110,8 @@ def balanced_batch(batch_x, batch_y, num_cls=10):
             num_pos, replace=False).tolist())
         # 正样本
 
-        neg_samples = neg_samples | (set(index[cur_ind:cur_ind+num_class[-1]])-set(list(pos_samples)))
+        neg_samples = neg_samples | (
+            set(index[cur_ind:cur_ind+num_class[-1]])-set(list(pos_samples)))
         cur_ind += num_class[-1]
 
     neg_samples = list(neg_samples)
@@ -152,15 +159,14 @@ test_loss = tf.keras.metrics.Mean(name='test_loss')
 test_accuracy = tf.keras.metrics.Accuracy(name='test_accuracy')
 
 # @tf.function
+
+
 def train_epoch(images, labels):
     with tf.GradientTape() as tape:
         data1, data2, label = balanced_batch(images, labels)
         output1 = model(data1)
         output2 = model(data2)
         E = dist(output1, output2)
-
-        # label = np.squeeze(label, 1)
-
         loss = loss_object(label, E)
     gradients = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -169,14 +175,52 @@ def train_epoch(images, labels):
     train_accuracy(label, E)
 
 
-# @tf.function
+auc_ = tf.keras.metrics.AUC()
+
+
+def auc(label_pair, e_w):
+    e_w = tf.keras.layers.Flatten()(e_w)
+    e_w = (e_w - K.min(e_w))/(K.max(e_w) - K.min(e_w))
+    label_pair = tf.keras.layers.Flatten()(label_pair)
+    return auc_(label_pair, e_w)
+
+def to_percent(temp, position):
+    return '%.1f' % (100*temp) + '%'
+
+def plot_PR(precision, recall, area, thresholds):
+    from matplotlib.ticker import FuncFormatter
+    plt.style.use('ggplot')
+    plt.plot(recall, precision, 'bx-', label="test")
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.xlim(xmin=0, xmax=1)
+    plt.ylim(ymin=0, ymax=1)
+    plt.legend()
+    plt.grid(True)
+    plt.gca().yaxis.set_major_formatter(FuncFormatter(to_percent))
+    plt.gca().xaxis.set_major_formatter(FuncFormatter(to_percent))
+    plt.savefig('PR-curve_auc_%.3f.png' % area, dpi=200)
+    plt.close()
+
+
 def test_epoch(images, labels):
     data1, data2, label = balanced_batch(images, labels)
     output1 = model(data1)
     output2 = model(data2)
     E = dist(output1, output2)
+
+    precision, recall, _thresholds = precision_recall_curve(label, E)
+    print(len(_thresholds), len(precision), len(recall))
+
+    area = metrics.auc(recall, precision)
+    # print("area:%.3f" % area)
+
+    plot_PR(precision, recall, area, _thresholds)
+
+
     loss = loss_object(label, E)
     E = K.cast(E >= e_w, dtype='float64')
+
     test_loss(loss)
     test_accuracy(label, E)
 
@@ -189,7 +233,7 @@ for epoch in range(EPOCHS):
 
     for images, labels in train_ds:
         train_epoch(images, labels)
-    
+
     for images, labels in test_ds:
         test_epoch(images, labels)
 

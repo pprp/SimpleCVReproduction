@@ -28,3 +28,4 @@ deep_sort-master/deep_sort-master/MOT16-01.npy
 *.png
 *.h5
 *.h5
+tensorflow2/*
