@@ -18,7 +18,7 @@ EPOCHS = 1000
 BATCH_SIZE = 10000
 
 lr = 1e-3
-e_w = 1.0
+e_w = 0.4
 iters = 5
 ######################
 
@@ -67,7 +67,7 @@ class TFLeNet(tf.keras.Model):
 def minist_draw(im):
     im = im.reshape(28, 28)
     fig = plt.figure()
-    plotwindow = fig.add_subplot(111)
+    fig.add_subplot(111)
     plt.axis('off')
     plt.imshow(im, cmap='gray')
     plt.show()
@@ -158,8 +158,6 @@ train_accuracy = tf.keras.metrics.Accuracy(name='train_accuracy')
 test_loss = tf.keras.metrics.Mean(name='test_loss')
 test_accuracy = tf.keras.metrics.Accuracy(name='test_accuracy')
 
-# @tf.function
-
 
 def train_epoch(images, labels):
     with tf.GradientTape() as tape:
@@ -177,24 +175,26 @@ def train_epoch(images, labels):
 
 auc_ = tf.keras.metrics.AUC()
 
-
 def auc(label_pair, e_w):
     e_w = tf.keras.layers.Flatten()(e_w)
     e_w = (e_w - K.min(e_w))/(K.max(e_w) - K.min(e_w))
     label_pair = tf.keras.layers.Flatten()(label_pair)
     return auc_(label_pair, e_w)
 
+
 def to_percent(temp, position):
     return '%.1f' % (100*temp) + '%'
+
 
 def plot_PR(precision, recall, area, thresholds):
     from matplotlib.ticker import FuncFormatter
     plt.style.use('ggplot')
-    plt.plot(recall, precision, 'bx-', label="test")
+    plt.plot(recall, precision, 'b.-', label="PR-curve", markersize=1)
+    plt.plot(recall[:-1], thresholds, 'r.-', label='threshold', markersize=1)
     plt.xlabel("Recall")
     plt.ylabel("Precision")
-    plt.xlim(xmin=0, xmax=1)
-    plt.ylim(ymin=0, ymax=1)
+    plt.xlim(xmin=0, xmax=1.02)
+    plt.ylim(ymin=0, ymax=1.02)
     plt.legend()
     plt.grid(True)
     plt.gca().yaxis.set_major_formatter(FuncFormatter(to_percent))
@@ -210,13 +210,10 @@ def test_epoch(images, labels):
     E = dist(output1, output2)
 
     precision, recall, _thresholds = precision_recall_curve(label, E)
-    print(len(_thresholds), len(precision), len(recall))
 
     area = metrics.auc(recall, precision)
-    # print("area:%.3f" % area)
 
     plot_PR(precision, recall, area, _thresholds)
-
 
     loss = loss_object(label, E)
     E = K.cast(E >= e_w, dtype='float64')
