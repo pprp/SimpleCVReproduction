@@ -1,0 +1,14 @@
+---
+title: 从零开始学习YOLOv3
+author: pprp
+rights: MIT License
+lang: zh-cn
+tags: [pandoc, book, my-book, etc]
+abstract: |
+  董佩杰的书
+mainfont: DejaVu Sans
+
+# Filter preferences:
+# - pandoc-crossref
+linkReferences: true
+---
