@@ -36,6 +36,9 @@ PANDOC_FLAGS += --variable mainfont="SimSun" \
 	--variable sansfont="SimSun" \
 	--variable monofont="SimSun" \
 	--variable fontsize=12pt \
+	--from markdown \
+	--template eisvogel \
+	-V CJKmainfont=SimSun
 
 PDF_ENGINE = xelatex
 

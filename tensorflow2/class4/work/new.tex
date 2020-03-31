@@ -64,7 +64,6 @@
 
 （2）正例中，10个数字类型各占1/10。反例中，不同数字对的所有组合共$C^2_{10}=45$种，要求比例也为相同，即反例中，45种组合每个组合比例为1/45。测试集正反例总数不少于9000个。
 
-
 （3）写一个测试集打印脚本，打印出构建好的测试集中类型数量信息，例如下：
 
 \begin{lstlisting}
@@ -288,13 +287,20 @@ for epoch in range(EPOCHS):
 \begin{figure}[H]
 	%\small
 	\centering
-	\includegraphics[width=12cm]{./PR.png}
+	\includegraphics[width=10cm]{./PR.png}
 	\caption{PR曲线} \label{fig:aa}
 \end{figure}
 
 红色曲线是recall对应的阈值，在Precision=Recall的时候对应的阈值大概在0.4左右，所以设置$e_w=0.4$
 
 训练日志如下：
+
+\begin{figure}[H]
+	%\small
+	\centering
+	\includegraphics[width=10cm]{./log.png}
+	\caption{训练日志} \label{fig:aa}
+\end{figure}
 
 
 
