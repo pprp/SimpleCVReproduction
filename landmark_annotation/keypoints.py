@@ -1,12 +1,4 @@
 # -*- coding:utf-8 -*-
-# -------------------------------------------------------------------------------
-# Name:        Object points label tool
-# Purpose:     Label object points for ImageNet Detection data
-# Author:      YueHe
-# Created:     02/22/2019
-# Refer:
-#
-# -------------------------------------------------------------------------------
 from __future__ import division
 from tkinter import *
 import tkinter.messagebox
@@ -19,17 +11,18 @@ w0 = 1  # 图片原始宽度
 h0 = 1  # 图片原始高度
 
 # colors for the bboxes
-COLORS = ['red', 'blue', 'yellow', 'pink', 'cyan', 'green', 'black']
+COLORS = ['red', 'blue', 'yellow', 'pink', 'cyan', 'green', 'black',
+          'Gainsboro', 'FireBrick', 'Salmon', 'SaddleBrown', 'Linen', 'Wheat',
+          'Cornsilk', 'GreenYellow', '#6B8E23']
+
 # image sizes for the examples
 SIZE = 3101, 1150
 
 # 指定缩放后的图像大小
 DEST_SIZE = 1000, 500
 
-
 def drawCircle(self, x, y, r, **kwargs):
     return self.create_oval(x-r, y-r, x+r, y+r, **kwargs)
-
 
 class LabelTool():
     def __init__(self, master):
@@ -144,7 +137,7 @@ class LabelTool():
             self.parent.focus()
             self.category = int(s)
         else:
-            s = r'D:\python_code\seg_image'
+            s = r'./images'
         print('self.category =%d' % (self.category))
 
         self.imageDir = os.path.join(r'./images', '%03d' % (self.category))
@@ -228,36 +221,17 @@ class LabelTool():
 
                     print("********************")
                     print(DEST_SIZE)
-                    #tmp = (0.1, 0.3, 0.5, 0.5)
                     print("tmp[0,1]===%.2f, %.2f" %
                           (float(tmp[0]), float(tmp[1])))
-                    # print "%.2f,%.2f,%.2f,%.2f" %(tmp[0] tmp[1] tmp[2] tmp[3] )
-
                     print("********************")
 
-                    #tx = (10, 20, 30, 40)
-                    # self.bboxList.append(tuple(tx))
                     self.bboxList.append(tuple(tmp))
                     tmp[0] = float(tmp[0])
                     tmp[1] = float(tmp[1])
-                    # tmp[2] = float(tmp[2])
-                    # tmp[3] = float(tmp[3])
 
                     tx0 = int(tmp[0]*DEST_SIZE[0])
                     ty0 = int(tmp[1]*DEST_SIZE[1])
 
-                    # tx1 = int(tmp[2]*DEST_SIZE[0])
-                    # ty1 = int(tmp[3]*DEST_SIZE[1])
-                    # print ("tx0, ty0, tx1, ty1")
-                    # print (tx0, ty0, tx1, ty1)
-
-                    # tmpId = self.mainPanel.create_rectangle(tx0, ty0, tx1, ty1,\
-                    #                                         width = 2, \
-                    #                                         outline = COLORS[(len(self.bboxList)-1) % len(COLORS)])
-
-                    # self.bboxIdList.append(tmpId)
-                    # self.listbox.insert(END, '(%.2f,%.2f)-(%.2f,%.2f)' %(tmp[0], tmp[1], tmp[2], tmp[3]))
-                    # self.listbox.itemconfig(len(self.bboxIdList) - 1, fg = COLORS[(len(self.bboxIdList) - 1) % len(COLORS)])
 
     def saveImage(self):
         # print "-----1--self.bboxList---------"
@@ -287,26 +261,10 @@ class LabelTool():
             self.listbox.insert(END, 'loc:(%.2f, %.2f)' % (x1, y1))
             self.listbox.itemconfig(
                 len(self.bboxIdList) - 1, fg=COLORS[(len(self.bboxIdList) - 1) % len(COLORS)])
+
             drawCircle(self.mainPanel, self.STATE['x'], self.STATE['y'], 5, fill=COLORS[(
                 len(self.bboxIdList) - 1) % len(COLORS)])
         self.STATE['click'] = 1 - self.STATE['click']
-
-        # 保存检测框的鼠标事件
-        # if self.STATE['click'] == 0:
-        #     self.STATE['x'], self.STATE['y'] = event.x, event.y
-        # else:
-        #     x1, x2 = min(self.STATE['x'], event.x), max(self.STATE['x'], event.x)
-        #     y1, y2 = min(self.STATE['y'], event.y), max(self.STATE['y'], event.y)
-
-        #     x1, x2 = x1/DEST_SIZE[0], x2/DEST_SIZE[0]
-        #     y1, y2 = y1/DEST_SIZE[1], y2/DEST_SIZE[1]
-
-        #     self.bboxList.append((x1, y1, x2, y2))
-        #     self.bboxIdList.append(self.bboxId)
-        #     self.bboxId = None
-        #     self.listbox.insert(END, '(%.2f, %.2f)-(%.2f, %.2f)' %(x1, y1, x2, y2))
-        #     self.listbox.itemconfig(len(self.bboxIdList) - 1, fg = COLORS[(len(self.bboxIdList) - 1) % len(COLORS)])
-        # self.STATE['click'] = 1 - self.STATE['click']
 
     def mouseMove(self, event):
         self.disp.config(text='x: %.2f, y: %.2f' % (
@@ -321,16 +279,6 @@ class LabelTool():
                 self.mainPanel.delete(self.vl)
             self.vl = self.mainPanel.create_line(
                 event.x, 0, event.x, self.tkimg.height(), width=2)
-
-        # if 1 == self.STATE['click']:
-        #     if self.bboxId:
-        #         self.mainPanel.delete(self.bboxId)
-            # drawCircle(self.mainPanel,self.STATE['x'],self.STATE['y'], 5, fill = COLORS[(len(self.bboxList)-1) % len(COLORS)])
-            # 画框
-            # self.bboxId = self.mainPanel.create_rectangle(self.STATE['x'], self.STATE['y'], \
-            #                                                 event.x, event.y, \
-            #                                                 width = 2, \
-            #                                                 outline = COLORS[len(self.bboxList) % len(COLORS)])
 
     def cancelBBox(self, event):
         if 1 == self.STATE['click']:
@@ -375,12 +323,6 @@ class LabelTool():
             self.cur = idx
             self.loadImage()
 
-# def setImage(self, imagepath = r'test2.png'):
-##        self.img = Image.open(imagepath)
-##        self.tkimg = ImageTk.PhotoImage(self.img)
-##        self.mainPanel.config(width = self.tkimg.width())
-##        self.mainPanel.config(height = self.tkimg.height())
-##        self.mainPanel.create_image(0, 0, image = self.tkimg, anchor=NW)
 
     def imgresize(w, h, w_box, h_box, pil_image):
         '''
