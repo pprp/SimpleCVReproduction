@@ -21,8 +21,10 @@ SIZE = 3101, 1150
 # 指定缩放后的图像大小
 DEST_SIZE = 1000, 500
 
+
 def drawCircle(self, x, y, r, **kwargs):
     return self.create_oval(x-r, y-r, x+r, y+r, **kwargs)
+
 
 class LabelTool():
     def __init__(self, master):
@@ -232,7 +234,6 @@ class LabelTool():
                     tx0 = int(tmp[0]*DEST_SIZE[0])
                     ty0 = int(tmp[1]*DEST_SIZE[1])
 
-
     def saveImage(self):
         # print "-----1--self.bboxList---------"
         print(self.bboxList)
@@ -322,7 +323,6 @@ class LabelTool():
             self.saveImage()
             self.cur = idx
             self.loadImage()
-
 
     def imgresize(w, h, w_box, h_box, pil_image):
         '''
