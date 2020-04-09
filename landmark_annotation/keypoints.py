@@ -14,20 +14,9 @@ from PIL import Image, ImageTk
 w0 = 1  # 图片原始宽度
 h0 = 1  # 图片原始高度
 
-# colors for the bboxes
-COLORS = ['red', 'blue', 'yellow', 'pink', 'cyan', 'green', 'black',
-          'Gainsboro', 'FireBrick', 'Salmon', 'SaddleBrown', 'Linen', 'Wheat',
-          'Cornsilk', 'GreenYellow', '#6B8E23']
-
-# image sizes for the examples
-SIZE = 3101, 1150
-
-# 指定缩放后的图像大小
-DEST_SIZE = 1000, 500
-
 
 def drawCircle(self, x, y, r, **kwargs):
-    return self.create_oval(x-r, y-r, x+r, y+r, **kwargs)
+    return self.create_oval(x-r, y-r, x+r, y+r, width=0, **kwargs)
 
 
 class LabelTool():
@@ -35,39 +24,35 @@ class LabelTool():
         # set up the main frame
         self.parent = master
         self.parent.title("Landmark Annotation Tool")
-        self.parent.geometry("1000x500")
+        # self.parent.geometry("1000x500")
         self.frame = Frame(self.parent)
         self.frame.pack(fill=BOTH, expand=1)
         self.parent.resizable(width=TRUE, height=TRUE)
+
+        # 图片大小
+        self.img_w = 1000
+        self.img_h = 500
+
+        self.COLORS = ['red', 'blue', 'yellow', 'pink', 'cyan', 'green', 'black',
+                       'Gainsboro', 'FireBrick', 'Salmon', 'SaddleBrown', 'Linen', 'Wheat',
+                       'Cornsilk', 'GreenYellow', '#6B8E23']
 
         # initialize global state
         self.imageDir = ''  # 图片所在文件夹
         self.imageList = []
 
-        self.egDir = ''
-        self.egList = []
-
         self.outDir = ''  # 输出文件夹
 
         self.cur = 0
         self.total = 0
-        self.category = 0
         self.imagename = ''
         self.labelfilename = ''
         self.tkimg = None
 
-        # initialize mouse state
-        self.STATE = {}
-        self.STATE['click'] = 0
-        self.STATE['x'], self.STATE['y'] = 0, 0
-
         # reference to bbox
-        # TODO 这部分需要改
-        self.bboxIdList = []
-        self.bboxId = None
-        self.bboxList = []
-        self.hl = None
-        self.vl = None
+        self.pointIdList = []
+        self.pointId = None
+        self.pointList = []
 
         # ----------------- GUI 部件 ---------------------
         # dir entry & load
@@ -101,30 +86,26 @@ class LabelTool():
         self.ldBtn.grid(row=4, column=1, columnspan=2, sticky=N+E+W)
 
         # main panel for labeling
-        self.mainPanel = Canvas(self.frame, cursor='tcross', bg='red')
+        self.mainPanel = Canvas(self.frame, bg='lightgray')
         # 鼠标左键点击
         self.mainPanel.bind("<Button-1>", self.mouseClick)
-        # 鼠标移动
-        self.mainPanel.bind("<B1-Motion>", self.mouseMove)
-        # press <Espace> to cancel current bbox
-        self.parent.bind("<Escape>", self.cancelBBox)
         # 快捷键
-        self.parent.bind("s", self.cancelBBox)
+        self.parent.bind("s", self.saveAll)
         self.parent.bind("a", self.prevImage)  # press 'a' to go backforward
         self.parent.bind("d", self.nextImage)  # press 'd' to go forward
         self.mainPanel.grid(row=0, column=0, rowspan=9, sticky=W+N+S+E)
 
         # showing bbox info & delete bbox
-        self.lb1 = Label(self.frame, text='Point Coords:')
+        self.lb1 = Label(self.frame, text='关键点坐标:')
         self.lb1.grid(row=5, column=1, columnspan=2, sticky=N+E+W)
 
         self.listbox = Listbox(self.frame)  # , width=30, height=15)
         self.listbox.grid(row=6, column=1, columnspan=2, sticky=N+S+E+W)
 
-        self.btnDel = Button(self.frame, text='Delete', command=self.delBBox)
+        self.btnDel = Button(self.frame, text='删除', command=self.delBBox)
         self.btnDel.grid(row=7, column=1, columnspan=2, sticky=S+E+W)
         self.btnClear = Button(
-            self.frame, text='ClearAll', command=self.clearBBox)
+            self.frame, text='清空', command=self.clearBBox)
         self.btnClear.grid(row=8, column=1, columnspan=2, sticky=N+E+W)
 
         # control panel for image navigation
@@ -180,22 +161,24 @@ class LabelTool():
         self.outDir = askdirectory()
         print(self.outDir)
 
-    def loadDir(self, dbg=False):
-        # if not dbg:
-            # s = self.entry.get()
-            # self.parent.focus()
-            # self.category = int(s)
-        # else:
-            # s = r'./images'
-        # print('self.category =%d' % (self.category))
+    def loadDir(self):
+        # for debug
+        self.imageDir = "./data/images"
+        self.outDir = "./data/labels"
 
-        # self.imageDir = os.path.join(r'./images', '%03d' % (self.category))
-        # print(self.imageDir)
+        # 读取并设置图片大小
+        if self.entry_h.get() == "" or self.entry_w.get() == "":
+            messagebox.showwarning(title="警告", message="请先输入图片的长和宽(整数)")
+        else:
+            self.img_h = int(self.entry_h.get())
+            self.img_w = int(self.entry_w.get())
+            print("image shape: (%d, %d)" % (self.img_w, self.img_h))
+
         self.imageList = glob.glob(os.path.join(self.imageDir, '*.jpg'))
         if len(self.imageList) == 0:
             print('No .jpg images found in the specified dir!')
             messagebox.showwarning(
-            title='警告', message="对应图片文件夹中没有jpg图片")
+                title='警告', message="对应图片文件夹中没有jpg结尾的图片")
             return
         else:
             print("num=%d" % (len(self.imageList)))
@@ -204,28 +187,8 @@ class LabelTool():
         self.cur = 1
         self.total = len(self.imageList)
 
-        # set up output dir
-        # self.outDir = os.path.join(r'./labels', '%03d' % (self.category))
         if not os.path.exists(self.outDir):
             os.mkdir(self.outDir)
-
-        # load example bboxes
-        self.egDir = os.path.join(r'./Examples', '%03d' % (self.category))
-
-        filelist = glob.glob(os.path.join(self.egDir, '*.jpg'))
-        self.tmp = []
-        self.egList = []
-        random.shuffle(filelist)
-        for (i, f) in enumerate(filelist):
-            if i == 3:
-                break
-            im = Image.open(f)
-            r = min(SIZE[0] / im.size[0], SIZE[1] / im.size[1])
-            new_size = int(r * im.size[0]), int(r * im.size[1])
-            self.tmp.append(im.resize(new_size, Image.ANTIALIAS))
-            self.egList.append(ImageTk.PhotoImage(self.tmp[-1]))
-            self.egLabels[i].config(
-                image=self.egList[-1], width=SIZE[0], height=SIZE[1])
 
         self.loadImage()
         print('%d images loaded from %s' % (self.total, self.imageDir))
@@ -241,20 +204,23 @@ class LabelTool():
 
         # 缩放到指定大小
         pil_image = pil_image.resize(
-            (DEST_SIZE[0], DEST_SIZE[1]), Image.ANTIALIAS)
+            (self.img_w, self.img_h), Image.ANTIALIAS)
 
         #pil_image = imgresize(w, h, w_box, h_box, pil_image)
         self.img = pil_image
 
         self.tkimg = ImageTk.PhotoImage(pil_image)
 
-        self.mainPanel.config(width=max(self.tkimg.width(), 400),
-                              height=max(self.tkimg.height(), 400))
-        self.mainPanel.create_image(0, 0, image=self.tkimg, anchor=NW)
+        self.mainPanel.config(width=self.img_w, height=self.img_h)
+        # (width=max(self.tkimg.width(), self.img_w),
+        #                       height=max(self.tkimg.height(), self.img_h))
+        self.mainPanel.create_image(
+            self.img_w//2, self.img_h//2, image=self.tkimg, anchor=CENTER)
+
         self.progLabel.config(text="%04d/%04d" % (self.cur, self.total))
 
         # load labels
-        self.clearBBox()
+        self.clear()
         self.imagename = os.path.split(imagepath)[-1].split('.')[0]
         labelname = self.imagename + '.txt'
         self.labelfilename = os.path.join(self.outDir, labelname)
@@ -265,92 +231,97 @@ class LabelTool():
                     if i == 0:
                         bbox_cnt = int(line.strip())
                         continue
-                    print(line)
                     tmp = [(t.strip()) for t in line.split()]
 
-                    print("********************")
-                    print(DEST_SIZE)
-                    print("tmp[0,1]===%.2f, %.2f" %
-                          (float(tmp[0]), float(tmp[1])))
-                    print("********************")
+                    # print("*********loadimage***********")
+                    # print("tmp[0,1]===%.2f, %.2f" %(float(tmp[0]), float(tmp[1])))
+                    x1 = float(tmp[0])*self.img_w
+                    y1 = float(tmp[1])*self.img_h
+                    # 类似鼠标事件
+                    self.pointList.append((tmp[0], tmp[1]))
+                    self.pointIdList.append(self.pointId)
+                    self.pointId = None
+                    self.listbox.insert(
+                        END, '%d:(%s, %s)' % (len(self.pointIdList), tmp[0], tmp[1]))
+                    self.listbox.itemconfig(
+                        len(self.pointIdList) - 1, fg=self.COLORS[(len(self.pointIdList) - 1) % len(self.COLORS)])
+                    drawCircle(self.mainPanel, x1, y1, 3, fill=self.COLORS[(
+                        len(self.pointIdList) - 1) % len(self.COLORS)])
+                    # print("**********loadimage**********")
 
-                    self.bboxList.append(tuple(tmp))
+                    self.pointList.append(tuple(tmp))
                     tmp[0] = float(tmp[0])
                     tmp[1] = float(tmp[1])
 
-                    tx0 = int(tmp[0]*DEST_SIZE[0])
-                    ty0 = int(tmp[1]*DEST_SIZE[1])
+                    tx0 = int(tmp[0]*self.img_w)
+                    ty0 = int(tmp[1]*self.img_h)
 
     def saveImage(self):
-        # print "-----1--self.bboxList---------"
-        print(self.bboxList)
-        # print "-----2--self.bboxList---------"
+        # print "-----1--self.pointList---------"
+        print("Save File Length: %d" % len(self.pointList))
+        # print "-----2--self.pointList---------"
 
         with open(self.labelfilename, 'w') as f:
-            f.write('%d\n' % len(self.bboxList))
-            for bbox in self.bboxList:
+            f.write('%d\n' % len(self.pointList))
+            for bbox in self.pointList:
+                f.write(' '.join(map(str, bbox)) + '\n')
+        print('Image No. %d saved' % (self.cur))
+
+    def saveAll(self, event=None):
+        with open(self.labelfilename, 'w') as f:
+            f.write('%d\n' % len(self.pointList))
+            for bbox in self.pointList:
                 f.write(' '.join(map(str, bbox)) + '\n')
         print('Image No. %d saved' % (self.cur))
 
     # 鼠标事件
     def mouseClick(self, event):
-        if self.STATE['click'] == 0:
-            self.STATE['x'], self.STATE['y'] = event.x, event.y
-        else:
-            x1 = self.STATE['x']
-            y1 = self.STATE['y']
+        x1, y1 = event.x, event.y
+        x1 = x1/self.img_w
+        y1 = y1/self.img_h
+        self.pointList.append((x1, y1))
+        self.pointIdList.append(self.pointId)
+        self.pointId = None
 
-            x1 = x1/DEST_SIZE[0]
-            y1 = y1/DEST_SIZE[1]
+        self.listbox.insert(END, '%d:(%.2f, %.2f)' %
+                            (len(self.pointIdList), x1, y1))
 
-            self.bboxList.append((x1, y1))
-            self.bboxIdList.append(self.bboxId)
-            self.bboxId = None
-            self.listbox.insert(END, 'loc:(%.2f, %.2f)' % (x1, y1))
-            self.listbox.itemconfig(
-                len(self.bboxIdList) - 1, fg=COLORS[(len(self.bboxIdList) - 1) % len(COLORS)])
-
-            drawCircle(self.mainPanel, self.STATE['x'], self.STATE['y'], 5, fill=COLORS[(
-                len(self.bboxIdList) - 1) % len(COLORS)])
-        self.STATE['click'] = 1 - self.STATE['click']
-
-    def mouseMove(self, event):
-        self.disp.config(text='x: %.2f, y: %.2f' % (
-            event.x/DEST_SIZE[0], event.y/DEST_SIZE[1]))  # 鼠标移动时显示当前位置的坐标
-        # 如果有图像的话，当移动鼠标时，展示十字线用来定位
-        if self.tkimg:
-            if self.hl:
-                self.mainPanel.delete(self.hl)
-            self.hl = self.mainPanel.create_line(
-                0, event.y, self.tkimg.width(), event.y, width=2)
-            if self.vl:
-                self.mainPanel.delete(self.vl)
-            self.vl = self.mainPanel.create_line(
-                event.x, 0, event.x, self.tkimg.height(), width=2)
-
-    def cancelBBox(self, event):
-        if 1 == self.STATE['click']:
-            if self.bboxId:
-                self.mainPanel.delete(self.bboxId)
-                self.bboxId = None
-                self.STATE['click'] = 0
+        print(len(self.pointList), self.COLORS[(
+            len(self.pointIdList) - 1) % len(self.COLORS)])
+        self.listbox.itemconfig(
+            len(self.pointIdList) - 1, fg=self.COLORS[(len(self.pointIdList) - 1) % len(self.COLORS)])
+        drawCircle(self.mainPanel, x1*self.img_w, y1*self.img_h, 3, fill=self.COLORS[(
+            len(self.pointIdList) - 1) % len(self.COLORS)])
 
     def delBBox(self):
         sel = self.listbox.curselection()
         if len(sel) != 1:
             return
         idx = int(sel[0])
-        self.mainPanel.delete(self.bboxIdList[idx])
-        self.bboxIdList.pop(idx)
-        self.bboxList.pop(idx)
+        self.mainPanel.delete(self.pointIdList[idx])
+        self.pointIdList.pop(idx)
+        self.pointList.pop(idx)
         self.listbox.delete(idx)
 
+        self.saveImage()
+        self.loadImage()
+
     def clearBBox(self):
-        for idx in range(len(self.bboxIdList)):
-            self.mainPanel.delete(self.bboxIdList[idx])
-        self.listbox.delete(0, len(self.bboxList))
-        self.bboxIdList = []
-        self.bboxList = []
+        for idx in range(len(self.pointIdList)):
+            self.mainPanel.delete(self.pointIdList[idx])
+        self.listbox.delete(0, len(self.pointList))
+        self.pointIdList = []
+        self.pointList = []
+
+        self.saveImage()
+        self.loadImage()
+    
+    def clear(self):
+        for idx in range(len(self.pointIdList)):
+            self.mainPanel.delete(self.pointIdList[idx])
+        self.listbox.delete(0, len(self.pointList))
+        self.pointIdList = []
+        self.pointList = []
 
     def prevImage(self, event=None):
         self.saveImage()
@@ -379,7 +350,6 @@ class LabelTool():
         f1 = 1.0*w_box/w  # 1.0 forces float division in Python2
         f2 = 1.0*h_box/h
         factor = min([f1, f2])
-        # print(f1, f2, factor) # test
         # use best down-sizing filter
         width = int(w*factor)
         height = int(h*factor)

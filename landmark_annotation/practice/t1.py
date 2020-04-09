@@ -25,7 +25,7 @@ btn.pack()
 
 #################################
 
-ety = tk.Entry(window)
+ety = tk.Entry(window, text="hit me too")
 ety.pack()
 #################################
 
