@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 from __future__ import division
 
+import base64
 import glob
 import os
 import random
@@ -10,6 +11,8 @@ from tkinter import messagebox
 from tkinter.filedialog import askdirectory
 
 from PIL import Image, ImageTk
+
+from icon import img
 
 w0 = 1  # 图片原始宽度
 h0 = 1  # 图片原始高度
@@ -148,10 +151,10 @@ class LabelTool():
 
     def usage(self):
         messagebox.showinfo(
-            title='使用说明', message="1. 选择图片所在路径\n2. 选择保存路径\n3.设置保存图片size\n4. 点击开始加载")
+            title='使用说明', message="1. 选择图片所在路径\n2. 选择保存路径\n3.设置保存图片大小(如果不设置就按照默认图片默认分辨率计算)\n4. 点击开始加载")
 
     def about(self):
-        messagebox.showinfo(title='关于软件', message="作者:pprp 版权所有 请勿商业使用")
+        messagebox.showinfo(title='关于软件', message="作者:pprp 版权所有 请勿商业使用\n地址: https://github.com/pprp\n博客:https://blog.csdn.net/DD_PP_JJ")
 
     def get_image_dir(self):
         self.imageDir = askdirectory()
@@ -163,12 +166,12 @@ class LabelTool():
 
     def loadDir(self):
         # for debug
-        self.imageDir = "./data/images"
-        self.outDir = "./data/labels"
+        # self.imageDir = "./data/images"
+        # self.outDir = "./data/labels"
 
         # 读取并设置图片大小
         if self.entry_h.get() == "" or self.entry_w.get() == "":
-            messagebox.showwarning(title="警告", message="请先输入图片的长和宽(整数)")
+            messagebox.showwarning(title="警告", message="不输入图片大小的情况下将默认设置为图片本身大小")
         else:
             self.img_h = int(self.entry_h.get())
             self.img_w = int(self.entry_w.get())
@@ -249,7 +252,6 @@ class LabelTool():
                         len(self.pointIdList) - 1) % len(self.COLORS)])
                     # print("**********loadimage**********")
 
-                    self.pointList.append(tuple(tmp))
                     tmp[0] = float(tmp[0])
                     tmp[1] = float(tmp[1])
 
@@ -260,6 +262,10 @@ class LabelTool():
         # print "-----1--self.pointList---------"
         print("Save File Length: %d" % len(self.pointList))
         # print "-----2--self.pointList---------"
+
+        if self.labelfilename == '':
+            print("labelfilename is empty")
+            return
 
         with open(self.labelfilename, 'w') as f:
             f.write('%d\n' % len(self.pointList))
@@ -274,7 +280,6 @@ class LabelTool():
                 f.write(' '.join(map(str, bbox)) + '\n')
         print('Image No. %d saved' % (self.cur))
 
-    # 鼠标事件
     def mouseClick(self, event):
         x1, y1 = event.x, event.y
         x1 = x1/self.img_w
@@ -358,5 +363,11 @@ class LabelTool():
 
 if __name__ == '__main__':
     root = Tk()
+    tmp = open("eye.ico","wb+")
+    tmp.write(base64.b64decode(img))
+    tmp.close()
+    root.iconbitmap("eye.ico")
+    os.remove("eye.ico")
+
     tool = LabelTool(root)
     root.mainloop()
