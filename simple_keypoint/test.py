@@ -28,7 +28,7 @@ dataloader_test = DataLoader(
 
 model = KeyPointModel()
 
-model.load_state_dict(torch.load("weights/epoch_90_0.000.pt"))
+model.load_state_dict(torch.load("weights/epoch_490_0.000.pt"))
 
 img_list = glob.glob(os.path.join("./data/images", "*.jpg"))
 

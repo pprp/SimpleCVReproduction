@@ -66,6 +66,7 @@ if __name__ == "__main__":
     for epoch in range(total_epoch):
         train(model, epoch, data_loader, optimizer, criterion)
         loss = test(model, epoch, data_loader, criterion)
+
         if epoch % 10 == 0:
             torch.save(model.state_dict(),
                        "weights/epoch_%d_%.3f.pt" % (epoch, loss*1000))
