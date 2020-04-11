@@ -1,30 +1,29 @@
+import argparse
 import os
 import sys
 import time
-import argparse
+
+import numpy as np
+import torch.distributed as dist
+import torch.nn as nn
+import torch.utils.data
+
+from datasets.coco import COCO, COCO_eval
+from datasets.pascal import PascalVOC, PascalVOC_eval
+from nets.hourglass import get_hourglass
+from nets.resdcn import get_pose_net
+from utils.image import transform_preds
+from utils.losses import _neg_loss, _reg_loss
+from utils.post_process import ctdet_decode
+from utils.summary import (DisablePrint, create_logger, create_saver,
+                           create_summary)
+from utils.utils import _tranpose_and_gather_feature, load_model
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
 
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 # os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
-import numpy as np
-
-import torch.nn as nn
-import torch.utils.data
-import torch.distributed as dist
-
-from datasets.coco import COCO, COCO_eval
-from datasets.pascal import PascalVOC, PascalVOC_eval
-
-from nets.hourglass import get_hourglass
-from nets.resdcn import get_pose_net
-
-from utils.utils import _tranpose_and_gather_feature, load_model
-from utils.image import transform_preds
-from utils.losses import _neg_loss, _reg_loss
-from utils.summary import create_summary, create_logger, create_saver, DisablePrint
-from utils.post_process import ctdet_decode
 
 # Training settings
 parser = argparse.ArgumentParser(description='simple_centernet45')
@@ -34,7 +33,8 @@ parser.add_argument('--dist', action='store_true')
 
 parser.add_argument('--root_dir', type=str, default='./')
 parser.add_argument('--data_dir', type=str, default='./data')
-parser.add_argument('--log_name', type=str, default='pascal_small_hourglass_512_dp')
+parser.add_argument('--log_name', type=str,
+                    default='pascal_small_hourglass_512_dp')
 parser.add_argument('--pretrain_name', type=str, default='pretrain')
 
 parser.add_argument('--dataset',
@@ -80,7 +80,8 @@ def main():
     print(cfg)
 
     torch.manual_seed(317)
-    torch.backends.cudnn.benchmark = True  # disable this if OOM at beginning of training
+    # disable this if OOM at beginning of training
+    torch.backends.cudnn.benchmark = True
 
     num_gpus = torch.cuda.device_count()
     if cfg.dist:

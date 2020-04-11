@@ -28,7 +28,7 @@ dataloader_test = DataLoader(
 
 model = KeyPointModel()
 
-model.load_state_dict(torch.load("weights/epoch_490_0.000.pt"))
+model.load_state_dict(torch.load("weights/epoch_290_0.232.pt"))
 
 img_list = glob.glob(os.path.join("./data/images", "*.jpg"))
 
@@ -71,7 +71,7 @@ for i in range(bs):
 
     # print(x, y)
 
-    cv2.circle(img, (x, y), 5, (255, 0, 0), thickness=-1)
+    cv2.circle(img, (x, y), 5, (0, 0, 255), thickness=-1)
 
     print("./output/%s_out.jpg" % (img_name_list[i]))
 

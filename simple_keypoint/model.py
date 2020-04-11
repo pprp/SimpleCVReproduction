@@ -15,13 +15,13 @@ class KeyPointModel(nn.Module):
         self.relu2 = nn.ReLU(True)
         self.maxpool2 = nn.MaxPool2d((2, 2))
 
-        self.conv3 = nn.Conv2d(12, 20, 3, 1, 1)
-        self.bn3 = nn.BatchNorm2d(20)
-        self.relu3 = nn.ReLU(True)
+        # self.conv3 = nn.Conv2d(12, 20, 3, 1, 1)
+        # self.bn3 = nn.BatchNorm2d(20)
+        # self.relu3 = nn.ReLU(True)
 
         self.gap = nn.AdaptiveMaxPool2d(1)
         self.classifier = nn.Sequential(
-            nn.Linear(20, 2),
+            nn.Linear(12, 2),
             nn.Sigmoid()
         )
 
@@ -36,9 +36,9 @@ class KeyPointModel(nn.Module):
         x = self.relu2(x)
         x = self.maxpool2(x)
 
-        x = self.conv3(x)
-        x = self.bn3(x)
-        x = self.relu3(x)
+        # x = self.conv3(x)
+        # x = self.bn3(x)
+        # x = self.relu3(x)
 
         x = self.gap(x)
         x = x.view(x.shape[0], -1)
