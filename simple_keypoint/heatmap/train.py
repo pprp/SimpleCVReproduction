@@ -6,8 +6,10 @@ from model import KeyPointModel
 from datasets import KeyPointDatasets
 from torch.utils.data import DataLoader
 from visual import Visualizer
+from utils import compute_loss
 
-IMG_SIZE = 480, 360
+#h, w
+IMG_SIZE = 360, 480
 
 
 vis = Visualizer(env="keypoint")
@@ -16,16 +18,19 @@ def train(model, epoch, dataloader, optimizer, criterion):
     model.train()
     for itr, (image, label) in enumerate(dataloader):
         bs = image.shape[0]
-        output = model(image)
-        loss = criterion(output, label)
+
+        heatmap = model(image)
+
+        loss = criterion(heatmap, label)
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        if itr % 4 == 0:
+        if itr % 2 == 0:
             print("epoch:%2d|step:%04d|loss:%.6f" % (epoch, itr, loss.item()/bs))
-            vis.plot_many_stack({"train_loss": loss.item()*100/bs})
+            if epoch > 20:
+                vis.plot_many_stack({"train_loss": loss.item()/bs})
 
 
 def test(model, epoch, dataloader, criterion):
@@ -39,18 +44,19 @@ def test(model, epoch, dataloader, criterion):
         sum_loss += loss.item()
         n_sample += image.shape[0]
     print("TEST: epoch:%02d-->loss:%.6f" % (epoch, sum_loss/n_sample))
-    vis.plot_many_stack({"test_loss": sum_loss*1000/n_sample})
+    if epoch > 20:
+        vis.plot_many_stack({"test_loss": sum_loss/n_sample})
     return sum_loss / n_sample
 
 
 if __name__ == "__main__":
 
-    total_epoch = 300
-    bs = 10
+    total_epoch = 500
+    bs = 20
     ########################################
     transforms_all = transforms.Compose([
         transforms.ToPILImage(),
-        transforms.Resize((480, 360)),
+        transforms.Resize((360, 480)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.4372, 0.4372, 0.4373],
                              std=[0.2479, 0.2475, 0.2485])
@@ -64,8 +70,7 @@ if __name__ == "__main__":
     model = KeyPointModel()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
-    # criterion = torch.nn.SmoothL1Loss()
-    criterion = torch.nn.MSELoss()
+    criterion = compute_loss
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                                 step_size=30,
                                                 gamma=0.1)
@@ -76,4 +81,4 @@ if __name__ == "__main__":
 
         if epoch % 10 == 0:
             torch.save(model.state_dict(),
-                       "weights/epoch_%d_%.3f.pt" % (epoch, loss*1000))
+                       "weights/epoch_%d_%.3f.pt" % (epoch, loss))

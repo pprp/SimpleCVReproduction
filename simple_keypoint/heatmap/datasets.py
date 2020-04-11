@@ -5,13 +5,19 @@ import cv2
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
+import numpy as np
+from utils import draw_umich_gaussian
 
 
 class KeyPointDatasets(Dataset):
     def __init__(self, root_dir="./data", transforms=None):
         super(KeyPointDatasets, self).__init__()
+
+        self.down_ratio = 2
+        self.img_w = 480 // self.down_ratio
+        self.img_h = 360 // self.down_ratio
+
         self.img_path = os.path.join(root_dir, "images")
-        # self.txt_path = os.path.join(root_dir, "labels")
 
         self.img_list = glob.glob(os.path.join(self.img_path, "*.jpg"))
         self.txt_list = [item.replace(".jpg", ".txt").replace(
@@ -41,10 +47,13 @@ class KeyPointDatasets(Dataset):
                     # range from 0 to 1
                     x1, y1 = float(x1), float(y1)
 
-                    tmp_label = (x1, y1)
-                    label.append(tmp_label)
+                    cx, cy = x1 * self.img_w, y1 * self.img_h
 
-        return img, torch.tensor(label[0])
+                    heatmap = np.zeros((self.img_h, self.img_w))
+
+                    draw_umich_gaussian(heatmap, (cx, cy), 10)
+
+        return img, torch.tensor(heatmap)
 
     def __len__(self):
         return len(self.img_list)
@@ -58,7 +67,7 @@ class KeyPointDatasets(Dataset):
 if __name__ == "__main__":
     trans = transforms.Compose([
         transforms.ToPILImage(),
-        transforms.Resize((480, 360)),
+        transforms.Resize((360, 480)),
         transforms.ToTensor(),
     ])
     kp_datasets = KeyPointDatasets(
@@ -72,4 +81,4 @@ if __name__ == "__main__":
                              )
 
     for data, label in data_loader:
-        print(data.shape, label)
+        print(data.shape, label.shape)

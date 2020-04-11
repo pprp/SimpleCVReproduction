@@ -1,79 +1,46 @@
-import glob
-import cv2
-import os
-
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from datasets import KeyPointDatasets
 from model import KeyPointModel
-import PIL
-
-SIZE = 480, 360
-
-transforms_test = transforms.Compose([
-    transforms.ToPILImage(),
-    transforms.Resize((480, 360)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.4372, 0.4372, 0.4373],
-                         std=[0.2479, 0.2475, 0.2485])
-])
-
-datasets_test = KeyPointDatasets(root_dir="./data", transforms=transforms_test)
+from utils import *
+from utils import compute_loss
 
 
-dataloader_test = DataLoader(
-    datasets_test, batch_size=4, shuffle=True, collate_fn=datasets_test.collect_fn)
+def _nms(heat, kernel=3):
+    hmax = F.max_pool2d(heat, kernel, stride=1, padding=(kernel - 1) // 2)
+    keep = (hmax == heat).float()
+    return heat * keep
 
-model = KeyPointModel()
+def flip_tensor(x):
+  return torch.flip(x, [3])
 
-model.load_state_dict(torch.load("weights/epoch_290_0.232.pt"))
+if __name__ == "__main__":
+    transforms_all = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize((360, 480)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.4372, 0.4372, 0.4373],
+                             std=[0.2479, 0.2475, 0.2485])
+    ])
 
-img_list = glob.glob(os.path.join("./data/images", "*.jpg"))
+    dataset = KeyPointDatasets(root_dir="./data", transforms=transforms_all)
 
-save_path = "./output"
+    dataloader = DataLoader(dataset, shuffle=True,
+                            batch_size=10, collate_fn=dataset.collect_fn)
 
-img_tensor_list = []
-img_name_list = []
+    model = KeyPointModel()
 
-for i in range(len(img_list)):
-    img_path = img_list[i]
-    img_name = os.path.basename(img_path)
-    img_name_list.append(img_name)
+    for iter, (image, label) in enumerate(dataloader):
+        print(image.shape)
+        heatmap = model(image)
+        # hmap = (hmap[0:1] + flip_tensor(hmap[1:2])) / 2
+        heatmap = torch.sigmoid(heatmap)
+        heatmap = _nms(heatmap)
 
-    img = cv2.imread(img_path)
-    img_tensor = transforms_test(img)
-    img_tensor_list.append(img_tensor)
+        batch, height, width = heatmap.size()
+        print(heatmap.shape, heatmap[0])
 
-img_tensor_list = torch.stack(img_tensor_list, 0)
-
-print(img_tensor_list.shape)
-
-output = model(img_tensor_list)
-
-print(output.shape)
-
-bs = img_tensor_list.shape[0]
-
-for i in range(bs):
-    img_path = img_list[i]
-    img = cv2.imread(img_path)
-
-    point_ratio = output[i]
-
-    # print(point_ratio.shape)
-
-    x, y = SIZE[0] * point_ratio[0], SIZE[1] * point_ratio[1]
-
-    x = int(x.item())
-    y = int(y.item())
-
-    # print(x, y)
-
-    cv2.circle(img, (x, y), 5, (0, 0, 255), thickness=-1)
-
-    print("./output/%s_out.jpg" % (img_name_list[i]))
-
-    cv2.imwrite("./output/%s_out.jpg" % (img_name_list[i]), img)
 

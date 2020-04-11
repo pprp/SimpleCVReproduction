@@ -7,7 +7,7 @@ from datasets import KeyPointDatasets
 from torch.utils.data import DataLoader
 from visual import Visualizer
 
-IMG_SIZE = 480, 360
+IMG_SIZE = 360,480
 
 
 vis = Visualizer(env="keypoint")
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     ########################################
     transforms_all = transforms.Compose([
         transforms.ToPILImage(),
-        transforms.Resize((480, 360)),
+        transforms.Resize((360,480)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.4372, 0.4372, 0.4373],
                              std=[0.2479, 0.2475, 0.2485])
