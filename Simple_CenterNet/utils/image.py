@@ -120,12 +120,14 @@ def gaussian2D(shape, sigma=1):
 
   h = np.exp(-(x * x + y * y) / (2 * sigma * sigma))
   h[h < np.finfo(h.dtype).eps * h.max()] = 0
+  # 限制最小的值
   return h
 
 
 def draw_umich_gaussian(heatmap, center, radius, k=1):
   diameter = 2 * radius + 1
   gaussian = gaussian2D((diameter, diameter), sigma=diameter / 6)
+  # 一个圆对应内切正方形的高斯分布
 
   x, y = int(center[0]), int(center[1])
 
@@ -138,6 +140,7 @@ def draw_umich_gaussian(heatmap, center, radius, k=1):
   masked_gaussian = gaussian[radius - top:radius + bottom, radius - left:radius + right]
   if min(masked_gaussian.shape) > 0 and min(masked_heatmap.shape) > 0:  # TODO debug
     np.maximum(masked_heatmap, masked_gaussian * k, out=masked_heatmap)
+    # 将高斯分布覆盖到heatmap上，取最大，而不是叠加
   return heatmap
 
 
