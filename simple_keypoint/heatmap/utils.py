@@ -15,16 +15,16 @@ def compute_loss(preds, targets):
     neg_inds = targets.lt(1).float()
 
     # beta=4
-    neg_weights = torch.pow(1 - targets, 4)
+    neg_weights = torch.pow(1 - targets, 4).float()
 
     loss = 0
     for pred in preds:
         pred = torch.clamp(torch.sigmoid(pred), min=1e-4, max=1 - 1e-4)
-        
         pos_loss = torch.log(pred) * torch.pow(1 - pred, 2) * pos_inds # 正样本
 
         # alpha=2
-        
+        # print(type(neg_weights))
+
         neg_loss = torch.log(1 - pred) * torch.pow(pred,2) * neg_weights * neg_inds # 负样本
 
         num_pos = pos_inds.float().sum()

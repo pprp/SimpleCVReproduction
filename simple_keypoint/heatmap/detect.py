@@ -30,7 +30,7 @@ dataloader_test = DataLoader(
 model = KeyPointModel()
 model.eval()
 
-model.load_state_dict(torch.load("weights/epoch_130_435.459.pt"))
+model.load_state_dict(torch.load("weights/epoch_50_0.373.pt"))
 
 img_list = glob.glob(os.path.join("./data/images", "*.jpg"))
 
@@ -53,8 +53,8 @@ img_tensor_list = torch.stack(img_tensor_list, 0)
 print(img_tensor_list.shape)
 
 # part of it
-img_tensor_list = img_tensor_list[0:10]
-img_name_list = img_name_list[0:10]
+# img_tensor_list = img_tensor_list[0:10]
+# img_name_list = img_name_list[0:10]
 
 heatmap = model(img_tensor_list)
 
@@ -80,10 +80,10 @@ for i in range(bs):
     # hm = hm/np.max(hm)
     # hm = normalization(hm)
     hm = np.uint8(255 * hm)
-    hm = cv2.applyColorMap(hm, cv2.COLORMAP_HOT)
+    hm = cv2.applyColorMap(hm, cv2.COLORMAP_JET)
     hm = cv2.resize(hm, (480, 360))
 
-    superimposed_img = hm 
+    superimposed_img = hm * 0.4 + img
 
     # x, y = SIZE[0] * point_ratio[0], SIZE[1] * point_ratio[1]
 

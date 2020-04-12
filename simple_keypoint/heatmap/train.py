@@ -51,7 +51,7 @@ def test(model, epoch, dataloader, criterion):
 
 if __name__ == "__main__":
 
-    total_epoch = 500
+    total_epoch = 1000
     bs = 20
     ########################################
     transforms_all = transforms.Compose([

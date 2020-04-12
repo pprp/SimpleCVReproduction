@@ -51,7 +51,7 @@ class KeyPointDatasets(Dataset):
 
                     heatmap = np.zeros((self.img_h, self.img_w))
 
-                    draw_umich_gaussian(heatmap, (cx, cy), 10)
+                    draw_umich_gaussian(heatmap, (cx, cy), 30)
 
         return img, torch.tensor(heatmap)
 
