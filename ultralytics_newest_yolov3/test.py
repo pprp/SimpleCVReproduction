@@ -137,7 +137,7 @@ def test(cfg,
                                   'score': round(p[4], 5)})
 
             # Assign all predictions as incorrect
-            correct = torch.zeros(pred.shape[0], niou, dtype=torch.bool, device=device)
+            correct = torch.zeros(pred.shape[0], niou, dtype=torch.uint8, device=device)
             if nl:
                 detected = []  # target indices
                 tcls_tensor = labels[:, 0]

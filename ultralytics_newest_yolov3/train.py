@@ -1,10 +1,11 @@
 import argparse
+import test  # import test.py to get mAP after each epoch
 
+import matplotlib
 import torch.distributed as dist
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 
-import test  # import test.py to get mAP after each epoch
 from models import *
 from utils.datasets import *
 from utils.utils import *
@@ -19,6 +20,9 @@ wdir = 'weights' + os.sep  # weights dir
 last = wdir + 'last.pt'
 best = wdir + 'best.pt'
 results_file = 'results.txt'
+
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+matplotlib.use('Agg')
 
 # Hyperparameters https://github.com/ultralytics/yolov3/issues/310
 
