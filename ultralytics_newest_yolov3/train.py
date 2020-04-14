@@ -21,7 +21,7 @@ last = wdir + 'last.pt'
 best = wdir + 'best.pt'
 results_file = 'results.txt'
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+# os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 matplotlib.use('Agg')
 
 # Hyperparameters https://github.com/ultralytics/yolov3/issues/310
@@ -44,6 +44,29 @@ hyp = {'giou': 3.54,  # giou loss gain
        'translate': 0.05 * 0,  # image translation (+/- fraction)
        'scale': 0.05 * 0,  # image scale (+/- gain)
        'shear': 0.641 * 0}  # image shear (+/- deg)
+
+# giou       cls    cls_pw       obj    obj_pw     iou_t       lr0       lrf  momentumweight_decay  fl_gamma     hsv_h     hsv_s     hsv_v   degrees translate     scale     shear
+# 3.91  4.32e-18      1.26      86.7     0.799     0.148   0.00884    0.0005     0.967  0.000629         0    0.0151     0.349     0.353         0         0         0         0
+
+
+# hyp = {'giou': 3.91,  # giou loss gain
+#        'cls': 37.4,  # cls loss gain
+#        'cls_pw': 1.26,  # cls BCELoss positive_weight
+#        'obj': 86.7,  # obj loss gain (*=img_size/320 if img_size != 320)
+#        'obj_pw': 0.799,  # obj BCELoss positive_weight
+#        'iou_t': 0.148,  # iou training threshold
+#        'lr0': 0.00884,  # initial learning rate (SGD=5E-3, Adam=5E-4)
+#        'lrf': 0.0005,  # final learning rate (with cos scheduler)
+#        'momentum': 0.967,  # SGD momentum
+#        'weight_decay': 0.000629,  # optimizer weight decay
+#        'fl_gamma': 0.0,  # focal loss gamma (efficientDet default is gamma=1.5)
+#        'hsv_h': 0.0151,  # image HSV-Hue augmentation (fraction)
+#        'hsv_s': 0.349,  # image HSV-Saturation augmentation (fraction)
+#        'hsv_v': 0.353,  # image HSV-Value augmentation (fraction)
+#        'degrees': 1.98 * 0,  # image rotation (+/- deg)
+#        'translate': 0.05 * 0,  # image translation (+/- fraction)
+#        'scale': 0.05 * 0,  # image scale (+/- gain)
+#        'shear': 0.641 * 0}  # image shear (+/- deg)
 
 # Overwrite hyp with hyp*.txt (optional)
 f = glob.glob('hyp*.txt')
@@ -170,7 +193,7 @@ def train():
                                 init_method='tcp://127.0.0.1:9999',  # distributed training init method
                                 world_size=1,  # number of nodes for distributed training
                                 rank=0)  # distributed training node rank
-        model = torch.nn.parallel.DistributedDataParallel(model, find_unused_parameters=True)
+        model = torch.nn.parallel.DistributedDataParallel(model)#, find_unused_parameters=True)
         model.yolo_layers = model.module.yolo_layers  # move yolo layer indices to top level
 
     # Dataset
@@ -313,6 +336,7 @@ def train():
                                       img_size=img_size_test,
                                       model=ema.ema,
                                       save_json=final_epoch and is_coco,
+                                      iou_thres=0.01,
                                       single_cls=opt.single_cls,
                                       dataloader=testloader)
 
@@ -386,9 +410,9 @@ def train():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=300)  # 500200 batches at bs 16, 117263 COCO images = 273 epochs
-    parser.add_argument('--batch-size', type=int, default=16)  # effective bs = batch_size * accumulate = 16 * 4 = 64
-    parser.add_argument('--accumulate', type=int, default=4, help='batches to accumulate before optimizing')
-    parser.add_argument('--cfg', type=str, default='cfg/yolov3-spp.cfg', help='*.cfg path')
+    parser.add_argument('--batch-size', type=int, default=2)  # effective bs = batch_size * accumulate = 16 * 4 = 64
+    parser.add_argument('--accumulate', type=int, default=32, help='batches to accumulate before optimizing')
+    parser.add_argument('--cfg', type=str, default='cfg/yolov3-tiny.cfg', help='*.cfg path')
     parser.add_argument('--data', type=str, default='data/dataset4.data', help='*.data path')
     parser.add_argument('--multi-scale', action='store_true', help='adjust (67% - 150%) img_size every 10 batches')
     parser.add_argument('--img-size', nargs='+', type=int, default=[416], help='train and test image-sizes')

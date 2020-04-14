@@ -14,7 +14,7 @@ def test(cfg,
          batch_size=16,
          img_size=416,
          conf_thres=0.001,
-         iou_thres=0.6,  # for nms
+         iou_thres=0.5,  # for nms
          save_json=False,
          single_cls=False,
          augment=False,
@@ -112,7 +112,7 @@ def test(cfg,
 
             if pred is None:
                 if nl:
-                    stats.append((torch.zeros(0, niou, dtype=torch.bool), torch.Tensor(), torch.Tensor(), tcls))
+                    stats.append((torch.zeros(0, niou, dtype=torch.uint8), torch.Tensor(), torch.Tensor(), tcls))
                 continue
 
             # Append to text file
@@ -188,7 +188,7 @@ def test(cfg,
             print(pf % (names[c], seen, nt[c], p[i], r[i], ap[i], f1[i]))
 
     # Print speeds
-    if verbose:
+    if verbose or save_json:
         t = tuple(x / seen * 1E3 for x in (t0, t1, t0 + t1)) + (img_size, img_size, batch_size)  # tuple
         print('Speed: %.1f/%.1f/%.1f ms inference/NMS/total per %gx%g image at batch-size %g' % t)
 

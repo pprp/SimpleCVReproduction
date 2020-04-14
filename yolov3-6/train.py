@@ -10,6 +10,9 @@ from models import *
 from utils.datasets import *
 from utils.utils import *
 
+import matplotlib
+matplotlib.use("Agg")
+
 # Hyperparameters
 # 0.861      0.956      0.936      0.897       1.51      10.39     0.1367    0.01057    0.01181     0.8409     0.1287   0.001028     -3.441     0.9127  0.0004841
 hyp = {'k': 10.39,  # loss multiple
@@ -273,8 +276,8 @@ def print_mutation(hyp, results):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=273, help='number of epochs')
-    parser.add_argument('--batch-size', type=int, default=16, help='size of each image batch')
-    parser.add_argument('--accumulate', type=int, default=1, help='accumulate gradient x batches before optimizing')
+    parser.add_argument('--batch-size', type=int, default=4, help='size of each image batch')
+    parser.add_argument('--accumulate', type=int, default=16, help='accumulate gradient x batches before optimizing')
     parser.add_argument('--cfg', type=str, default='cfg/yolov3-tiny.cfg', help='cfg file path')
     parser.add_argument('--data-cfg', type=str, default='data/voc.data', help='coco.data file path')
     parser.add_argument('--multi-scale', action='store_true', help='random image sizes per batch 320 - 608')
