@@ -40,7 +40,7 @@ outputs = tf.keras.layers.Dense(n_classes, activation='softmax')(x)
 
 
 model = tf.keras.Model(inputs=inputs, outputs=outputs, name='lenet')
-plot_model(model,'lenet.png',show_shapes=True,expand_nested=True,rankdir='LR')
+plot_model(model,'lenet.png',show_shapes=True,expand_nested=True,rankdir='TB')
 
 model.summary()
 

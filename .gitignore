@@ -37,3 +37,7 @@ landmark_annotation/build/keypoints/PKG-00.pkg
 landmark_annotation/build/keypoints/xref-keypoints.html
 *.exe
 landmark_annotation/keypoints.spec
+*.v2
+tensorflow2/fit_logs/train/events.out.tfevents.1587107142.DESKTOP-82VTTJN.profile-empty
+*.trace
+tensorflow2/summary_logs/gradient_tape/20200417-160520/train/events.out.tfevents.1587110721.DESKTOP-82VTTJN.profile-empty
