@@ -1,5 +1,11 @@
 #!/usr/bin/python3
 from __future__ import print_function
+from yufacedetectnet import YuFaceDetectNet
+from timer import Timer
+from utils import decode
+from nms import nms
+from prior_box import PriorBox
+from config import cfg
 
 import os
 import sys
@@ -12,28 +18,28 @@ from collections import OrderedDict
 
 sys.path.append(os.getcwd() + '/../../src')
 
-from config import cfg
-from prior_box import PriorBox
-from nms import nms
-from utils import decode
-from timer import Timer
-from yufacedetectnet import YuFaceDetectNet
-
 
 parser = argparse.ArgumentParser(description='Face and Landmark Detection')
 
 parser.add_argument('-m', '--trained_model', default='weights/FaceBoxes.pth',
                     type=str, help='Trained state_dict file path to open')
-parser.add_argument('--image_file', default='', type=str, help='the image file to be detected')
-parser.add_argument('--confidence_threshold', default=0.3, type=float, help='confidence_threshold')
+parser.add_argument('--image_file', default='', type=str,
+                    help='the image file to be detected')
+parser.add_argument('--confidence_threshold', default=0.3,
+                    type=float, help='confidence_threshold')
 parser.add_argument('--top_k', default=5000, type=int, help='top_k')
-parser.add_argument('--nms_threshold', default=0.3, type=float, help='nms_threshold')
+parser.add_argument('--nms_threshold', default=0.3,
+                    type=float, help='nms_threshold')
 parser.add_argument('--keep_top_k', default=750, type=int, help='keep_top_k')
 #parser.add_argument('-s', '--show_image', action="store_true", default=False, help='show detection results')
-parser.add_argument('--vis_thres', default=0.3, type=float, help='visualization_threshold')
-parser.add_argument('--base_layers', default=16, type=int, help='the number of the output of the first layer')
-parser.add_argument('--device', default='cuda:0', help='which device the program will run on. cuda:0, cuda:1, ...')
+parser.add_argument('--vis_thres', default=0.3, type=float,
+                    help='visualization_threshold')
+parser.add_argument('--base_layers', default=16, type=int,
+                    help='the number of the output of the first layer')
+parser.add_argument('--device', default='cuda:0',
+                    help='which device the program will run on. cuda:0, cuda:1, ...')
 args = parser.parse_args()
+
 
 def check_keys(model, pretrained_state_dict):
     ckpt_keys = set(pretrained_state_dict.keys())
@@ -47,21 +53,26 @@ def check_keys(model, pretrained_state_dict):
     assert len(used_pretrained_keys) > 0, 'load NONE from pretrained checkpoint'
     return True
 
+
 def remove_prefix(state_dict, prefix):
     ''' Old style model is stored with all names of parameters sharing common prefix 'module.' '''
     print('remove prefix \'{}\''.format(prefix))
-    f = lambda x: x.split(prefix, 1)[-1] if x.startswith(prefix) else x
+    def f(x): return x.split(prefix, 1)[-1] if x.startswith(prefix) else x
     return {f(key): value for key, value in state_dict.items()}
+
 
 def load_model(model, pretrained_path, load_to_cpu):
     print('Loading pretrained model from {}'.format(pretrained_path))
     if load_to_cpu:
-        pretrained_dict = torch.load(pretrained_path, map_location=lambda storage, loc: storage)
+        pretrained_dict = torch.load(
+            pretrained_path, map_location=lambda storage, loc: storage)
     else:
         device = torch.cuda.current_device()
-        pretrained_dict = torch.load(pretrained_path, map_location=lambda storage, loc: storage.cuda(device))
+        pretrained_dict = torch.load(
+            pretrained_path, map_location=lambda storage, loc: storage.cuda(device))
     if "state_dict" in pretrained_dict.keys():
-        pretrained_dict = remove_prefix(pretrained_dict['state_dict'], 'module.')
+        pretrained_dict = remove_prefix(
+            pretrained_dict['state_dict'], 'module.')
     else:
         pretrained_dict = remove_prefix(pretrained_dict, 'module.')
     check_keys(model, pretrained_dict)
@@ -71,26 +82,26 @@ def load_model(model, pretrained_path, load_to_cpu):
 
 if __name__ == '__main__':
     #img_dim = 320
-    device = torch.device(args.device) 
+    device = torch.device(args.device)
 
     torch.set_grad_enabled(False)
 
     # net and model
-    net = YuFaceDetectNet(phase='test', size=None )    # initialize detector
+    net = YuFaceDetectNet(phase='test', size=None)    # initialize detector
     net = load_model(net, args.trained_model, True)
 
-    #net.load_state_dict(torch.load(args.trained_model))
+    # net.load_state_dict(torch.load(args.trained_model))
     net.eval()
 
     print('Finished loading model!')
 
-    ## Print model's state_dict
+    # Print model's state_dict
     #print("Model's state_dict:")
-    #for param_tensor in net.state_dict():
+    # for param_tensor in net.state_dict():
     #    print(param_tensor, "\t", net.state_dict()[param_tensor].size())
-        
-    #print(net)
-    
+
+    # print(net)
+
     cudnn.benchmark = True
     net = net.to(device)
 
@@ -109,7 +120,7 @@ if __name__ == '__main__':
     scale = torch.Tensor([im_width, im_height, im_width, im_height,
                           im_width, im_height, im_width, im_height,
                           im_width, im_height, im_width, im_height,
-                          im_width, im_height ])
+                          im_width, im_height])
     scale = scale.to(device)
 
     _t['forward_pass'].tic()
@@ -138,15 +149,16 @@ if __name__ == '__main__':
 
     print('there are', len(boxes), 'candidates')
 
-    #for ss in scores:
+    # for ss in scores:
     #    print('score', ss)
-    #for bb in boxes:
+    # for bb in boxes:
     #    print('box', bb, bb[2]-bb[0], bb[3]-bb[1])
 
     # do NMS
-    dets = np.hstack((boxes, scores[:, np.newaxis])).astype(np.float32, copy=False)
-    selected_idx = np.array([0,1,2,3,14])
-    keep = nms(dets[:,selected_idx], args.nms_threshold)
+    dets = np.hstack((boxes, scores[:, np.newaxis])).astype(
+        np.float32, copy=False)
+    selected_idx = np.array([0, 1, 2, 3, 14])
+    keep = nms(dets[:, selected_idx], args.nms_threshold)
     dets = dets[keep, :]
 
     # keep top-K faster NMS
@@ -154,7 +166,7 @@ if __name__ == '__main__':
     _t['misc'].toc()
 
     # save dets
-    face_cc = 0;
+    face_cc = 0
     for k in range(dets.shape[0]):
         if dets[k, 14] < args.vis_thres:
             continue
@@ -165,8 +177,9 @@ if __name__ == '__main__':
         score = dets[k, 14]
         w = xmax - xmin + 1
         h = ymax - ymin + 1
-        print('{}: {:.3f} {:.3f} {:.3f} {:.3f} {:.10f}'.format(face_cc, xmin, ymin, w, h, score))
-        face_cc =  face_cc + 1
+        print('{}: {:.3f} {:.3f} {:.3f} {:.3f} {:.10f}'.format(
+            face_cc, xmin, ymin, w, h, score))
+        face_cc = face_cc + 1
 
     # show image
     for b in dets:
@@ -186,9 +199,8 @@ if __name__ == '__main__':
         cy = b[1] + 12
         cv2.putText(img_raw, text, (cx, cy),
                     cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255))
-    cv2.namedWindow('res', cv2.WINDOW_NORMAL )
+    cv2.namedWindow('res', cv2.WINDOW_NORMAL)
     cv2.imshow('res', img_raw)
     cv2.resizeWindow('res', im_width, im_height)
-    
-    cv2.waitKey(0)
 
+    cv2.waitKey(0)

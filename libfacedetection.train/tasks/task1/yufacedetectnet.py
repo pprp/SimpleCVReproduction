@@ -3,12 +3,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+
 class ConvBNReLU(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding, **kwargs):
         super(ConvBNReLU, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=True, **kwargs)
+        self.conv = nn.Conv2d(in_channels, out_channels,
+                              kernel_size, stride, padding, bias=True, **kwargs)
         self.bn = nn.BatchNorm2d(out_channels)
 
     def forward(self, x):
@@ -17,24 +19,28 @@ class ConvBNReLU(nn.Module):
         x = F.relu(x, inplace=True)
         return x
 
-    def combine_conv_bn(self):        
-        conv_result = nn.Conv2d(self.in_channels, self.out_channels, 
-                              self.conv.kernel_size, stride=self.conv.stride, 
-                              padding=self.conv.padding, bias=True)
-        
+    def combine_conv_bn(self):
+        conv_result = nn.Conv2d(self.in_channels, self.out_channels,
+                                self.conv.kernel_size, stride=self.conv.stride,
+                                padding=self.conv.padding, bias=True)
+
         scales = self.bn.weight / torch.sqrt(self.bn.running_var + self.bn.eps)
-        conv_result.bias[:] = (self.conv.bias - self.bn.running_mean) * scales + self.bn.bias
-        for ch in range(self.out_channels):            
-            conv_result.weight[ch, :, :, :] = self.conv.weight[ch, :, :, :] * scales[ch]
+        conv_result.bias[:] = (
+            self.conv.bias - self.bn.running_mean) * scales + self.bn.bias
+        for ch in range(self.out_channels):
+            conv_result.weight[ch, :, :,
+                               :] = self.conv.weight[ch, :, :, :] * scales[ch]
 
         return conv_result
+
 
 class Conv_2layers(nn.Module):
     def __init__(self, in_channels, mid_channels, out_channels, stride, **kwargs):
         super(Conv_2layers, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.conv1 = ConvBNReLU(in_channels, mid_channels, 3, stride, 1, **kwargs)
+        self.conv1 = ConvBNReLU(
+            in_channels, mid_channels, 3, stride, 1, **kwargs)
         self.conv2 = ConvBNReLU(mid_channels, out_channels, 1, 1, 0, **kwargs)
 
     def forward(self, x):
@@ -42,13 +48,16 @@ class Conv_2layers(nn.Module):
         x = self.conv2(x)
         return x
 
+
 class Conv_3layers(nn.Module):
     def __init__(self, in_channels, mid1_channels, mid2_channels, out_channels, stride, **kwargs):
         super(Conv_3layers, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.conv1 = ConvBNReLU(in_channels, mid1_channels, 3, stride, 1, **kwargs)
-        self.conv2 = ConvBNReLU(mid1_channels, mid2_channels, 1, 1, 0, **kwargs)
+        self.conv1 = ConvBNReLU(
+            in_channels, mid1_channels, 3, stride, 1, **kwargs)
+        self.conv2 = ConvBNReLU(
+            mid1_channels, mid2_channels, 1, 1, 0, **kwargs)
         self.conv3 = ConvBNReLU(mid2_channels, out_channels, 3, 1, 1, **kwargs)
 
     def forward(self, x):
@@ -57,7 +66,7 @@ class Conv_3layers(nn.Module):
         x = self.conv3(x)
         return x
 
-       
+
 class YuFaceDetectNet(nn.Module):
 
     def __init__(self, phase, size):
@@ -93,14 +102,22 @@ class YuFaceDetectNet(nn.Module):
     def multibox(self, num_classes):
         loc_layers = []
         conf_layers = []
-        loc_layers += [nn.Conv2d(self.model3.out_channels, 3 * 14, kernel_size=3, padding=1, bias=True)]
-        conf_layers += [nn.Conv2d(self.model3.out_channels, 3 * num_classes, kernel_size=3, padding=1, bias=True)]
-        loc_layers += [nn.Conv2d(self.model4.out_channels, 2 * 14, kernel_size=3, padding=1, bias=True)]
-        conf_layers += [nn.Conv2d(self.model4.out_channels, 2 * num_classes, kernel_size=3, padding=1, bias=True)]
-        loc_layers += [nn.Conv2d(self.model5.out_channels, 2 * 14, kernel_size=3, padding=1, bias=True)]
-        conf_layers += [nn.Conv2d(self.model5.out_channels, 2 * num_classes, kernel_size=3, padding=1, bias=True)]
-        loc_layers += [nn.Conv2d(self.model6.out_channels, 3 * 14, kernel_size=3, padding=1, bias=True)]
-        conf_layers += [nn.Conv2d(self.model6.out_channels, 3 * num_classes, kernel_size=3, padding=1, bias=True)]
+        loc_layers += [nn.Conv2d(self.model3.out_channels,
+                                 3 * 14, kernel_size=3, padding=1, bias=True)]
+        conf_layers += [nn.Conv2d(self.model3.out_channels,
+                                  3 * num_classes, kernel_size=3, padding=1, bias=True)]
+        loc_layers += [nn.Conv2d(self.model4.out_channels,
+                                 2 * 14, kernel_size=3, padding=1, bias=True)]
+        conf_layers += [nn.Conv2d(self.model4.out_channels,
+                                  2 * num_classes, kernel_size=3, padding=1, bias=True)]
+        loc_layers += [nn.Conv2d(self.model5.out_channels,
+                                 2 * 14, kernel_size=3, padding=1, bias=True)]
+        conf_layers += [nn.Conv2d(self.model5.out_channels,
+                                  2 * num_classes, kernel_size=3, padding=1, bias=True)]
+        loc_layers += [nn.Conv2d(self.model6.out_channels,
+                                 3 * 14, kernel_size=3, padding=1, bias=True)]
+        conf_layers += [nn.Conv2d(self.model6.out_channels,
+                                  3 * num_classes, kernel_size=3, padding=1, bias=True)]
         return nn.Sequential(*loc_layers), nn.Sequential(*conf_layers)
 
     def forward(self, x):
@@ -136,11 +153,11 @@ class YuFaceDetectNet(nn.Module):
         conf_data = torch.cat([o.view(o.size(0), -1) for o in conf_data], 1)
 
         if self.phase == "test":
-          output = (loc_data.view(loc_data.size(0), -1, 14),
-                    self.softmax(conf_data.view(conf_data.size(0), -1, self.num_classes)))
+            output = (loc_data.view(loc_data.size(0), -1, 14),
+                      self.softmax(conf_data.view(conf_data.size(0), -1, self.num_classes)))
         else:
-          output = (loc_data.view(loc_data.size(0), -1, 14),
-                    conf_data.view(conf_data.size(0), -1, self.num_classes))
+            output = (loc_data.view(loc_data.size(0), -1, 14),
+                      conf_data.view(conf_data.size(0), -1, self.num_classes))
 
         return output
 
@@ -160,7 +177,8 @@ class YuFaceDetectNet(nn.Module):
         intw = np.round(w * scale).astype(int)
         intb = np.round(b * scale).astype(int)
 
-        lengthstr_w = str(out_channels) + '*' + str(in_channels) + '*' + str(width) + '*' + str(height)
+        lengthstr_w = str(out_channels) + '*' + str(in_channels) + \
+            '*' + str(width) + '*' + str(height)
         resultstr = 'signed char ' + name + '_weight[' + lengthstr_w + '] = {'
         for idx in range(intw.size - 1):
             resultstr += (str(intw[idx]) + ', ')
@@ -175,14 +193,14 @@ class YuFaceDetectNet(nn.Module):
 
         #print('weight size:', w.size)
         #print('weight max:', maxvalue)
-        
+
         return resultstr, scale
 
     def export_cpp(self, filename):
         '''This function can export CPP data file for libfacedetection'''
-        result_str = '// Auto generated data file\n';
+        result_str = '// Auto generated data file\n'
         result_str += '// Copyright (c) 2018-2020, Shiqi Yu, all rights reserved.\n'
-        result_str += '#include "facedetectcnn.h" \n\n';
+        result_str += '#include "facedetectcnn.h" \n\n'
         # ConvBNReLU types
         conv_bn_relu = [self.model1.conv1, self.model1.conv2,
                         self.model2.conv1, self.model2.conv2,
@@ -211,7 +229,8 @@ class YuFaceDetectNet(nn.Module):
 
         # print(self.convert_conv_intstring(convs[0], 'f0'))
 
-        result_str += 'ConvInfoStruct param_pConvInfo[' + str(num_conv) + '] = { \n'
+        result_str += 'ConvInfoStruct param_pConvInfo[' + \
+            str(num_conv) + '] = { \n'
 
         for idx in range(num_conv):
             result_str += ('    {' +
@@ -229,9 +248,8 @@ class YuFaceDetectNet(nn.Module):
             result_str += '\n'
         result_str += '};\n'
 
-
         # write the content to a file
-        #print(result_str)
+        # print(result_str)
         with open(filename, 'w') as f:
             f.write(result_str)
             f.close()
