@@ -36,7 +36,6 @@ class CubDataset(Dataset):
         img = Image.open(img_path)
         if self.transform is not None:
             img = self.transform(img)
-        print(clss,"----", type(clss))
         return img, torch.Tensor([clss])
 
     def __len__(self):
@@ -44,12 +43,7 @@ class CubDataset(Dataset):
 
     @staticmethod
     def collect_fn(batch):
-        print(batch)
         imgs, labels = zip(*batch)
-        # print(type(imgs[0]), type(labels))
-        # print(len(imgs), labels)
-        print(imgs[0].shape, imgs[1].shape, imgs[2].shape)
-        print(labels[0].shape, labels[1].shape, labels[2].shape)
         return torch.stack(imgs, 0), torch.stack(labels, 0)
 
 

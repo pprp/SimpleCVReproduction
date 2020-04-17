@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 
 train_transforms = transforms.Compose(
     [
-        transforms.Resize((416,416)),
+        transforms.Resize((416, 416)),
         transforms.ToTensor(),
         transforms.Normalize((0.4819, 0.4976, 0.4321),
                              (0.1878, 0.1864, 0.1992))
@@ -38,15 +38,18 @@ if __name__ == "__main__":
         # train
         model.train()
         print("="*10, "Train %d EPOCH" % e, "="*10)
-        for img, label in train_dataloader:
+        for itr, (img, label) in enumerate(train_dataloader):
             output = model(img)
+
+            label = torch.squeeze(label).long()
+
             loss = criterion(output, label)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            # scheduler.step()
-            print("train loss:%.3f" % (loss.item()))
+            scheduler.step()
+            print("step: %03d | train loss:%.3f" % (itr, loss.item()))
 
         print("="*10, "Test %d EPOCH" % e, "="*10)
         n_loss = 0.
@@ -54,7 +57,7 @@ if __name__ == "__main__":
         n_right = 0
 
         model.eval()
-        for img, label in test_dataloader:
+        for iter, (img, label) in enumerate(test_dataloader):
             bs = img.shape[0]
             output = model(img)
 
@@ -72,5 +75,5 @@ if __name__ == "__main__":
             n_sample += bs
             n_loss += loss.item()
 
-        print("Test Loss: %.3f | Acc: %.3f" %
-              (n_loss/n_sample, n_right * 1./n_sample))
+        print("step: %03d | Test Loss: %.3f | Acc: %.3f" %
+              (iter, n_loss/n_sample, n_right * 1./n_sample))

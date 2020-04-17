@@ -13,6 +13,7 @@ class ResNet18(nn.Module):
     def forward(self, x):
         return self.model(x)
 
+
 class FineGrainedModel(nn.Module):
     def __init__(self):
         super(FineGrainedModel, self).__init__()
@@ -27,15 +28,26 @@ class FineGrainedModel(nn.Module):
             resnet18().layer4
         )
 
-        self.classifier = nn.Linear(2048 ** 2, 200)
+        self.classifier = nn.Linear(262144, 200)
 
     def forward(self, input):
         # x shape: bs, c, h, w
         x = self.base(input)
-        bs = x.size(0)
-        x = x.view(bs, 2048, x.size(2)**2)
-        x = torch.bmm(x, torch.transpose(x, 1, 2)) / 28 ** 2
-        x = x.view(bs, -1)
-        x = F.normalize(torch.sign(x) * torch.sqrt(torch.abs(x)+1e-10))
+        BS, D, H, W = x.shape
+        x = x.reshape(BS, D, H*W)
+        # print(x.shape, torch.transpose(x, 1, 2).shape)
+        x = torch.bmm(x, torch.transpose(x, 1, 2)) / (H*W)
+        x = x.view(BS, -1)
+        x = F.normalize(torch.sign(x) * torch.sqrt(torch.abs(x)+1e-5))
         x = self.classifier(x)
         return x
+
+
+if __name__ == "__main__":
+    input = torch.zeros((4, 3, 416, 416))
+
+    model = FineGrainedModel()
+
+    output = model(input)
+
+    print(output.shape)
