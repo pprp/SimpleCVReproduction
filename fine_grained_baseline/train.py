@@ -26,7 +26,7 @@ test_dataloader = DataLoader(
 model = FineGrainedModel()
 # model2 = ResNet18()
 
-optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
+optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
 criterion = torch.nn.CrossEntropyLoss()
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                             step_size=30,
@@ -70,6 +70,8 @@ if __name__ == "__main__":
             res = diff.sum(0).item()
             n_right += (bs - res)
             ######################
+
+            label = torch.squeeze(label).long()
 
             loss = criterion(output, label)
             n_sample += bs
