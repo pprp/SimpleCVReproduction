@@ -46,20 +46,22 @@ class KeyPointDatasets(Dataset):
                     x1, y1 = [(t.strip()) for t in line.split()]
                     # range from 0 to 1
                     x1, y1 = float(x1), float(y1)
-                    cx, cy = x1 * self.img_w, y1 * self.img_h
-                    heatmap = np.zeros((self.img_h, self.img_w))
-                    draw_umich_gaussian(heatmap, (cx, cy), 20)
-                    label.append([cx, cy])
 
-        return img, torch.tensor(heatmap), torch.tensor(label)
+                    cx, cy = x1 * self.img_w, y1 * self.img_h
+
+                    heatmap = np.zeros((self.img_h, self.img_w))
+
+                    draw_umich_gaussian(heatmap, (cx, cy), 30)
+
+        return img, torch.tensor(heatmap).unsqueeze(0)
 
     def __len__(self):
         return len(self.img_list)
 
     @staticmethod
     def collect_fn(batch):
-        imgs, hms, labels = zip(*batch)
-        return torch.stack(imgs, 0), torch.stack(hms, 0), torch.stack(labels, 0)
+        imgs, labels = zip(*batch)
+        return torch.stack(imgs, 0), torch.stack(labels, 0)
 
 
 if __name__ == "__main__":
@@ -71,8 +73,12 @@ if __name__ == "__main__":
     kp_datasets = KeyPointDatasets(
         root_dir="./data", transforms=trans)
 
-    data_loader = DataLoader(kp_datasets, num_workers=0, batch_size=4, shuffle=True,
-                             collate_fn=kp_datasets.collect_fn)
+    # for i in range(len(kp_datasets)):
+    # print(kp_datasets[i][0].shape, kp_datasets[i][1])
 
-    for data, hm, label in data_loader:
-        print(data.shape, hm.shape, label.shape)
+    data_loader = DataLoader(kp_datasets, num_workers=0, batch_size=4, shuffle=True,
+                             collate_fn=kp_datasets.collect_fn
+                             )
+
+    for data, label in data_loader:
+        print(data.shape, label.shape)

@@ -1,8 +1,45 @@
+import time
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import visdom
 
+
+class Visualizer(object):
+    def __init__(self, env='default', **kwargs):
+        self.vis = visdom.Visdom(env=env, **kwargs)
+        self.index = {}
+
+    def plot_many_stack(self, d):
+        '''
+        self.plot('loss',1.00)
+        '''
+        name = list(d.keys())
+        name_total = " ".join(name)
+        x = self.index.get(name_total, 0)
+        val = list(d.values())
+        if len(val) == 1:
+            y = np.array(val)
+        else:
+            y = np.array(val).reshape(-1, len(val))
+        # print(x)
+        self.vis.line(Y=y, X=np.ones(y.shape) * x,
+                      win=str(name_total),  # unicode
+                      opts=dict(legend=name,
+                                title=name_total),
+                      update=None if x == 0 else 'append'
+                      )
+        self.index[name_total] = x + 1
+
+    def plot_heatmap(self, tensor):
+        self.vis.images(
+            tensor,
+            nrow=8,
+            win=str('heatmap'),
+            opts={'title':'heatmap'}
+        )
 
 def compute_loss(preds, targets):
     ''' Modified focal loss. Exactly the same as CornerNet.
@@ -75,7 +112,7 @@ def draw_umich_gaussian(heatmap, center, radius, k=1):
 if __name__ == "__main__":
     # h w
     heatmap = np.zeros((360, 480))
-    draw_umich_gaussian(heatmap, (240, 180), 20)
+    draw_umich_gaussian(heatmap, (240, 180), 10)
 
     print(heatmap.shape)
 

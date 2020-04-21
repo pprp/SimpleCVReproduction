@@ -1,3 +1,4 @@
+import argparse
 import glob
 import os
 
@@ -11,10 +12,15 @@ from torchvision import transforms
 from datasets import KeyPointDatasets
 from model import KeyPointModel
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
+parser = argparse.ArgumentParser(description="model path")
+parser.add_argument('--model', type=str, default="")
+
+args = parser.parse_args()
+
+
 SIZE = 360, 480
-
-
-
 
 transforms_test = transforms.Compose([
     transforms.ToPILImage(),
@@ -26,14 +32,13 @@ transforms_test = transforms.Compose([
 
 datasets_test = KeyPointDatasets(root_dir="./data", transforms=transforms_test)
 
-
 dataloader_test = DataLoader(
     datasets_test, batch_size=4, shuffle=True, collate_fn=datasets_test.collect_fn)
 
 model = KeyPointModel()
 model.eval()
 
-model.load_state_dict(torch.load("weights/epoch_90_0.000.pt"))
+model.load_state_dict(torch.load(args.model))
 
 img_list = glob.glob(os.path.join("./data/images", "*.jpg"))
 
@@ -56,15 +61,18 @@ img_tensor_list = torch.stack(img_tensor_list, 0)
 print(img_tensor_list.shape)
 
 # part of it
-# img_tensor_list = img_tensor_list[-10:]
-# img_name_list = img_name_list[-10:]
+img_tensor_list = img_tensor_list[0:50]
+img_name_list = img_name_list[0:50]
+
+if torch.cuda.is_available():
+    model = model.cuda()
+    img_tensor_list = img_tensor_list.cuda()
 
 heatmap = model(img_tensor_list)
 
-print(heatmap[3].max(), heatmap[3].min())
-
-# apply sigmoid to heatmap
 # heatmap = torch.sigmoid(heatmap)
+
+heatmap = heatmap.squeeze().cpu()
 
 bs = img_tensor_list.shape[0]
 
@@ -72,12 +80,16 @@ def normalization(data):
     _range = np.max(data) - np.min(data)
     return (data - np.min(data)) / _range
 
-for i in range(bs):
-    # img_path = img_list[i]
-    # img = cv2.imread(img_path)
-    # img = cv2.resize(img, (480, 360))
 
-    hm = heatmap[i].detach().numpy()
+for i in range(bs):
+    img_path = img_list[i]
+    img = cv2.imread(img_path)
+
+    img = cv2.resize(img, (480, 360))
+
+    single_map = heatmap[i]
+
+    hm = single_map.detach().numpy()
 
     hm = np.maximum(hm, 0)
     hm = hm/np.max(hm)
@@ -87,12 +99,7 @@ for i in range(bs):
     hm = cv2.applyColorMap(hm, cv2.COLORMAP_JET)
     hm = cv2.resize(hm, (480, 360))
 
-    superimposed_img = hm #* 0.4 + img
-
-    # x, y = SIZE[0] * point_ratio[0], SIZE[1] * point_ratio[1]
-
-    # x = int(x.item())
-    # y = int(y.item())
+    superimposed_img = hm * 0.1 + img
 
     # cv2.circle(img, (x, y), 5, (0, 0, 255), thickness=-1)
 

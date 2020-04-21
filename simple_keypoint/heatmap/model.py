@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 
-#https://zhuanlan.zhihu.com/p/76378871
 class SematicEmbbedBlock(nn.Module):
     def __init__(self, high_in_plane,low_in_plane, out_plane):
         super(SematicEmbbedBlock,self).__init__()
@@ -21,30 +20,30 @@ class KeyPointModel(nn.Module):
     """
     def __init__(self):
         super(KeyPointModel, self).__init__()
-        self.conv1 = nn.Conv2d(3, 4, 3, 1, 1)
-        self.bn1 = nn.BatchNorm2d(4)
+        self.conv1 = nn.Conv2d(3, 6, 3, 1, 1)
+        self.bn1 = nn.BatchNorm2d(6)
         self.relu1 = nn.ReLU(True)
         self.maxpool1 = nn.MaxPool2d((2, 2))
 
-        self.conv2 = nn.Conv2d(4, 6, 3, 1, 1)
-        self.bn2 = nn.BatchNorm2d(6)
+        self.conv2 = nn.Conv2d(6, 12, 3, 1, 1)
+        self.bn2 = nn.BatchNorm2d(12)
         self.relu2 = nn.ReLU(True)
         self.maxpool2 = nn.MaxPool2d((2, 2))
 
-        self.conv3 = nn.Conv2d(6, 12, 3, 1, 1)
-        self.bn3 = nn.BatchNorm2d(12)
+        self.conv3 = nn.Conv2d(12, 20, 3, 1, 1)
+        self.bn3 = nn.BatchNorm2d(20)
         self.relu3 = nn.ReLU(True)
         self.maxpool3 = nn.MaxPool2d((2,2))
 
-        self.conv4 = nn.Conv2d(12, 20, 3, 1, 1)
-        self.bn4 =nn.BatchNorm2d(20)
+        self.conv4 = nn.Conv2d(20, 40, 3, 1, 1)
+        self.bn4 =nn.BatchNorm2d(40)
         self.relu4 = nn.ReLU(True)
 
-        self.seb1 = SematicEmbbedBlock(20, 12, 12)
-        self.seb2 = SematicEmbbedBlock(12, 6, 6)
-        self.seb3 = SematicEmbbedBlock(6, 4, 4)
+        self.seb1 = SematicEmbbedBlock(40, 20, 20)
+        self.seb2 = SematicEmbbedBlock(20, 12, 12)
+        self.seb3 = SematicEmbbedBlock(12, 6, 6)
 
-        self.heatmap = nn.Conv2d(4, 1, 1)
+        self.heatmap = nn.Conv2d(6, 1, 1)
 
     def forward(self, x):
         x1 = self.conv1(x)
@@ -74,7 +73,7 @@ class KeyPointModel(nn.Module):
         up3 = self.seb3(up2, x1)
 
         out = self.heatmap(up3)
-        return out.squeeze()
+        return out
 
 if __name__ == "__main__":
     model = KeyPointModel()
