@@ -21,6 +21,10 @@ def train(model, epoch, dataloader, optimizer, criterion):
 
         heatmap = model(image)
 
+        # print(heatmap.shape, label.shape, type(heatmap),  type(label))
+
+        label = label.float()
+
         loss = criterion(heatmap, label)
 
         optimizer.zero_grad()
@@ -70,7 +74,7 @@ if __name__ == "__main__":
     model = KeyPointModel()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
-    criterion = compute_loss
+    criterion = torch.nn.MSELoss()#compute_loss
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                                 step_size=30,
                                                 gamma=0.1)
@@ -81,4 +85,4 @@ if __name__ == "__main__":
 
         if epoch % 10 == 0:
             torch.save(model.state_dict(),
-                       "weights/epoch_%d_%.3f.pt" % (epoch, loss))
+                       "weights/epoch_%d_%.3f.pt" % (epoch, loss*10000))

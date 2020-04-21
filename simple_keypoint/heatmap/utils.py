@@ -75,7 +75,7 @@ def draw_umich_gaussian(heatmap, center, radius, k=1):
 if __name__ == "__main__":
     # h w
     heatmap = np.zeros((360, 480))
-    draw_umich_gaussian(heatmap, (240, 180), 10)
+    draw_umich_gaussian(heatmap, (240, 180), 20)
 
     print(heatmap.shape)
 

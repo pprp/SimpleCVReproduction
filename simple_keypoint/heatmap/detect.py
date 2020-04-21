@@ -30,7 +30,7 @@ dataloader_test = DataLoader(
 model = KeyPointModel()
 model.eval()
 
-model.load_state_dict(torch.load("weights/epoch_50_0.373.pt"))
+model.load_state_dict(torch.load("weights/epoch_90_0.000.pt"))
 
 img_list = glob.glob(os.path.join("./data/images", "*.jpg"))
 
@@ -53,8 +53,8 @@ img_tensor_list = torch.stack(img_tensor_list, 0)
 print(img_tensor_list.shape)
 
 # part of it
-# img_tensor_list = img_tensor_list[0:10]
-# img_name_list = img_name_list[0:10]
+# img_tensor_list = img_tensor_list[-10:]
+# img_name_list = img_name_list[-10:]
 
 heatmap = model(img_tensor_list)
 
@@ -68,22 +68,21 @@ def normalization(data):
     return (data - np.min(data)) / _range
 
 for i in range(bs):
-    img_path = img_list[i]
-    img = cv2.imread(img_path)
+    # img_path = img_list[i]
+    # img = cv2.imread(img_path)
+    # img = cv2.resize(img, (480, 360))
 
-    img = cv2.resize(img, (480, 360))
+    hm = heatmap[i].detach().numpy()
 
-    single_map = heatmap[i]
+    hm = np.maximum(hm, 0)
+    hm = hm/np.max(hm)
+    hm = normalization(hm)
 
-    hm = single_map.detach().numpy()
-    # hm = np.maximum(hm, 0)
-    # hm = hm/np.max(hm)
-    # hm = normalization(hm)
     hm = np.uint8(255 * hm)
     hm = cv2.applyColorMap(hm, cv2.COLORMAP_JET)
     hm = cv2.resize(hm, (480, 360))
 
-    superimposed_img = hm * 0.4 + img
+    superimposed_img = hm #* 0.4 + img
 
     # x, y = SIZE[0] * point_ratio[0], SIZE[1] * point_ratio[1]
 
