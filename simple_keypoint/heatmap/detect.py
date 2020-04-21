@@ -13,6 +13,9 @@ from model import KeyPointModel
 
 SIZE = 360, 480
 
+
+
+
 transforms_test = transforms.Compose([
     transforms.ToPILImage(),
     transforms.Resize((360, 480)),
@@ -58,10 +61,12 @@ print(img_tensor_list.shape)
 
 heatmap = model(img_tensor_list)
 
+print(heatmap[3].max(), heatmap[3].min())
+
+# apply sigmoid to heatmap
 # heatmap = torch.sigmoid(heatmap)
 
 bs = img_tensor_list.shape[0]
-
 
 def normalization(data):
     _range = np.max(data) - np.min(data)

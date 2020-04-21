@@ -14,25 +14,26 @@ IMG_SIZE = 360, 480
 
 vis = Visualizer(env="keypoint")
 
-def train(model, epoch, dataloader, optimizer, criterion):
+
+def train(model, epoch, dataloader, optimizer, criterion, scheduler):
     model.train()
-    for itr, (image, label) in enumerate(dataloader):
+    for itr, (image, hm, label) in enumerate(dataloader):
         bs = image.shape[0]
 
         heatmap = model(image)
 
-        # print(heatmap.shape, label.shape, type(heatmap),  type(label))
+        hm = hm.float()
 
-        label = label.float()
-
-        loss = criterion(heatmap, label)
+        loss = criterion(heatmap, hm)
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        scheduler.step()
 
         if itr % 2 == 0:
-            print("epoch:%2d|step:%04d|loss:%.6f" % (epoch, itr, loss.item()/bs))
+            print("epoch:%2d|step:%04d|loss:%.6f" %
+                  (epoch, itr, loss.item()/bs))
             if epoch > 20:
                 vis.plot_many_stack({"train_loss": loss.item()/bs})
 
@@ -41,9 +42,9 @@ def test(model, epoch, dataloader, criterion):
     model.eval()
     sum_loss = 0.
     n_sample = 0
-    for itr, (image, label) in enumerate(dataloader):
+    for itr, (image, hm,  label) in enumerate(dataloader):
         output = model(image)
-        loss = criterion(output, label)
+        loss = criterion(output, hm)
 
         sum_loss += loss.item()
         n_sample += image.shape[0]
@@ -74,13 +75,13 @@ if __name__ == "__main__":
     model = KeyPointModel()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
-    criterion = torch.nn.MSELoss()#compute_loss
+    criterion = torch.nn.MSELoss()  # compute_loss
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                                 step_size=30,
                                                 gamma=0.1)
 
     for epoch in range(total_epoch):
-        train(model, epoch, data_loader, optimizer, criterion)
+        train(model, epoch, data_loader, optimizer, criterion, scheduler)
         loss = test(model, epoch, data_loader, criterion)
 
         if epoch % 10 == 0:
