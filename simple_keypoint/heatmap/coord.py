@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 
 input_height, input_width = 360, 480
 
+"""
+https://fairyonice.github.io/Achieving-top-5-in-Kaggles-facial-keypoints-detection-using-FCN.html#Model-performance-on-example-training-images
+"""
 
 def get_ave_xy(hmi, n_points=1, thresh=0):
     '''
@@ -27,7 +30,8 @@ def get_ave_xy(hmi, n_points=1, thresh=0):
         ind_hmi = np.array([range(input_height)]*input_width).T
         i0 = np.sum(ind_hmi * hmi)/hsum
     else:
-        ind = hmi.argsort(axis=None)[-n_points:]  # pick the largest n_points
+        ind = np.argsort(hmi,axis=None)[-n_points:]  
+        # pick the largest n_points
         topind = np.unravel_index(ind, hmi.shape)
         index = np.unravel_index(hmi.argmax(), hmi.shape)
         i0, i1, hsum = 0, 0, 0
@@ -47,9 +51,7 @@ def get_ave_xy(hmi, n_points=1, thresh=0):
 def transfer_xy_coord(hm, n_points=64, thresh=0.2):
     '''
     hm : np.array of shape (height,width, n-heatmap)
-
     transfer heatmap to (x,y) coordinates
-
     the output contains np.array (Nlandmark * 2,) 
     * 2 for x and y coordinates, containing the landmark location.
     '''
@@ -63,10 +65,9 @@ def transfer_xy_coord(hm, n_points=64, thresh=0.2):
     return(est_xy)  # (Nlandmark * 2,)
 
 
-def transfer_target(y_pred, thresh=0, n_points=64):
+def transfer_target(y_pred, thresh=0, n_points=1):
     '''
     y_pred : np.array of the shape (N, height, width, Nlandmark)
-
     output : (N, Nlandmark * 2)
     '''
     y_pred_xy = []
@@ -74,47 +75,3 @@ def transfer_target(y_pred, thresh=0, n_points=64):
         hm = y_pred[i]
         y_pred_xy.append(transfer_xy_coord(hm, n_points, thresh))
     return(np.array(y_pred_xy))
-
-
-def getRMSE(y_pred_xy, y_train_xy, pick_not_NA):
-    res = y_pred_xy[pick_not_NA] - y_train_xy[pick_not_NA]
-    RMSE = np.sqrt(np.mean(res**2))
-    return(RMSE)
-
-
-nimage = 500
-
-rmelabels = ["(x,y) from est heatmap  VS (x,y) from true heatmap",
-             "(x,y) from est heatmap  VS true (x,y)             ",
-             "(x,y) from true heatmap VS true (x,y)             "]
-n_points_width = range(1, 10)
-res = []
-n_points_final, min_rmse = -1, np.Inf
-for nw in n_points_width + [0]:
-    n_points = nw * nw
-    y_pred_xy = transfer_target(y_pred[:nimage], 0, n_points)
-    y_train_xy = transfer_target(y_tra[:nimage], 0, n_points)
-    pick_not_NA = (y_train_xy != -1)
-
-    ts = [getRMSE(y_pred_xy, y_train_xy, pick_not_NA)]
-    ts.append(getRMSE(y_pred_xy, y_train0.values[:nimage], pick_not_NA))
-    ts.append(getRMSE(y_train_xy, y_train0.values[:nimage], pick_not_NA))
-
-    res.append(ts)
-
-    print("n_points to evaluate (x,y) coordinates = {}".format(n_points))
-    print(" RMSE")
-    for r, lab in zip(ts, rmelabels):
-        print("  {}:{:5.3f}".format(lab, r))
-
-    if min_rmse > ts[2]:
-        min_rmse = ts[2]
-        n_points_final = n_points
-
-res = np.array(res)
-for i, lab in enumerate(rmelabels):
-    plt.plot(n_points_width + [input_width], res[:, i], label=lab)
-plt.legend()
-plt.ylabel("RMSE")
-plt.xlabel("n_points")
-plt.show()

@@ -11,6 +11,7 @@ from torchvision import transforms
 
 from datasets import KeyPointDatasets
 from model import KeyPointModel
+from coord import transfer_target
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
@@ -71,10 +72,18 @@ if torch.cuda.is_available():
 heatmap = model(img_tensor_list)
 
 # heatmap = torch.sigmoid(heatmap)
-
 heatmap = heatmap.squeeze().cpu()
 
+pred = heatmap.unsqueeze(3).detach().numpy()
+
+landmark_coord = transfer_target(pred, thresh=0.1, n_points=1)
+
+print(landmark_coord.shape)
+
 bs = img_tensor_list.shape[0]
+
+# for i in range(bs):
+#     print(landmark_coord[i])
 
 def normalization(data):
     _range = np.max(data) - np.min(data)
@@ -99,10 +108,14 @@ for i in range(bs):
     hm = cv2.applyColorMap(hm, cv2.COLORMAP_JET)
     hm = cv2.resize(hm, (480, 360))
 
-    superimposed_img = hm * 0.1 + img
+    superimposed_img = hm #* 0.1 + img
 
-    # cv2.circle(img, (x, y), 5, (0, 0, 255), thickness=-1)
+    coord_x, coord_y = landmark_coord[i]
 
-    print("./output/%s_out.jpg" % (img_name_list[i]))
+    cv2.circle(superimposed_img, (int(coord_x), int(coord_y)), 2, (0, 0, 0), thickness=-1)
+
+    # print("./output/%s_out.jpg" % (img_name_list[i]))
 
     cv2.imwrite("./output/%s_out.jpg" % (img_name_list[i]), superimposed_img)
+
+print("done")

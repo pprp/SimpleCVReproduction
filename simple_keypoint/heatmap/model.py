@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
 
+
 class SematicEmbbedBlock(nn.Module):
-    def __init__(self, high_in_plane,low_in_plane, out_plane):
-        super(SematicEmbbedBlock,self).__init__()
+    def __init__(self, high_in_plane, low_in_plane, out_plane):
+        super(SematicEmbbedBlock, self).__init__()
         self.conv3x3 = nn.Conv2d(high_in_plane, out_plane, 3, 1, 1)
         self.upsample = nn.UpsamplingBilinear2d(scale_factor=2)
 
@@ -14,10 +15,12 @@ class SematicEmbbedBlock(nn.Module):
         low_x = self.conv1x1(low_x)
         return high_x * low_x
 
+
 class KeyPointModel(nn.Module):
     """
     downsample ratio=2
     """
+
     def __init__(self):
         super(KeyPointModel, self).__init__()
         self.conv1 = nn.Conv2d(3, 6, 3, 1, 1)
@@ -33,10 +36,10 @@ class KeyPointModel(nn.Module):
         self.conv3 = nn.Conv2d(12, 20, 3, 1, 1)
         self.bn3 = nn.BatchNorm2d(20)
         self.relu3 = nn.ReLU(True)
-        self.maxpool3 = nn.MaxPool2d((2,2))
+        self.maxpool3 = nn.MaxPool2d((2, 2))
 
         self.conv4 = nn.Conv2d(20, 40, 3, 1, 1)
-        self.bn4 =nn.BatchNorm2d(40)
+        self.bn4 = nn.BatchNorm2d(40)
         self.relu4 = nn.ReLU(True)
 
         self.seb1 = SematicEmbbedBlock(40, 20, 20)
@@ -75,6 +78,7 @@ class KeyPointModel(nn.Module):
         out = self.heatmap(up3)
         return out
 
+
 if __name__ == "__main__":
     model = KeyPointModel()
 
@@ -83,4 +87,3 @@ if __name__ == "__main__":
     output_tensor = model(input_tensor)
 
     print(output_tensor.shape)
-
