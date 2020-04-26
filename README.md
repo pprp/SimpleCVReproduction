@@ -20,6 +20,7 @@
   - SSH Context Module
   - Some other usefull tools such as concate feature map、flatten feature map
   - WeightedFeatureFusion:EfficientDet中的FPN用到的fuse方式
+  - StripPooling：CVPR2020中核心代码StripPooling
 - captcha-CTC-loss CTC loss+ LSTM 
 - deep_sort-master 官方实现，通过该库理解了标准的输入输出格式。
 - easy-receptive-fields-pytorch-master: 用于计算pytorch常用CNN的感受野，非常方便
