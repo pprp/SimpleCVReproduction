@@ -1,0 +1,14 @@
+Namespace(accumulate=2, adam=False, arc='default', batch_size=32, bucket='', cache_images=False, cfg='cfg/dense-v3-tiny-spp.cfg', data='data/oxfordhand.data', device='', epochs=273, evolve=False, img_size=416, img_weights=False, multi_scale=False, name='', nosave=False, notest=False, prebias=False, prune=0, rect=False, resume=False, s=0.001, sr=False, transfer=False, var=None, weights='')
+Using CUDA device0 _CudaDeviceProperties(name='Tesla P100-PCIE-16GB', total_memory=16276MB)
+           device1 _CudaDeviceProperties(name='Tesla P100-PCIE-16GB', total_memory=16276MB)
+
+muti-gpus sparse
+normal sparse training 
+Traceback (most recent call last):
+  File "train.py", line 479, in <module>
+    train()  # train normally
+  File "train.py", line 228, in train
+    cache_images=False if opt.prebias else opt.cache_images)
+  File "/home/dongpeijie/template/YOLOv3-complete-pruning-master/utils/datasets.py", line 261, in __init__
+    with open(path, 'r') as f:
+FileNotFoundError: [Errno 2] No such file or directory: 'data/train.txt'
