@@ -1,11 +1,11 @@
 import argparse
-import test  # import test.py to get mAP after each epoch
 
-import matplotlib
 import torch.distributed as dist
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
+# from torch.utils.tensorboard import SummaryWriter
 
+import test  # import test.py to get mAP after each epoch
 from models import *
 from utils.datasets import *
 from utils.utils import *
@@ -14,6 +14,7 @@ mixed_precision = True
 try:  # Mixed precision training https://github.com/NVIDIA/apex
     from apex import amp
 except:
+    print('Apex recommended for faster mixed precision training: https://github.com/NVIDIA/apex')
     mixed_precision = False  # not installed
 
 wdir = 'weights' + os.sep  # weights dir
@@ -21,17 +22,13 @@ last = wdir + 'last.pt'
 best = wdir + 'best.pt'
 results_file = 'results.txt'
 
-# os.environ["CUDA_VISIBLE_DEVICES"] = '0'
-matplotlib.use('Agg')
-
 # Hyperparameters https://github.com/ultralytics/yolov3/issues/310
-
 hyp = {'giou': 3.54,  # giou loss gain
        'cls': 37.4,  # cls loss gain
        'cls_pw': 1.0,  # cls BCELoss positive_weight
        'obj': 64.3,  # obj loss gain (*=img_size/320 if img_size != 320)
        'obj_pw': 1.0,  # obj BCELoss positive_weight
-       'iou_t': 0.225,  # iou training threshold
+       'iou_t': 0.20,  # iou training threshold
        'lr0': 0.01,  # initial learning rate (SGD=5E-3, Adam=5E-4)
        'lrf': 0.0005,  # final learning rate (with cos scheduler)
        'momentum': 0.937,  # SGD momentum
@@ -45,29 +42,6 @@ hyp = {'giou': 3.54,  # giou loss gain
        'scale': 0.05 * 0,  # image scale (+/- gain)
        'shear': 0.641 * 0}  # image shear (+/- deg)
 
-# giou       cls    cls_pw       obj    obj_pw     iou_t       lr0       lrf  momentumweight_decay  fl_gamma     hsv_h     hsv_s     hsv_v   degrees translate     scale     shear
-# 3.91  4.32e-18      1.26      86.7     0.799     0.148   0.00884    0.0005     0.967  0.000629         0    0.0151     0.349     0.353         0         0         0         0
-
-
-# hyp = {'giou': 3.91,  # giou loss gain
-#        'cls': 37.4,  # cls loss gain
-#        'cls_pw': 1.26,  # cls BCELoss positive_weight
-#        'obj': 86.7,  # obj loss gain (*=img_size/320 if img_size != 320)
-#        'obj_pw': 0.799,  # obj BCELoss positive_weight
-#        'iou_t': 0.148,  # iou training threshold
-#        'lr0': 0.00884,  # initial learning rate (SGD=5E-3, Adam=5E-4)
-#        'lrf': 0.0005,  # final learning rate (with cos scheduler)
-#        'momentum': 0.967,  # SGD momentum
-#        'weight_decay': 0.000629,  # optimizer weight decay
-#        'fl_gamma': 0.0,  # focal loss gamma (efficientDet default is gamma=1.5)
-#        'hsv_h': 0.0151,  # image HSV-Hue augmentation (fraction)
-#        'hsv_s': 0.349,  # image HSV-Saturation augmentation (fraction)
-#        'hsv_v': 0.353,  # image HSV-Value augmentation (fraction)
-#        'degrees': 1.98 * 0,  # image rotation (+/- deg)
-#        'translate': 0.05 * 0,  # image translation (+/- fraction)
-#        'scale': 0.05 * 0,  # image scale (+/- gain)
-#        'shear': 0.641 * 0}  # image shear (+/- deg)
-
 # Overwrite hyp with hyp*.txt (optional)
 f = glob.glob('hyp*.txt')
 if f:
@@ -79,27 +53,29 @@ if f:
 if hyp['fl_gamma']:
     print('Using FocalLoss(gamma=%g)' % hyp['fl_gamma'])
 
-
 def train():
     cfg = opt.cfg
     data = opt.data
-    img_size, img_size_test = opt.img_size if len(opt.img_size) == 2 else opt.img_size * 2  # train, test sizes
     epochs = opt.epochs  # 500200 batches at bs 64, 117263 images = 273 epochs
     batch_size = opt.batch_size
-    accumulate = opt.accumulate  # effective bs = batch_size * accumulate = 16 * 4 = 64
+    accumulate = max(round(64 / batch_size), 1)  # accumulate n times before optimizer update (bs 64)
     weights = opt.weights  # initial training weights
+    imgsz_min, imgsz_max, imgsz_test = opt.img_size  # img sizes (min, max, test)
 
-    # Initialize
-    gs = 32  # (pixels) grid size
-    assert math.fmod(img_size, gs) == 0, '--img-size must be a %g-multiple' % gs
-    init_seeds()
+    # Image Sizes
+    gs = 64  # (pixels) grid size
+    assert math.fmod(imgsz_min, gs) == 0, '--img-size %g must be a %g-multiple' % (imgsz_min, gs)
+    opt.multi_scale |= imgsz_min != imgsz_max  # multi if different (min, max)
     if opt.multi_scale:
-        img_sz_min = round(img_size / gs / 1.5) + 1
-        img_sz_max = round(img_size / gs * 1.5)
-        img_size = img_sz_max * gs  # initiate with maximum multi_scale size
-        print('Using multi-scale %g - %g' % (img_sz_min * gs, img_size))
+        if imgsz_min == imgsz_max:
+            imgsz_min //= 1.5
+            imgsz_max //= 0.667
+        grid_min, grid_max = imgsz_min // gs, imgsz_max // gs
+        imgsz_min, imgsz_max = grid_min * gs, grid_max * gs
+    img_size = imgsz_max  # initialize with max size
 
     # Configure run
+    init_seeds()
     data_dict = parse_data_cfg(data)
     train_path = data_dict['train']
     test_path = data_dict['valid']
@@ -170,11 +146,11 @@ def train():
     if mixed_precision:
         model, optimizer = amp.initialize(model, optimizer, opt_level='O1', verbosity=0)
 
-    # Scheduler https://github.com/ultralytics/yolov3/issues/238
-    lf = lambda x: (((1 + math.cos(
-        x * math.pi / epochs)) / 2) ** 1.0) * 0.95 + 0.05  # cosine https://arxiv.org/pdf/1812.01187.pdf
-    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf, last_epoch=start_epoch - 1)
-    # scheduler = lr_scheduler.MultiStepLR(optimizer, [round(epochs * x) for x in [0.8, 0.9]], 0.1, start_epoch - 1)
+    # Scheduler https://arxiv.org/pdf/1812.01187.pdf
+    lf = lambda x: (((1 + math.cos(x * math.pi / epochs)) / 2) ** 1.0) * 0.95 + 0.05  # cosine
+    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)
+    scheduler.last_epoch=start_epoch - 1   # see link below
+    # https://discuss.pytorch.org/t/a-problem-occured-when-resuming-an-optimizer/28822
 
     # Plot lr schedule
     # y = []
@@ -193,7 +169,7 @@ def train():
                                 init_method='tcp://127.0.0.1:9999',  # distributed training init method
                                 world_size=1,  # number of nodes for distributed training
                                 rank=0)  # distributed training node rank
-        model = torch.nn.parallel.DistributedDataParallel(model)#, find_unused_parameters=True)
+        model = torch.nn.parallel.DistributedDataParallel(model)
         model.yolo_layers = model.module.yolo_layers  # move yolo layer indices to top level
 
     # Dataset
@@ -215,7 +191,7 @@ def train():
                                              collate_fn=dataset.collate_fn)
 
     # Testloader
-    testloader = torch.utils.data.DataLoader(LoadImagesAndLabels(test_path, img_size_test, batch_size,
+    testloader = torch.utils.data.DataLoader(LoadImagesAndLabels(test_path, imgsz_test, batch_size,
                                                                  hyp=hyp,
                                                                  rect=True,
                                                                  cache_images=opt.cache_images,
@@ -241,6 +217,7 @@ def train():
     # torch.autograd.set_detect_anomaly(True)
     results = (0, 0, 0, 0, 0, 0, 0)  # 'P', 'R', 'mAP', 'F1', 'val GIoU', 'val Objectness', 'val Classification'
     t0 = time.time()
+    print('Image sizes %g - %g train, %g test' % (imgsz_min, imgsz_max, imgsz_test))
     print('Using %g dataloader workers' % nw)
     print('Starting training for %g epochs...' % epochs)
     for epoch in range(start_epoch, epochs):  # epoch ------------------------------------------------------------------
@@ -275,7 +252,7 @@ def train():
             # Multi-Scale training
             if opt.multi_scale:
                 if ni / accumulate % 1 == 0:  #  adjust img_size (67% - 150%) every 1 batch
-                    img_size = random.randrange(img_sz_min, img_sz_max + 1) * gs
+                    img_size = random.randrange(grid_min, grid_max + 1) * gs
                 sf = img_size / max(imgs.shape[2:])  # scale factor
                 if sf != 1:
                     ns = [math.ceil(x * sf / gs) * gs for x in imgs.shape[2:]]  # new shape (stretched to 32-multiple)
@@ -333,10 +310,9 @@ def train():
             results, maps = test.test(cfg,
                                       data,
                                       batch_size=batch_size,
-                                      img_size=img_size_test,
+                                      img_size=imgsz_test,
                                       model=ema.ema,
                                       save_json=final_epoch and is_coco,
-                                      iou_thres=0.01,
                                       single_cls=opt.single_cls,
                                       dataloader=testloader)
 
@@ -410,12 +386,11 @@ def train():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=300)  # 500200 batches at bs 16, 117263 COCO images = 273 epochs
-    parser.add_argument('--batch-size', type=int, default=2)  # effective bs = batch_size * accumulate = 16 * 4 = 64
-    parser.add_argument('--accumulate', type=int, default=32, help='batches to accumulate before optimizing')
-    parser.add_argument('--cfg', type=str, default='cfg/yolov3-tiny.cfg', help='*.cfg path')
-    parser.add_argument('--data', type=str, default='data/dataset4.data', help='*.data path')
-    parser.add_argument('--multi-scale', action='store_true', help='adjust (67% - 150%) img_size every 10 batches')
-    parser.add_argument('--img-size', nargs='+', type=int, default=[416], help='train and test image-sizes')
+    parser.add_argument('--batch-size', type=int, default=16)  # effective bs = batch_size * accumulate = 16 * 4 = 64
+    parser.add_argument('--cfg', type=str, default='cfg/yolov3-spp.cfg', help='*.cfg path')
+    parser.add_argument('--data', type=str, default='data/coco2017.data', help='*.data path')
+    parser.add_argument('--multi-scale', action='store_true', help='adjust (67%% - 150%%) img_size every 10 batches')
+    parser.add_argument('--img-size', nargs='+', type=int, default=[320, 640], help='[min_train, max-train, test] img sizes')
     parser.add_argument('--rect', action='store_true', help='rectangular training')
     parser.add_argument('--resume', action='store_true', help='resume training from last.pt')
     parser.add_argument('--nosave', action='store_true', help='only save final checkpoint')
@@ -423,14 +398,16 @@ if __name__ == '__main__':
     parser.add_argument('--evolve', action='store_true', help='evolve hyperparameters')
     parser.add_argument('--bucket', type=str, default='', help='gsutil bucket')
     parser.add_argument('--cache-images', action='store_true', help='cache images for faster training')
-    parser.add_argument('--weights', type=str, default='', help='initial weights path')
+    parser.add_argument('--weights', type=str, default='weights/yolov3-spp-ultralytics.pt', help='initial weights path')
     parser.add_argument('--name', default='', help='renames results.txt to results_name.txt if supplied')
     parser.add_argument('--device', default='', help='device id (i.e. 0 or 0,1 or cpu)')
     parser.add_argument('--adam', action='store_true', help='use adam optimizer')
     parser.add_argument('--single-cls', action='store_true', help='train as single-class dataset')
     opt = parser.parse_args()
     opt.weights = last if opt.resume else opt.weights
+    check_git_status()
     print(opt)
+    opt.img_size.extend([opt.img_size[-1]] * (3 - len(opt.img_size)))  # extend to 3 sizes (min, max, test)
     device = torch_utils.select_device(opt.device, apex=mixed_precision, batch_size=opt.batch_size)
     if device.type == 'cpu':
         mixed_precision = False
@@ -440,15 +417,8 @@ if __name__ == '__main__':
 
     tb_writer = None
     if not opt.evolve:  # Train normally
-        try:
-            # Start Tensorboard with "tensorboard --logdir=runs", view at http://localhost:6006/
-            from torch.utils.tensorboard import SummaryWriter
-
-            tb_writer = SummaryWriter()
-            print("Run 'tensorboard --logdir=runs' to view tensorboard at http://localhost:6006/")
-        except:
-            pass
-
+        print('Start Tensorboard with "tensorboard --logdir=runs", view at http://localhost:6006/')
+        # tb_writer = SummaryWriter(comment=opt.name)
         train()  # train normally
 
     else:  # Evolve hyperparameters (optional)

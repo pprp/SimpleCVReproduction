@@ -26,12 +26,7 @@ The https://github.com/ultralytics/yolov3 repo contains inference and training c
 
 # Requirements
 
-Python 3.7 or later with all of the `pip install -U -r requirements.txt` packages including:
-- `torch >= 1.4`
-- `opencv-python`
-- `Pillow`
-
-All dependencies are included in the associated docker images. Docker requirements are: 
+Python 3.7 or later with all `pip install -U -r requirements.txt` packages including `torch >= 1.5`. Docker images come with all dependencies preinstalled. Docker requirements are: 
 - Nvidia Driver >= 440.44
 - Docker Engine - CE >= 19.03
 
@@ -140,8 +135,8 @@ Using CUDA device0 _CudaDeviceProperties(name='Tesla V100-SXM2-16GB', total_memo
                Class    Images   Targets         P         R   mAP@0.5        F1: 100%|█████████| 313/313 [03:00<00:00,  1.74it/s]
                  all     5e+03  3.51e+04     0.375     0.743      0.64     0.492
 
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.455
- Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.646
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.456
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.647
  Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.496
  Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.263
  Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.501
@@ -171,7 +166,7 @@ $ python3 train.py --weights '' --cfg yolov3-spp.cfg --epochs 300 --batch 16 --a
 To access an up-to-date working environment (with all dependencies including CUDA/CUDNN, Python and PyTorch preinstalled), consider a:
 
 - **GCP** Deep Learning VM with $300 free credit offer: See our [GCP Quickstart Guide](https://github.com/ultralytics/yolov3/wiki/GCP-Quickstart) 
-- **Google Colab Notebook** with 12 hours of free GPU time: [Google Colab Notebook](https://colab.research.google.com/drive/1G8T-VFxQkjDe4idzN8F-hbIBqkkkQnxw)
+- **Google Colab Notebook** with 12 hours of free GPU time: [Google Colab Notebook](https://colab.sandbox.google.com/github/ultralytics/yolov3/blob/master/tutorial.ipynb)
 - **Docker Image** from https://hub.docker.com/r/ultralytics/yolov3. See [Docker Quickstart Guide](https://github.com/ultralytics/yolov3/wiki/Docker-Quickstart) 
 # Citation
 

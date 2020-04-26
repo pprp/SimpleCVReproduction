@@ -45,7 +45,8 @@ def detect(save_img=False):
         model.fuse()
         img = torch.zeros((1, 3) + img_size)  # (1, 3, 320, 192)
         f = opt.weights.replace(opt.weights.split('.')[-1], 'onnx')  # *.onnx filename
-        torch.onnx.export(model, img, f, verbose=False, opset_version=11)
+        torch.onnx.export(model, img, f, verbose=False, opset_version=11,
+                          input_names=['images'], output_names=['classes', 'boxes'])
 
         # Validate exported model
         import onnx
@@ -75,7 +76,8 @@ def detect(save_img=False):
 
     # Run inference
     t0 = time.time()
-    _ = model(torch.zeros((1, 3, img_size, img_size), device=device)) if device.type != 'cpu' else None  # run once
+    img = torch.zeros((1, 3, img_size, img_size), device=device)  # init img
+    _ = model(img.half() if half else img.float()) if device.type != 'cpu' else None  # run once
     for path, img, im0s, vid_cap in dataset:
         img = torch.from_numpy(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
@@ -156,7 +158,7 @@ def detect(save_img=False):
     if save_txt or save_img:
         print('Results saved to %s' % os.getcwd() + os.sep + out)
         if platform == 'darwin':  # MacOS
-            os.system('open ' + out + ' ' + save_path)
+            os.system('open ' + save_path)
 
     print('Done. (%.3fs)' % (time.time() - t0))
 

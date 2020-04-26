@@ -14,7 +14,7 @@ def test(cfg,
          batch_size=16,
          img_size=416,
          conf_thres=0.001,
-         iou_thres=0.5,  # for nms
+         iou_thres=0.6,  # for nms
          save_json=False,
          single_cls=False,
          augment=False,
@@ -112,7 +112,7 @@ def test(cfg,
 
             if pred is None:
                 if nl:
-                    stats.append((torch.zeros(0, niou, dtype=torch.uint8), torch.Tensor(), torch.Tensor(), tcls))
+                    stats.append((torch.zeros(0, niou, dtype=torch.bool), torch.Tensor(), torch.Tensor(), tcls))
                 continue
 
             # Append to text file
@@ -229,7 +229,7 @@ if __name__ == '__main__':
     parser.add_argument('--data', type=str, default='data/coco2014.data', help='*.data path')
     parser.add_argument('--weights', type=str, default='weights/yolov3-spp-ultralytics.pt', help='weights path')
     parser.add_argument('--batch-size', type=int, default=16, help='size of each image batch')
-    parser.add_argument('--img-size', type=int, default=416, help='inference size (pixels)')
+    parser.add_argument('--img-size', type=int, default=512, help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float, default=0.001, help='object confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.6, help='IOU threshold for NMS')
     parser.add_argument('--save-json', action='store_true', help='save a cocoapi-compatible JSON results file')

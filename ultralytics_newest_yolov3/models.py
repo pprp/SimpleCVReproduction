@@ -21,20 +21,20 @@ def create_modules(module_defs, img_size):
         if mdef['type'] == 'convolutional':
             bn = mdef['batch_normalize']
             filters = mdef['filters']
-            size = mdef['size']
+            k = mdef['size']  # kernel size
             stride = mdef['stride'] if 'stride' in mdef else (mdef['stride_y'], mdef['stride_x'])
-            if isinstance(size, int):  # single-size conv
+            if isinstance(k, int):  # single-size conv
                 modules.add_module('Conv2d', nn.Conv2d(in_channels=output_filters[-1],
                                                        out_channels=filters,
-                                                       kernel_size=size,
+                                                       kernel_size=k,
                                                        stride=stride,
-                                                       padding=(size - 1) // 2 if mdef['pad'] else 0,
+                                                       padding=k // 2 if mdef['pad'] else 0,
                                                        groups=mdef['groups'] if 'groups' in mdef else 1,
                                                        bias=not bn))
             else:  # multiple-size conv
                 modules.add_module('MixConv2d', MixConv2d(in_ch=output_filters[-1],
                                                           out_ch=filters,
-                                                          k=size,
+                                                          k=k,
                                                           stride=stride,
                                                           bias=not bn))
 
@@ -58,10 +58,10 @@ def create_modules(module_defs, img_size):
                 modules.running_var = torch.tensor([0.0524, 0.0502, 0.0506])
 
         elif mdef['type'] == 'maxpool':
-            size = mdef['size']
+            k = mdef['size']  # kernel size
             stride = mdef['stride']
-            maxpool = nn.MaxPool2d(kernel_size=size, stride=stride, padding=(size - 1) // 2)
-            if size == 2 and stride == 1:  # yolov3-tiny
+            maxpool = nn.MaxPool2d(kernel_size=k, stride=stride, padding=(k - 1) // 2)
+            if k == 2 and stride == 1:  # yolov3-tiny
                 modules.add_module('ZeroPad2d', nn.ZeroPad2d((0, 1, 0, 1)))
                 modules.add_module('MaxPool2d', maxpool)
             else:
@@ -102,14 +102,11 @@ def create_modules(module_defs, img_size):
 
             # Initialize preceding Conv2d() bias (https://arxiv.org/pdf/1708.02002.pdf section 3.3)
             try:
-                bo = -4.5  #  obj bias
-                bc = math.log(1 / (modules.nc - 0.99))  # cls bias: class probability is sigmoid(p) = 1/nc
-
                 j = layers[yolo_index] if 'from' in mdef else -1
                 bias_ = module_list[j][0].bias  # shape(255,)
                 bias = bias_[:modules.no * modules.na].view(modules.na, -1)  # shape(3,85)
-                bias[:, 4] += bo - bias[:, 4].mean()  # obj
-                bias[:, 5:] += bc - bias[:, 5:].mean()  # cls, view with utils.print_model_biases(model)
+                bias[:, 4] += -4.5  # obj
+                bias[:, 5:] += math.log(0.6 / (modules.nc - 0.99))  # cls (sigmoid(p) = 1/nc)
                 module_list[j][0].bias = torch.nn.Parameter(bias_, requires_grad=bias_.requires_grad)
             except:
                 print('WARNING: smart bias initialization failure.')
@@ -138,7 +135,7 @@ class YOLOLayer(nn.Module):
         self.na = len(anchors)  # number of anchors (3)
         self.nc = nc  # number of classes (80)
         self.no = nc + 5  # number of outputs (85)
-        self.nx, self.ny = 0, 0  # initialize number of x, y gridpoints
+        self.nx, self.ny, self.ng = 0, 0, 0  # initialize number of x, y gridpoints
         self.anchor_vec = self.anchors / self.stride
         self.anchor_wh = self.anchor_vec.view(1, self.na, 1, 1, 2)
 
@@ -148,7 +145,7 @@ class YOLOLayer(nn.Module):
 
     def create_grids(self, ng=(13, 13), device='cpu'):
         self.nx, self.ny = ng  # x and y grid size
-        self.ng = torch.Tensor(ng).to(device)
+        self.ng = torch.tensor(ng)
 
         # build xy offsets
         if not self.training:
@@ -159,7 +156,7 @@ class YOLOLayer(nn.Module):
             self.anchor_vec = self.anchor_vec.to(device)
             self.anchor_wh = self.anchor_wh.to(device)
 
-    def forward(self, p, img_size, out):
+    def forward(self, p, out):
         ASFF = False  # https://arxiv.org/abs/1911.09516
         if ASFF:
             i, n = self.index, self.nl  # index in layers, number of layers
@@ -230,7 +227,7 @@ class Darknet(nn.Module):
         # Darknet Header https://github.com/AlexeyAB/darknet/issues/2914#issuecomment-496675346
         self.version = np.array([0, 2, 5], dtype=np.int32)  # (int32) version info: major, minor, revision
         self.seen = np.array([0], dtype=np.int64)  # (int64) number of images seen during training
-        self.info(verbose)  # print model description
+        self.info(verbose) if not ONNX_EXPORT else None  # print model description
 
     def forward(self, x, augment=False, verbose=False):
 
@@ -287,7 +284,7 @@ class Darknet(nn.Module):
                     str = ' >> ' + ' + '.join(['layer %g %s' % x for x in zip(l, sh)])
                 x = module(x, out)  # WeightedFeatureFusion(), FeatureConcat()
             elif name == 'YOLOLayer':
-                yolo_out.append(module(x, img_size, out))
+                yolo_out.append(module(x, out))
             else:  # run module directly, i.e. mtype = 'convolutional', 'upsample', 'maxpool', 'batchnorm2d' etc.
                 x = module(x)
 
@@ -327,7 +324,7 @@ class Darknet(nn.Module):
                         break
             fused_list.append(a)
         self.module_list = fused_list
-        self.info()  # yolov3-spp reduced from 225 to 152 layers
+        self.info() if not ONNX_EXPORT else None  # yolov3-spp reduced from 225 to 152 layers
 
     def info(self, verbose=False):
         torch_utils.model_info(self, verbose)
@@ -444,9 +441,10 @@ def convert(cfg='cfg/yolov3-spp.cfg', weights='weights/yolov3-spp.weights'):
 
 def attempt_download(weights):
     # Attempt to download pretrained weights if not found locally
+    weights = weights.strip()
     msg = weights + ' missing, try downloading from https://drive.google.com/open?id=1LezFG5g3BCW6iYaV89B2i64cqEUZD7e0'
 
-    if weights and not os.path.isfile(weights):
+    if len(weights) > 0 and not os.path.isfile(weights):
         d = {'yolov3-spp.weights': '16lYS4bcIdM2HdmyJBVDOvt3Trx6N3W2R',
              'yolov3.weights': '1uTlyDWlnaqXcsKOktP5aH_zRDbfcDp-y',
              'yolov3-tiny.weights': '1CCF-iNIIkYesIDzaPvdwlcf7H9zSsKZQ',

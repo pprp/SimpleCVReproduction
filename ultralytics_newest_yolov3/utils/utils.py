@@ -3,6 +3,7 @@ import math
 import os
 import random
 import shutil
+import subprocess
 from pathlib import Path
 
 import cv2
@@ -16,11 +17,10 @@ from tqdm import tqdm
 
 from . import torch_utils  # , google_utils
 
-matplotlib.rc('font', **{'size': 11})
-
 # Set printoptions
 torch.set_printoptions(linewidth=320, precision=5, profile='long')
 np.set_printoptions(linewidth=320, formatter={'float_kind': '{:11.5g}'.format})  # format short g, %precision=5
+matplotlib.rc('font', **{'size': 11})
 
 # Prevent OpenCV from multithreading (to use PyTorch DataLoader)
 cv2.setNumThreads(0)
@@ -30,6 +30,13 @@ def init_seeds(seed=0):
     random.seed(seed)
     np.random.seed(seed)
     torch_utils.init_seeds(seed=seed)
+
+
+def check_git_status():
+    # Suggest 'git pull' if repo is out of date
+    s = subprocess.check_output('if [ -d .git ]; then git fetch && git status -uno; fi', shell=True).decode('utf-8')
+    if 'Your branch is behind' in s:
+        print(s[s.find('Your branch is behind'):s.find('\n\n')] + '\n')
 
 
 def load_classes(path):
@@ -366,7 +373,7 @@ def smooth_BCE(eps=0.1):  # https://github.com/ultralytics/yolov3/issues/238#iss
 def compute_loss(p, targets, model):  # predictions, targets, model
     ft = torch.cuda.FloatTensor if p[0].is_cuda else torch.Tensor
     lcls, lbox, lobj = ft([0]), ft([0]), ft([0])
-    tcls, tbox, indices, anchor_vec = build_targets(model, targets)
+    tcls, tbox, indices, anchor_vec = build_targets(p, targets, model)
     h = model.hyp  # hyperparameters
     red = 'mean'  # Loss reduction (sum or mean)
 
@@ -430,49 +437,52 @@ def compute_loss(p, targets, model):  # predictions, targets, model
     return loss, torch.cat((lbox, lobj, lcls, loss)).detach()
 
 
-def build_targets(model, targets):
+def build_targets(p, targets, model):
     # targets = [image, class, x, y, w, h]
 
     nt = targets.shape[0]
     tcls, tbox, indices, av = [], [], [], []
-    multi_gpu = type(model) in (nn.parallel.DataParallel, nn.parallel.DistributedDataParallel)
     reject, use_all_anchors = True, True
-    for i in model.yolo_layers:
+    gain = torch.ones(6, device=targets.device)  # normalized to gridspace gain
+
+    # m = list(model.modules())[-1]
+    # for i in range(m.nl):
+    #    anchors = m.anchors[i]
+    multi_gpu = type(model) in (nn.parallel.DataParallel, nn.parallel.DistributedDataParallel)
+    for i, j in enumerate(model.yolo_layers):
         # get number of grid points and anchor vec for this yolo layer
-        if multi_gpu:
-            ng, anchor_vec = model.module.module_list[i].ng, model.module.module_list[i].anchor_vec
-        else:
-            ng, anchor_vec = model.module_list[i].ng, model.module_list[i].anchor_vec
+        anchors = model.module.module_list[j].anchor_vec if multi_gpu else model.module_list[j].anchor_vec
 
         # iou of targets-anchors
-        t, a = targets, []
-        gwh = t[:, 4:6] * ng
+        gain[2:] = torch.tensor(p[i].shape)[[3, 2, 3, 2]]  # xyxy gain
+        t, a = targets * gain, []
+        gwh = t[:, 4:6]
         if nt:
-            iou = wh_iou(anchor_vec, gwh)  # iou(3,n) = wh_iou(anchor_vec(3,2), gwh(n,2))
+            iou = wh_iou(anchors, gwh)  # iou(3,n) = wh_iou(anchors(3,2), gwh(n,2))
 
             if use_all_anchors:
-                na = anchor_vec.shape[0]  # number of anchors
-                a = torch.arange(na).view((-1, 1)).repeat([1, nt]).view(-1)
-                t = targets.repeat([na, 1])
-                gwh = gwh.repeat([na, 1])
+                na = anchors.shape[0]  # number of anchors
+                a = torch.arange(na).view(-1, 1).repeat(1, nt).view(-1)
+                t = t.repeat(na, 1)
             else:  # use best anchor only
                 iou, a = iou.max(0)  # best iou and anchor
 
             # reject anchors below iou_thres (OPTIONAL, increases P, lowers R)
             if reject:
                 j = iou.view(-1) > model.hyp['iou_t']  # iou threshold hyperparameter
-                t, a, gwh = t[j], a[j], gwh[j]
+                t, a = t[j], a[j]
 
         # Indices
         b, c = t[:, :2].long().t()  # target image, class
-        gxy = t[:, 2:4] * ng  # grid x, y
+        gxy = t[:, 2:4]  # grid x, y
+        gwh = t[:, 4:6]  # grid w, h
         gi, gj = gxy.long().t()  # grid x, y indices
         indices.append((b, a, gj, gi))
 
         # Box
         gxy -= gxy.floor()  # xy
         tbox.append(torch.cat((gxy, gwh), 1))  # xywh (grids)
-        av.append(anchor_vec[a])  # anchor vec
+        av.append(anchors[a])  # anchor vec
 
         # Class
         tcls.append(c)
@@ -546,12 +556,13 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, multi_label=T
         boxes, scores = x[:, :4].clone() + c.view(-1, 1) * max_wh, x[:, 4]  # boxes (offset by class), scores
         if method == 'merge':  # Merge NMS (boxes merged using weighted mean)
             i = torchvision.ops.boxes.nms(boxes, scores, iou_thres)
-            if n < 1E4:  # update boxes as boxes(i,4) = weights(i,n) * boxes(n,4)
+            if n < 3E3:  # update boxes as boxes(i,4) = weights(i,n) * boxes(n,4)
                 # weights = (box_iou(boxes, boxes).tril_() > iou_thres) * scores.view(-1, 1)  # box weights
                 # weights /= weights.sum(0)  # normalize
                 # x[:, :4] = torch.mm(weights.T, x[:, :4])
                 weights = (box_iou(boxes[i], boxes) > iou_thres) * scores[None]  # box weights
                 x[i, :4] = torch.mm(weights / weights.sum(1, keepdim=True), x[:, :4]).float()  # merged boxes
+
         elif method == 'vision':
             i = torchvision.ops.boxes.nms(boxes, scores, iou_thres)
         elif method == 'fast':  # FastNMS from https://github.com/dbolya/yolact
@@ -570,9 +581,9 @@ def get_yolo_layers(model):
 def print_model_biases(model):
     # prints the bias neurons preceding each yolo layer
     print('\nModel Bias Summary: %8s%18s%18s%18s' % ('layer', 'regression', 'objectness', 'classification'))
-    multi_gpu = type(model) in (nn.parallel.DataParallel, nn.parallel.DistributedDataParallel)
-    for l in model.yolo_layers:  # print pretrained biases
-        try:
+    try:
+        multi_gpu = type(model) in (nn.parallel.DataParallel, nn.parallel.DistributedDataParallel)
+        for l in model.yolo_layers:  # print pretrained biases
             if multi_gpu:
                 na = model.module.module_list[l].na  # number of anchors
                 b = model.module.module_list[l - 1][0].bias.view(na, -1)  # bias 3x85
@@ -582,8 +593,8 @@ def print_model_biases(model):
             print(' ' * 20 + '%8g %18s%18s%18s' % (l, '%5.2f+/-%-5.2f' % (b[:, :4].mean(), b[:, :4].std()),
                                                    '%5.2f+/-%-5.2f' % (b[:, 4].mean(), b[:, 4].std()),
                                                    '%5.2f+/-%-5.2f' % (b[:, 5:].mean(), b[:, 5:].std())))
-        except:
-            pass
+    except:
+        pass
 
 
 def strip_optimizer(f='weights/last.pt'):  # from utils.utils import *; strip_optimizer()
@@ -679,11 +690,12 @@ def coco_single_class_labels(path='../coco/labels/train2014/', label_class=43):
             shutil.copyfile(src=img_file, dst='new/images/' + Path(file).name.replace('txt', 'jpg'))  # copy images
 
 
-def kmean_anchors(path='../coco/train2017.txt', n=12, img_size=(320, 1024), thr=0.10):
+def kmean_anchors(path='../coco/train2017.txt', n=12, img_size=(320, 1024), thr=0.10, gen=1000):
     # Creates kmeans anchors for use in *.cfg files: from utils.utils import *; _ = kmean_anchors()
     # n: number of anchors
     # img_size: (min, max) image size used for multi-scale training (can be same values)
     # thr: IoU threshold hyperparameter used for training (0.0 - 1.0)
+    # gen: generations to evolve anchors using genetic algorithm
     from utils.datasets import LoadImagesAndLabels
 
     def print_results(k):
@@ -742,8 +754,8 @@ def kmean_anchors(path='../coco/train2017.txt', n=12, img_size=(320, 1024), thr=
 
     # Evolve
     npr = np.random
-    f, sh, ng, mp, s = fitness(k), k.shape, 1000, 0.9, 0.1  # fitness, generations, mutation prob, sigma
-    for _ in tqdm(range(ng), desc='Evolving anchors'):
+    f, sh, mp, s = fitness(k), k.shape, 0.9, 0.1  # fitness, generations, mutation prob, sigma
+    for _ in tqdm(range(gen), desc='Evolving anchors'):
         v = np.ones(sh)
         while (v == 1).all():  # mutate until a change occurs (prevent duplicates)
             v = ((npr.random(sh) < mp) * npr.random() * npr.randn(*sh) * s + 1).clip(0.3, 3.0)  # 98.6, 61.6
