@@ -59,6 +59,7 @@ from=62, -1
 reduction=4
 out_plane=256# 这个地方要跟上边的值保持一致
 '''
+
 class SpecialSE(nn.Module):
     def __init__(self, in_plane, out_plane, reduction=4):
         super(SpecialSE, self).__init__()
