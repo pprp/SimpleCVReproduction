@@ -4,12 +4,10 @@ import torch.nn.functional as F
 from utils.google_utils import *
 from utils.parse_config import *
 from utils.utils import *
+from utils.layers import *
 import copy
 import os
 ONNX_EXPORT = False
-
-
-
 
 
 # 权重量化为W_bit位
@@ -56,15 +54,27 @@ def create_modules(module_defs, img_size, arc):
             bn = int(mdef['batch_normalize'])
             filters = int(mdef['filters'])
             kernel_size = int(mdef['size'])
-            groups = int(mdef['groups'])
-            pad = (kernel_size - 1) // 2 if int(mdef['pad']) else 0
-            modules.add_module('Conv2d', nn.Conv2d(in_channels=output_filters[-1],
-                                                   out_channels=filters,
-                                                   kernel_size=kernel_size,
-                                                   stride=int(mdef['stride']),
-                                                   padding=pad,
-                                                   groups=groups,
-                                                   bias=not bn))
+
+            if 'groups' in mdef:
+                groups = int(mdef['groups'])
+                pad = (kernel_size - 1) // 2 if int(mdef['pad']) else 0
+                modules.add_module('Conv2d', nn.Conv2d(in_channels=output_filters[-1],
+                                                       out_channels=filters,
+                                                       kernel_size=kernel_size,
+                                                       stride=int(
+                                                           mdef['stride']),
+                                                       padding=pad,
+                                                       groups=groups,
+                                                       bias=not bn))
+            else:
+                pad = (kernel_size - 1) // 2 if int(mdef['pad']) else 0
+                modules.add_module('Conv2d', nn.Conv2d(in_channels=output_filters[-1],
+                                                       out_channels=filters,
+                                                       kernel_size=kernel_size,
+                                                       stride=int(
+                                                           mdef['stride']),
+                                                       padding=pad,
+                                                       bias=not bn))
 
             if bn:
                 modules.add_module(
@@ -87,6 +97,14 @@ def create_modules(module_defs, img_size, arc):
             else:
                 modules = maxpool
 
+        elif mdef['type'] == 'se':
+            layers = [int(x) for x in mdef['from'].split(',')]
+            filter_list = [output_filters[i + 1 if i > 0 else i]
+                           for i in layers]
+            filters = int(mdef['out_plane'])          # attention,
+            modules =  SpecialSE(filter_list[0], filters, reduction=4)
+            routs.extend([l if l > 0 else l + i for l in layers])
+
         elif mdef['type'] == 'upsample':
             modules = nn.Upsample(scale_factor=int(
                 mdef['stride']), mode='nearest')
@@ -103,20 +121,24 @@ def create_modules(module_defs, img_size, arc):
             # 52x52 26x26 13x13
             froms = [int(x) for x in mdef['from'].split(',')]
             shapes = [int(x) for x in mdef['shape'].split(',')]
+            out_plane = int(mdef['out_plane'])
 
             # 计算filters
-            filtesr = sum([output_filters[i + 1 if i > 0 else i]
-                           for i in froms])
+            filters = out_plane
+
+            filter_list = [128, 128, 512]
+
+            # print(shapes,filter_list)
+
+            modules = SpatialMaxpool(shapes=shapes,
+                                     filters=filter_list,
+                                     out_plane=out_plane)
+            routs.extend([l if l > 0 else l + i for l in froms])
 
         elif mdef['type'] == 'shortcut':  # nn.Sequential() placeholder for 'shortcut' layer
             filters = output_filters[int(mdef['from'])]
             layer = int(mdef['from'])
             routs.extend([i + layer if layer < 0 else layer])
-
-        elif mdef['type'] == 'reorg3d':  # yolov3-spp-pan-scale
-            # torch.Size([16, 128, 104, 104])
-            # torch.Size([16, 64, 208, 208]) <-- # stride 2 interpolate dimensions 2 and 3 to cat with prior layer
-            pass
 
         elif mdef['type'] == 'yolo':
             yolo_index += 1
@@ -303,9 +325,26 @@ class Darknet(nn.Module):
                         layer_outputs[layers[1]] = F.interpolate(
                             layer_outputs[layers[1]], scale_factor=[0.5, 0.5])
                         x = torch.cat([layer_outputs[i] for i in layers], 1)
-                    # print(''), [print(layer_outputs[i].shape) for i in layers], print(x.shape)
+
             elif mtype == 'shortcut':
                 x = x + layer_outputs[int(mdef['from'])]
+
+            elif mtype == 'se':
+                froms = [int(x) for x in mdef['from'].split(',')]
+                x1 = layer_outputs[froms[0]]
+                y1 = layer_outputs[froms[1]]
+                x = module(x1, y1)
+
+            elif mtype == 'spatialmaxpool':
+                froms = [int(x) for x in mdef['from'].split(',')]
+                # print(froms)
+                # print(len(layer_outputs))
+                x1 = layer_outputs[froms[0]]
+                x2 = layer_outputs[froms[1]]
+                x3 = layer_outputs[froms[2]]
+                # print(x1.shape, x2.shape, x3.shape)
+                x = module(x1, x2, x3)
+
             elif mtype == 'yolo':
                 x = module(x, img_size)
                 output.append(x)
