@@ -160,15 +160,15 @@ if __name__ == "__main__":
                 obj_x1, obj_y1 = restrictCoords(width, height, obj_x1, obj_y1)
                 obj_x2, obj_y2 = restrictCoords(width, height, obj_x2, obj_y2)
 
-                specific_cow_name = video_name + "_" + obj_id
+                specific_object_name = video_name + "_" + obj_id
 
                 # print("%s:%d-%d-%d-%d" %
-                #       (specific_cow_name, obj_x1, obj_y1, obj_x2, obj_y2),
+                #       (specific_object_name, obj_x1, obj_y1, obj_x2, obj_y2),
                 #       end='\n')
                 # sys.stdout.flush()
 
                 # mkdir for reid dataset
-                id_dir = os.path.join(reid_dst_path, specific_cow_name)
+                id_dir = os.path.join(reid_dst_path, specific_object_name)
 
                 if not os.path.exists(id_dir):
                     os.makedirs(id_dir)
@@ -179,7 +179,7 @@ if __name__ == "__main__":
                 print(type(img))
 
                 if img is None or img.shape[0] == 0 or img.shape[1] == 0:
-                    print(specific_cow_name + " is empty")
+                    print(specific_object_name + " is empty")
                     continue
 
                 # print(frame_id)
@@ -191,7 +191,7 @@ if __name__ == "__main__":
 
                 cv2.imwrite(
                     os.path.join(id_dir, "%s_%d.jpg") %
-                    (specific_cow_name, frame_id), img)
+                    (specific_object_name, frame_id), img)
 
             max_w = width - 256
             max_h = height - 256
@@ -219,7 +219,7 @@ if __name__ == "__main__":
                 img = extractVideoImgs(frame_id, video_frame_save_path,
                                        rand_box)
                 if img is None:
-                    print(specific_cow_name + "is empty")
+                    print(specific_object_name + "is empty")
                     continue
                 normalizedImg = np.zeros((256, 256))
                 img = cv2.normalize(img, normalizedImg, 0, 255,
