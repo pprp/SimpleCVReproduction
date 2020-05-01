@@ -79,6 +79,7 @@ model = Model(input, [x, se_feature], name="SELeNet")
 model.summary()
 
 plot_model(model, to_file="SELeNet.png")
+
 #################### 3. 工具集 ####################
 
 loss_object = tf.keras.losses.SparseCategoricalCrossentropy()
@@ -143,6 +144,7 @@ for epoch in range(EPOCHS):
 
 for i, (images, labels) in enumerate(test_ds):
     se_feature = test_step(images, labels)
+    
     labels = tf.cast(labels, tf.int32)
     sorted = tf.argsort(labels)
     labels = tf.gather(labels, sorted)
