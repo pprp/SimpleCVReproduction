@@ -42,7 +42,7 @@ class residual(nn.Module):
 
         self.skip = nn.Sequential(nn.Conv2d(inp_dim, out_dim, (1, 1), stride=(stride, stride), bias=False),
                                   nn.BatchNorm2d(out_dim)) \
-          if stride != 1 or inp_dim != out_dim else nn.Sequential()
+            if stride != 1 or inp_dim != out_dim else nn.Sequential()
         self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
@@ -136,6 +136,7 @@ class exkp(nn.Module):
     '''
      exkp(n=5, nstack=2, dims=[256, 256, 384, 384, 384, 512], modules=[2, 2, 2, 2, 2, 4]),
     '''
+
     def __init__(self, n, nstack, dims, modules, cnv_dim=256, num_classes=80):
         super(exkp, self).__init__()
 
@@ -202,9 +203,10 @@ class exkp(nn.Module):
 
 
 get_hourglass = \
-  {'large_hourglass':
-     exkp(n=5, nstack=2, dims=[256, 256, 384, 384, 384, 512], modules=[2, 2, 2, 2, 2, 4]),
-   'small_hourglass':
+    {'large_hourglass':
+     exkp(n=5, nstack=2, dims=[256, 256, 384, 384,
+                               384, 512], modules=[2, 2, 2, 2, 2, 4]),
+     'small_hourglass':
      exkp(n=5, nstack=1, dims=[256, 256, 384, 384, 384, 512], modules=[2, 2, 2, 2, 2, 4])}
 
 if __name__ == '__main__':
