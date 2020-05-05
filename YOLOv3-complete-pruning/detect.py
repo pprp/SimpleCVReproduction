@@ -4,9 +4,13 @@ from sys import platform
 from models import *  # set ONNX_EXPORT in models.py
 from utils.datasets import *
 from utils.utils import *
+import csv
 
 
-def detect(save_txt=True, save_img=False):
+def detect(save_txt=False, save_img=False):
+
+    content = []
+
     # (320, 192) or (416, 256) or (608, 352) for (height, width)
     img_size = (320, 192) if ONNX_EXPORT else opt.img_size
     out, source, weights, half, view_img = opt.output, opt.source, opt.weights, opt.half, opt.view_img
@@ -65,7 +69,7 @@ def detect(save_txt=True, save_img=False):
         torch.backends.cudnn.benchmark = True
         dataset = LoadStreams(source, img_size=img_size, half=half)
     else:
-        save_img = True
+        save_img = False  # True
         dataset = LoadImages(source, img_size=img_size, half=half)
 
     # Get classes and colors
@@ -119,6 +123,9 @@ def detect(save_txt=True, save_img=False):
                         with open(save_path + '.txt', 'a') as file:
                             file.write(('%g ' * 6 + '\n') % (*xyxy, cls, conf))
 
+                    content.append([os.path.basename(save_path), xyxy[0].item(
+                    ), xyxy[1].item(), xyxy[2].item(), xyxy[3].item(), 'face', conf.item()])
+
                     if save_img or view_img:  # Add bbox to image
                         label = '%s %.2f' % (classes[int(cls)], conf)
                         #plot_one_box(xyxy, im0, label=label, color=colors[int(cls)])
@@ -154,6 +161,11 @@ def detect(save_txt=True, save_img=False):
             os.system('open ' + out + ' ' + save_path)
 
     print('Done. (%.3fs)' % (time.time() - t0))
+    with open("submission.csv", "w") as f:
+        f_csv = csv.writer(f)
+        f_csv.writerows(content)
+    
+    print("submission done")
 
 
 if __name__ == '__main__':
@@ -169,10 +181,10 @@ if __name__ == '__main__':
         '--source', type=str, default='/home/sunqilin/dpj/datasets/aiqiyi/personai_icartoonface_detval', help='source')
     parser.add_argument('--output', type=str, default='output',
                         help='output folder')  # output folder
-    parser.add_argument('--img-size', type=int, default=416,
+    parser.add_argument('--img-size', type=int, default=224,
                         help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float,
-                        default=0.3, help='object confidence threshold')
+                        default=0.4, help='object confidence threshold')
     parser.add_argument('--nms-thres', type=float, default=0.5,
                         help='iou threshold for non-maximum suppression')
     parser.add_argument('--fourcc', type=str, default='mp4v',
