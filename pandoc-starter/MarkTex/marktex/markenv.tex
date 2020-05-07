@@ -1,0 +1,110 @@
+\usepackage{amsmath}%提供数学公式支持
+
+\usepackage{graphics}%用于添加图片
+\usepackage{graphicx}%加强插图命令
+\newcommand{\figpath}[1]{contents/fig/#1}
+
+\usepackage{fontspec}%用于配置字体
+\usepackage[table]{xcolor}%用于各种颜色环境
+\usepackage{enumitem}%用于定制list和enum
+\usepackage{float}%用于控制Float环境，添加H参数（强制放在Here）
+\usepackage[colorlinks,linkcolor=airforceblue,urlcolor=blue,anchorcolor=blue,citecolor=green]{hyperref}%用于超链接，另外添加该包目录会自动添加引用。
+
+\usepackage[most]{tcolorbox}%用于添加各种边框支持
+\usepackage[cache=true,outputdir=./out]{minted}%如果不保留临时文件就设置cache=false,如果输出设置了其他目录那么outputdir参数也有手动指定，否则会报错。
+\tcbuselibrary{minted}%加载tcolorbox的代码风格
+
+\usepackage[a4paper,left=3cm,right=3cm,top=3cm,bottom=3cm]{geometry}%用于控制版式
+\usepackage{appendix}%用于控制附加文件
+\usepackage{ifthen}
+
+\usepackage{pdfpages}%用于支持插入其他pdf页
+\usepackage{booktabs}%目前用于给表格添加 \toprule \midrule 等命令
+\usepackage{marginnote} %用于边注
+\usepackage[pagestyles,toctitles]{titlesec} %用于标题格式DIY
+% \usepackage{fancyhdr}%用于排版页眉页脚
+\usepackage{ragged2e} % 用于对齐
+\usepackage{fixltx2e} %用于文本环境的下标
+\usepackage{ulem} %用于好看的下划线、波浪线等修饰
+\usepackage{pifont} %数学符号
+\usepackage{amssymb} %数学符号
+
+\usepackage{fontspec}
+\setmainfont{DejaVu Serif}
+
+
+\definecolor{langback}{RGB}{245,244,250}
+\definecolor{langbacktitle}{RGB}{235,233,245}
+\definecolor{langtitle}{RGB}{177,177,177}
+\definecolor{langno}{RGB}{202,202,202}
+\tcbset{arc=1mm}
+\renewcommand{\theFancyVerbLine}{\sffamily\textcolor{langno}{\scriptsize\oldstylenums{\arabic{FancyVerbLine}}}}%重定义行号的格式
+\newtcblisting{langbox}[1][tex]{%参考自https://reishin.me/tmux/ 的代码框样式
+    arc=1mm,
+    colframe=langbacktitle,
+    colbacktitle=langbacktitle,
+    coltitle=langtitle,
+    fonttitle=\bfseries\sffamily,
+    lefttitle=1mm,toptitle=0.5mm,bottomtitle=0.5mm,
+    title = Code,
+    drop shadow,
+    listing engine=minted,
+    minted style=colorful,
+    minted language=#1,
+    minted options={fontsize=\small,breaklines,autogobble,linenos,numbersep=2mm,xleftmargin=1mm},
+    colback=langback,listing only,
+    bottomrule=0mm,leftrule=0mm,toprule=0mm,rightrule=0mm,
+    enhanced,
+    % overlay={\begin{tcbclipinterior}\fill[langback] (frame.south west)rectangle ([xshift=5mm]frame.north west);\end{tcbclipinterior}}
+}
+
+\definecolor{boxback}{RGB}{245,246,250}
+\newtcolorbox{markquote}{
+    colback=boxback,fonttitle=\sffamily\bfseries,arc=0pt,
+    boxrule=0pt,bottomrule=-1pt,toprule=-1pt,leftrule=-1pt,rightrule=-1pt,
+    drop shadow,enhanced
+}
+
+\usepackage[UTF8,fontset=windowsnew,heading=true]{ctex}
+\ctexset{
+	section = {
+	number = 第\chinese{section}章,
+	format = \zihao{3}\bfseries,
+	},
+	subsection = {
+	number = \arabic{section}.\arabic{subsection},
+	format = \Large\bfseries
+	},
+	subsubsection = {
+	number = \arabic{section}.\arabic{subsection}.\arabic{subsubsection},
+	format = \Large\bfseries,
+	},
+    paragraph = {
+	format = \large\bfseries,
+	},
+    subparagraph = {
+	format = \large\bfseries,
+	},
+}
+
+\setlength{\parindent}{2em}%设置首行缩进
+\linespread{1.3}%设置行距
+
+\setlength{\parskip}{0.5em}%设置段间距
+\setcounter{tocdepth}{4}%设置目录级数
+\setcounter{secnumdepth}{3}
+
+
+\newtcbox{\inlang}[1][red]{on line,
+arc=0pt,outer arc=0pt,colback=#1!10!white,colframe=#1!50!black,
+boxsep=0pt,left=1pt,right=1pt,top=2pt,bottom=2pt,
+boxrule=0pt,bottomrule=-1pt,toprule=-1pt,leftrule=-1pt,rightrule=-1pt}
+
+\newlength\tablewidth
+
+
+\definecolor{tablelinegray}{RGB}{221,221,221}
+\definecolor{tablerowgray}{RGB}{247,247,247}
+\definecolor{tabletopgray}{RGB}{245,246,250}
+\definecolor{airforceblue}{rgb}{0.36, 0.54, 0.66}
+

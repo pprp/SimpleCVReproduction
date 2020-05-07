@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="4a5e1d8d-bf0f-40e4-97dd-12533415e22e" name="Default" comment="">
+      <change afterPath="$PROJECT_DIR$/marktex/example/texfile.tex" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/marktex/markast/chars.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/marktex/example/example.md" beforeDir="false" afterPath="$PROJECT_DIR$/marktex/example/example.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/marktex/markast/token.py" beforeDir="false" afterPath="$PROJECT_DIR$/marktex/markast/token.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/marktex/markast/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/marktex/markast/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/marktex/markenv.tex" beforeDir="false" afterPath="$PROJECT_DIR$/marktex/markenv.tex" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/marktex/texrender/texutils.py" beforeDir="false" afterPath="$PROJECT_DIR$/marktex/texrender/texutils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/marktex/texrender/toTex.py" beforeDir="false" afterPath="$PROJECT_DIR$/marktex/texrender/toTex.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/output/example.tex" beforeDir="false" afterPath="$PROJECT_DIR$/output/example.tex" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/output/out/example.aux" beforeDir="false" afterPath="$PROJECT_DIR$/output/out/example.aux" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/output/out/example.out" beforeDir="false" afterPath="$PROJECT_DIR$/output/out/example.out" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/output/out/example.pdf" beforeDir="false" afterPath="$PROJECT_DIR$/output/out/example.pdf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/output/out/example.synctex.gz" beforeDir="false" afterPath="$PROJECT_DIR$/output/out/example.synctex.gz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/output/out/example.toc" beforeDir="false" afterPath="$PROJECT_DIR$/output/out/example.toc" afterDir="false" />
+    </list>
+    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="CoverageDataManager">
+    <SUITE FILE_PATH="coverage/marktex$xmls.coverage" NAME="xmls Coverage Results" MODIFIED="1564620854210" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/marktex/markast" />
+    <SUITE FILE_PATH="coverage/marktex$test.coverage" NAME="test Coverage Results" MODIFIED="1564311486823" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/marktex$utils.coverage" NAME="utils Coverage Results" MODIFIED="1564112640188" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/marktex" />
+    <SUITE FILE_PATH="coverage/marktex$run_example.coverage" NAME="run_example Coverage Results" MODIFIED="1564712454373" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/marktex$testpylatex.coverage" NAME="testpylatex Coverage Results" MODIFIED="1564108266938" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectId" id="1PAQP7hNHKsp8CBLaBhxZIUNBaH" />
+  <component name="ProjectInspectionProfilesVisibleTreeState">
+    <entry key="Project Default">
+      <profile-state>
+        <expanded-state>
+          <State>
+            <id />
+          </State>
+          <State>
+            <id>CSS</id>
+          </State>
+          <State>
+            <id>Probable bugsCSS</id>
+          </State>
+          <State>
+            <id>RELAX NG</id>
+          </State>
+        </expanded-state>
+        <selected-state>
+          <State>
+            <id>AngularJS</id>
+          </State>
+        </selected-state>
+      </profile-state>
+    </entry>
+  </component>
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/output/images" />
+    <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
+    <property name="settings.editor.selected.configurable" value="editing.templates" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="E:\Python\MarkTex\output\images" />
+      <recent name="E:\Python\MarkTex\marktex\example" />
+      <recent name="C:\E\jupyter_notebook\marktex" />
+      <recent name="C:\E\jupyter_notebook\marktex\marktex\example" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\E\jupyter_notebook\marktex" />
+      <recent name="C:\E\jupyter_notebook\marktex\marktex\texrender" />
+      <recent name="C:\E\jupyter_notebook\marktex\marktex\markast" />
+    </key>
+  </component>
+  <component name="RunDashboard">
+    <option name="ruleStates">
+      <list>
+        <RuleState>
+          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
+        </RuleState>
+        <RuleState>
+          <option name="name" value="StatusDashboardGroupingRule" />
+        </RuleState>
+      </list>
+    </option>
+  </component>
+  <component name="RunManager" selected="Python.run_example">
+    <configuration name="run_example" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="marktex" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/run_example.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="temp" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="marktex" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/temp.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="test" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="marktex" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/test.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="utils" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="marktex" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/marktex" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="C:\E\jupyter_notebook\marktex\marktex\markast\utils.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="xmls" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="marktex" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/marktex/markast" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/marktex/markast/xmls.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.test" />
+      <item itemvalue="Python.utils" />
+      <item itemvalue="Python.run_example" />
+      <item itemvalue="Python.xmls" />
+      <item itemvalue="Python.temp" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.run_example" />
+        <item itemvalue="Python.temp" />
+        <item itemvalue="Python.xmls" />
+        <item itemvalue="Python.test" />
+        <item itemvalue="Python.utils" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="4a5e1d8d-bf0f-40e4-97dd-12533415e22e" name="Default" comment="" />
+      <created>1564050301099</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1564050301099</updated>
+      <workItem from="1565314395867" duration="4935000" />
+      <workItem from="1565344196662" duration="71000" />
+      <workItem from="1565346374194" duration="644000" />
+      <workItem from="1565349739128" duration="616000" />
+      <workItem from="1565413361410" duration="1209000" />
+      <workItem from="1565492283681" duration="28000" />
+      <workItem from="1565589271328" duration="606000" />
+      <workItem from="1565700208434" duration="1528000" />
+      <workItem from="1565853068667" duration="2334000" />
+      <workItem from="1565923019755" duration="3547000" />
+      <workItem from="1566043131829" duration="10000" />
+      <workItem from="1566810241688" duration="1136000" />
+      <workItem from="1566876645701" duration="1136000" />
+      <workItem from="1566899604499" duration="2621000" />
+      <workItem from="1566909072488" duration="272000" />
+      <workItem from="1568202689784" duration="2049000" />
+      <workItem from="1568246295562" duration="3352000" />
+      <workItem from="1568252806329" duration="3041000" />
+      <workItem from="1570501986529" duration="1903000" />
+      <workItem from="1571659835947" duration="3570000" />
+      <workItem from="1571731662640" duration="28000" />
+      <workItem from="1571839642588" duration="1649000" />
+      <workItem from="1571925658666" duration="87000" />
+      <workItem from="1571965128793" duration="636000" />
+      <workItem from="1571986580957" duration="11442000" />
+      <workItem from="1572051918547" duration="1058000" />
+      <workItem from="1572095282143" duration="1198000" />
+      <workItem from="1572097977442" duration="76000" />
+      <workItem from="1572098604850" duration="1247000" />
+      <workItem from="1572415379532" duration="2024000" />
+      <workItem from="1572755146701" duration="20000" />
+      <workItem from="1573285872230" duration="1560000" />
+      <workItem from="1573394044640" duration="9543000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="1" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="COLUMN_ORDER" />
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/MarkTex$temp.coverage" NAME="temp Coverage Results" MODIFIED="1571661818171" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/MarkTex$run_example.coverage" NAME="run_example Coverage Results" MODIFIED="1573454812608" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+  </component>
+</project>

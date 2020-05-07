@@ -1,0 +1,8 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="LatexUnicode" enabled="true" level="TYPO" enabled_by_default="false">
+      <scope name="Problems" level="TYPO" enabled="true" />
+    </inspection_tool>
+  </profile>
+</component>

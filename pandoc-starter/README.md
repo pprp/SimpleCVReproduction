@@ -8,6 +8,9 @@ example comes with:
 - A preview of the document
 - The relevant starter files (usually Markdown, sometimes LaTeX)
 
-## License
+pandoc-latex-book: 适合将所有的md文件合称为一个以后，然后再运行：
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://jez.io/MIT-LICENSE.txt)
+```shell
+pandoc ssd.md -o ssd.pdf --from markdown --template eisvogel --pdf-engine=xelatex -V CJKmainfont=SimSun --toc
+```
+
