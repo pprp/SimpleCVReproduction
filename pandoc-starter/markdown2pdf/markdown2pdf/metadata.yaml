@@ -1,5 +1,11 @@
 ﻿---
-title:  'GiantPandaCV-FasterRCNN'
-author:
-- pprp
+title: "从零开始学习YOLOv3系列合集"
+author: [GiantPandaCV-pprp]
+date: "2020-03-30"
+subject: "Markdown"
+keywords: [YOLOv3, 教程, GiantPandaCV]
+subtitle: "GiantPandaCV公众号"
+titlepage: true
+titlepage-text-color: "FFFFFF"
+titlepage-background: "background.pdf"
 ...

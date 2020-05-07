@@ -14,3 +14,9 @@ pandoc-latex-book: 适合将所有的md文件合称为一个以后，然后再�
 pandoc ssd.md -o ssd.pdf --from markdown --template eisvogel --pdf-engine=xelatex -V CJKmainfont=SimSun --toc
 ```
 
+markdown2pdf
+
+```shell
+pandoc -s --toc --pdf-engine=xelatex  -o faster.pdf   metadata.yaml --template eisvogel 
+```
+
