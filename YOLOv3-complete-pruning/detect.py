@@ -5,9 +5,11 @@ from models import *  # set ONNX_EXPORT in models.py
 from utils.datasets import *
 from utils.utils import *
 import csv
+import os 
 
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
-def detect(save_txt=False, save_img=False):
+def detect(save_txt=False, save_img=True):
 
     content = []
 
@@ -69,7 +71,7 @@ def detect(save_txt=False, save_img=False):
         torch.backends.cudnn.benchmark = True
         dataset = LoadStreams(source, img_size=img_size, half=half)
     else:
-        save_img = False  # True
+        save_img = True
         dataset = LoadImages(source, img_size=img_size, half=half)
 
     # Get classes and colors
@@ -173,7 +175,7 @@ if __name__ == '__main__':
     parser.add_argument('--cfg', type=str,
                         default='cfg/yolov3-1cls.cfg', help='cfg file path')
     parser.add_argument('--data', type=str,
-                        default='data/aiqiyi.data', help='coco.data file path')
+                        default='data/dataset4.data', help='coco.data file path')
     parser.add_argument('--weights', type=str,
                         default='weights/best.pt', help='path to weights file')
     # input file/folder, 0 for webcam
@@ -181,7 +183,7 @@ if __name__ == '__main__':
         '--source', type=str, default='/home/sunqilin/dpj/datasets/aiqiyi/personai_icartoonface_detval', help='source')
     parser.add_argument('--output', type=str, default='output',
                         help='output folder')  # output folder
-    parser.add_argument('--img-size', type=int, default=224,
+    parser.add_argument('--img-size', type=int, default=416,
                         help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float,
                         default=0.4, help='object confidence threshold')

@@ -983,7 +983,7 @@ def plot_loss(start=0, stop=0, bucket='', id=()):  # from utils.utils import *; 
         return '%1.0f' % (10*temp) + '%'
 
     for i, f in enumerate(sorted(files)):
-        label_name = os.path.basename(f).split("_")[1]
+        label_name = os.path.basename(f).split("_")[1].split('.')[0]
         results = np.loadtxt(
             f, usecols=[2, 3, 4, 8, 9, 12, 13, 14, 10, 11], ndmin=2).T
         n = results.shape[1]
@@ -999,7 +999,7 @@ def plot_loss(start=0, stop=0, bucket='', id=()):  # from utils.utils import *; 
     plt.xlim(xmin=0, xmax=x_max)
     plt.legend()
     plt.grid(True)
-    plt.gca().yaxis.set_major_formatter(FuncFormatter(to_percent))
+    # plt.gca().yaxis.set_major_formatter(FuncFormatter(to_percent))
     plt.savefig('results_loss.png', dpi=200)
 
 def plot_map(start=0, stop=0, bucket='', id=()):  # from utils.utils import *; plot_map()
@@ -1017,7 +1017,7 @@ def plot_map(start=0, stop=0, bucket='', id=()):  # from utils.utils import *; p
 
     files = glob.glob('results*.txt')
     for i, f in enumerate(sorted(files)):
-        label_name = os.path.basename(f).split("_")[1]
+        label_name = os.path.basename(f).split("_")[1].split('.')[0]
         results = np.loadtxt(
             f, usecols=[2, 3, 4, 8, 9, 12, 13, 14, 10, 11], ndmin=2).T
         n = results.shape[1]
