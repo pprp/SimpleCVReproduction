@@ -1,9 +1,6 @@
 import torch
 from torch import nn
 
-
-
-
 class ContextBlock(nn.Module):
     def __init__(self,inplanes,ratio,pooling_type='att',
                  fusion_types=('channel_add', )):
