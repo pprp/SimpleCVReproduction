@@ -434,27 +434,27 @@ def build_targets(p, targets, model):
             z = torch.zeros_like(gxy)
             if style == 'rect2':
                 g = 0.2  # offset
-                j, k = ((gxy % 1. < g) & (gxy > 1.)).T
+                j, k = ((gxy % 1. < g) & (gxy > 1.)).t()
                 a, t = torch.cat((a, a[j], a[k]), 0), torch.cat((t, t[j], t[k]), 0)
                 offsets = torch.cat((z, z[j] + off[0], z[k] + off[1]), 0) * g
 
             elif style == 'rect4':
                 g = 0.5  # offset
-                j, k = ((gxy % 1. < g) & (gxy > 1.)).T
-                l, m = ((gxy % 1. > (1 - g)) & (gxy < (gain[[2, 3]] - 1.))).T
+                j, k = ((gxy % 1. < g) & (gxy > 1.)).t()
+                l, m = ((gxy % 1. > (1 - g)) & (gxy < (gain[[2, 3]] - 1.))).t()
                 a, t = torch.cat((a, a[j], a[k], a[l], a[m]), 0), torch.cat((t, t[j], t[k], t[l], t[m]), 0)
                 offsets = torch.cat((z, z[j] + off[0], z[k] + off[1], z[l] + off[2], z[m] + off[3]), 0) * g
 
         # Define
-        b, c = t[:, :2].long().T  # image, class
+        b, c = t[:, :2].long().t()  # image, class
         gxy = t[:, 2:4]  # grid xy
         gwh = t[:, 4:6]  # grid wh
         gij = (gxy - offsets).long()
-        gi, gj = gij.T  # grid xy indices
+        gi, gj = gij.t()  # grid xy indices
 
         # Append
         indices.append((b, a, gj, gi))  # image, anchor, grid indices
-        tbox.append(torch.cat((gxy - gij, gwh), 1))  # box
+        tbox.append(torch.cat((gxy.float() - gij.float(), gwh.float()), 1).float())  # box
         anch.append(anchors[a])  # anchors
         tcls.append(c)  # class
 
@@ -967,7 +967,7 @@ def plot_test_txt():  # from utils.utils import *; plot_test()
 
 def plot_targets_txt():  # from utils.utils import *; plot_targets_txt()
     # Plot targets.txt histograms
-    x = np.loadtxt('targets.txt', dtype=np.float32).T
+    x = np.loadtxt('targets.txt', dtype=np.float32).t()
     s = ['x targets', 'y targets', 'width targets', 'height targets']
     fig, ax = plt.subplots(2, 2, figsize=(8, 8), tight_layout=True)
     ax = ax.ravel()
@@ -988,7 +988,7 @@ def plot_study_txt(f='study.txt', x=None):  # from utils.utils import *; plot_st
              '.-', linewidth=2, markersize=8, alpha=0.3, label='EfficientDet')
 
     for f in sorted(glob.glob('study*.txt')):
-        y = np.loadtxt(f, dtype=np.float32, usecols=[0, 1, 2, 3, 7, 8, 9], ndmin=2).T
+        y = np.loadtxt(f, dtype=np.float32, usecols=[0, 1, 2, 3, 7, 8, 9], ndmin=2).t()
         x = np.arange(y.shape[1]) if x is None else np.array(x)
         s = ['P', 'R', 'mAP@.5', 'mAP@.5:.95', 't_inference (ms/img)', 't_NMS (ms/img)', 't_total (ms/img)']
         for i in range(7):
@@ -1057,7 +1057,7 @@ def plot_results_overlay(start=0, stop=0):  # from utils.utils import *; plot_re
     s = ['train', 'train', 'train', 'Precision', 'mAP@0.5', 'val', 'val', 'val', 'Recall', 'mAP@0.5:0.95']  # legends
     t = ['GIoU', 'Objectness', 'Classification', 'P-R', 'mAP-F1']  # titles
     for f in sorted(glob.glob('results*.txt') + glob.glob('../../Downloads/results*.txt')):
-        results = np.loadtxt(f, usecols=[2, 3, 4, 8, 9, 12, 13, 14, 10, 11], ndmin=2).T
+        results = np.loadtxt(f, usecols=[2, 3, 4, 8, 9, 12, 13, 14, 10, 11], ndmin=2).t()
         n = results.shape[1]  # number of rows
         x = range(start, min(stop, n) if stop else n)
         fig, ax = plt.subplots(1, 5, figsize=(14, 3.5), tight_layout=True)
@@ -1088,7 +1088,7 @@ def plot_results(start=0, stop=0, bucket='', id=()):  # from utils.utils import 
         files = glob.glob('results*.txt') + glob.glob('../../Downloads/results*.txt')
     for f in sorted(files):
         try:
-            results = np.loadtxt(f, usecols=[2, 3, 4, 8, 9, 12, 13, 14, 10, 11], ndmin=2).T
+            results = np.loadtxt(f, usecols=[2, 3, 4, 8, 9, 12, 13, 14, 10, 11], ndmin=2).t()
             n = results.shape[1]  # number of rows
             x = range(start, min(stop, n) if stop else n)
             for i in range(10):

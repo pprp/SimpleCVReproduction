@@ -104,7 +104,7 @@ def test(data,
 
             if pred is None:
                 if nl:
-                    stats.append((torch.zeros(0, niou, dtype=torch.bool), torch.Tensor(), torch.Tensor(), tcls))
+                    stats.append((torch.zeros(0, niou, dtype=torch.uint8), torch.Tensor(), torch.Tensor(), tcls))
                 continue
 
             # Append to text file

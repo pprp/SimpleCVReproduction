@@ -14,8 +14,8 @@ from utils.utils import *
 
 mixed_precision = True
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-os.environ['QT_DEBUG_PLUGINS'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+# os.environ['QT_DEBUG_PLUGINS'] = '1'
 
 try:  # Mixed precision training https://github.com/NVIDIA/apex
     from apex import amp
