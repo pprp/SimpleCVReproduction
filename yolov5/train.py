@@ -1,11 +1,11 @@
 import argparse
-
+import os 
 import torch.distributed as dist
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 import yaml
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 
 import test  # import test.py to get mAP after each epoch
 from models.yolo import Model
@@ -13,6 +13,10 @@ from utils.datasets import *
 from utils.utils import *
 
 mixed_precision = True
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['QT_DEBUG_PLUGINS'] = '1'
+
 try:  # Mixed precision training https://github.com/NVIDIA/apex
     from apex import amp
 except:
