@@ -41,3 +41,4 @@
 - simple_keypoints: 简单的关键点检测，提供了通过heatmap和回归两种方法进行检测
 - ultralytics_newest_yolov3: 这个库在coco数据集上已经刷到了SOTA，但是根据我在2020年4月14日跑的自己的数据集来说，效果并不好，即便加载预训练权重，yolov3.cfg只能达到60%的mAP, 可能是作者调用了大量的trick来对coco上的结果进行优化，虽然在COCO上mAP@0.5都刷到62.8了，但是训练自己的数据集效果却越来越差。之前也用过这个训练同样的数据集，老版本的这个库虽然在coco上效果不那么惊人，但是在我的数据集上能达到80%的mAP。不知道问题在何，如果有看到这里的大佬欢迎在issue中交流一下，指点一下。
 - YOLOv3-complete-pruning: 基于U版进行剪枝的库，效果还不错。
+- yolov5: 于6月3日clone，删除了tensorboard（torch1.0不支持，机子cuda版本比较老）
