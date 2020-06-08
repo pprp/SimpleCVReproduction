@@ -521,9 +521,24 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, multi_label=T
         # Batched NMS
         c = x[:, 5] * 0 if agnostic else x[:, 5]  # classes
         boxes, scores = x[:, :4].clone() + c.view(-1, 1) * max_wh, x[:, 4]  # boxes (offset by class), scores
-        i = torchvision.ops.boxes.nms(boxes, scores, iou_thres)
-        if i.shape[0] > max_det:  # limit detections
+        # i = torchvision.ops.boxes.nms(boxes, scores, iou_thres)
+
+        i = torch.tensor()
+
+        while x.shape[0]:
+            if len(x) == 1:  # Stop if we're at the last detection
+                break
+            iou = bbox_iou(x[0], x[1:])  # iou with other boxes
+            i.append(iou[:1])  # save highest conf detection
+            x = x[1:][iou < iou_thres]  # remove ious > threshold
+        
+        print(i)
+
+        i = torch.tensor(i)
+
+        if len(i) > max_det:  # limit detections
             i = i[:max_det]
+
         if merge and (1 < n < 3E3):  # Merge NMS (boxes merged using weighted mean)
             try:  # update boxes as boxes(i,4) = weights(i,n) * boxes(n,4)
                 iou = box_iou(boxes[i], boxes) > iou_thres  # iou matrix
