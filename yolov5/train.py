@@ -365,10 +365,10 @@ def train(hyp):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epochs', type=int, default=300)
-    parser.add_argument('--batch-size', type=int, default=16)
+    parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--cfg', type=str, default='models/yolov5s.yaml', help='*.cfg path')
     parser.add_argument('--data', type=str, default='data/coco128.yaml', help='*.data path')
-    parser.add_argument('--img-size', nargs='+', type=int, default=[640, 640], help='train,test sizes')
+    parser.add_argument('--img-size', nargs='+', type=int, default=[416, 416], help='train,test sizes')
     parser.add_argument('--rect', action='store_true', help='rectangular training')
     parser.add_argument('--resume', action='store_true', help='resume training from last.pt')
     parser.add_argument('--nosave', action='store_true', help='only save final checkpoint')

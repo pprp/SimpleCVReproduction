@@ -486,18 +486,15 @@ def build_targets(p, targets, model):
 
     return tcls, tbox, indices, anch
 
-
-def non_max_suppression(prediction, conf_thres=0.5, iou_thres=0.5, multi_label=True, classes=None, agnostic=False):
+def non_max_suppression(prediction, conf_thres=0.5, iou_thres=0.5, multi_label=True):
     """
-    def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, multi_label=True, classes=None, agnostic=False):
     Removes detections with lower object confidence score than 'conf_thres'
     Non-Maximum Suppression to further filter detections.
     Returns detections with shape:
         (x1, y1, x2, y2, object_conf, class_conf, class)
     """
 
-    # (pixels) minimum and maximium box width and height
-    min_wh, max_wh = 2, 10000
+    min_wh = 2  # (pixels) minimum box width and height
 
     output = [None] * len(prediction)
     for image_i, pred in enumerate(prediction):
@@ -518,15 +515,8 @@ def non_max_suppression(prediction, conf_thres=0.5, iou_thres=0.5, multi_label=T
         class_conf, class_pred = pred[:, 5:].max(1)
         pred[:, 4] *= class_conf
 
-        # # Merge classes (optional)
-        # class_pred[(class_pred.view(-1,1) == torch.LongTensor([2, 3, 5, 6, 7]).view(1,-1)).any(1)] = 2
-        #
-        # # Remove classes (optional)
-        # pred[class_pred != 2, 4] = 0.0
-
         # Select only suitable predictions
-        i = (pred[:, 4] > conf_thres) & (pred[:, 2:4] > min_wh).all(1) & (pred[:, 2:4] < max_wh).all(1) & \
-            torch.isfinite(pred).all(1)
+        i = (pred[:, 4] > conf_thres) & (pred[:, 2:4] > min_wh).all(1) & torch.isfinite(pred).all(1)
         pred = pred[i]
 
         # If none are remaining => process next image
@@ -539,6 +529,7 @@ def non_max_suppression(prediction, conf_thres=0.5, iou_thres=0.5, multi_label=T
 
         # Box (center x, center y, width, height) to (x1, y1, x2, y2)
         pred[:, :4] = xywh2xyxy(pred[:, :4])
+        # pred[:, 4] *= class_conf  # improves mAP from 0.549 to 0.551
 
         # Detections ordered as (x1y1x2y2, obj_conf, class_conf, class_pred)
         pred = torch.cat((pred[:, :5], class_conf.unsqueeze(1), class_pred), 1)
@@ -546,43 +537,25 @@ def non_max_suppression(prediction, conf_thres=0.5, iou_thres=0.5, multi_label=T
         # Get detections sorted by decreasing confidence scores
         pred = pred[(-pred[:, 4]).argsort()]
 
-        # Set NMS method https://github.com/ultralytics/yolov3/issues/679
-        # 'OR', 'AND', 'MERGE', 'VISION', 'VISION_BATCHED'
-        # 'VISION'  # MERGE is highest mAP, VISION is fastest
-        method = 'OR' if conf_thres <= 0.01 else 'MERGE'
-
-        # Batched NMS
-        if method == 'VISION_BATCHED':
-            i = torchvision.ops.boxes.batched_nms(boxes=pred[:, :4],
-                                                  scores=pred[:, 4],
-                                                  idxs=pred[:, 6],
-                                                  iou_threshold=iou_thres)
-            output[image_i] = pred[i]
-            continue
-
-        # Non-maximum suppression
         det_max = []
+        nms_style = 'MERGE'  # 'OR' (default), 'AND', 'MERGE' (experimental)
         for c in pred[:, -1].unique():
             dc = pred[pred[:, -1] == c]  # select class c
             n = len(dc)
             if n == 1:
                 det_max.append(dc)  # No NMS required if only 1 prediction
                 continue
-            elif n > 500:
-                # limit to first 500 boxes: https://github.com/ultralytics/yolov3/issues/117
-                dc = dc[:500]
+            elif n > 100:
+                dc = dc[:100]  # limit to first 100 boxes: https://github.com/ultralytics/yolov3/issues/117
 
-            if method == 'VISION':
-                i = torchvision.ops.boxes.nms(dc[:, :4], dc[:, 4], iou_thres)
-                det_max.append(dc[i])
-
-            elif method == 'OR':  # default
+            # Non-maximum suppression
+            if nms_style == 'OR':  # default
                 # METHOD1
                 # ind = list(range(len(dc)))
                 # while len(ind):
                 # j = ind[0]
                 # det_max.append(dc[j:j + 1])  # save highest conf detection
-                # reject = (bbox_iou(dc[j], dc[ind]) > nms_thres).nonzero()
+                # reject = (bbox_iou(dc[j], dc[ind]) > iou_thres).nonzero()
                 # [ind.pop(i) for i in reversed(reject)]
 
                 # METHOD2
@@ -593,14 +566,14 @@ def non_max_suppression(prediction, conf_thres=0.5, iou_thres=0.5, multi_label=T
                     iou = bbox_iou(dc[0], dc[1:])  # iou with other boxes
                     dc = dc[1:][iou < iou_thres]  # remove ious > threshold
 
-            elif method == 'AND':  # requires overlap, single boxes erased
+            elif nms_style == 'AND':  # requires overlap, single boxes erased
                 while len(dc) > 1:
                     iou = bbox_iou(dc[0], dc[1:])  # iou with other boxes
                     if iou.max() > 0.5:
                         det_max.append(dc[:1])
                     dc = dc[1:][iou < iou_thres]  # remove ious > threshold
 
-            elif method == 'MERGE':  # weighted mixture box
+            elif nms_style == 'MERGE':  # weighted mixture box
                 while len(dc):
                     if len(dc) == 1:
                         det_max.append(dc)
@@ -610,20 +583,6 @@ def non_max_suppression(prediction, conf_thres=0.5, iou_thres=0.5, multi_label=T
                     dc[0, :4] = (weights * dc[i, :4]).sum(0) / weights.sum()
                     det_max.append(dc[:1])
                     dc = dc[i == 0]
-
-            elif method == 'SOFT':  # soft-NMS https://arxiv.org/abs/1704.04503
-                sigma = 0.5  # soft-nms sigma parameter
-                while len(dc):
-                    if len(dc) == 1:
-                        det_max.append(dc)
-                        break
-                    det_max.append(dc[:1])
-                    iou = bbox_iou(dc[0], dc[1:])  # iou with other boxes
-                    dc = dc[1:]
-                    # decay confidences
-                    dc[:, 4] *= torch.exp(-iou ** 2 / sigma)
-                    # https://github.com/ultralytics/yolov3/issues/362
-                    dc = dc[dc[:, 4] > conf_thres]
 
         if len(det_max):
             det_max = torch.cat(det_max)  # concatenate
