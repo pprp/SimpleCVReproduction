@@ -10,13 +10,21 @@ titlepage-text-color: "000000"
 titlepage-background: "backgrounds/background6.pdf"
 ---
 
-## 第一部分：Darknet构建
+# 第一部分：Darknet构建
 
-一个yolov3的pytorch版快速实现工程的见github：https://github.com/ayooshkathuria/YOLO_v3_tutorial_from_scratch 该工程的作者写了个入门教程，在这个教程中，作者使用 PyTorch 实现基于 YOLO v3 的目标检测器，该教程一共有五个部分，虽然并没有含有训练部分。链接：https://blog.paperspace.com/how-to-implement-a-yolo-object-detector-in-pytorch/
+一个yolov3的pytorch版快速实现工程的见github：
 
-这个教程已经有了全的翻译版本，分为上下两个部分，上部分的链接：https://www.jiqizhixin.com/articles/2018-04-23-3
+https://github.com/ayooshkathuria/YOLO_v3_tutorial_from_scratch 
 
-下部分的链接：[https://www.jiqizhixin.com/articles/042602?from=synced&keyword=%E4%BB%8E%E9%9B%B6%E5%BC%80%E5%A7%8BPyTorch%E9%A1%B9%E7%9B%AE%EF%BC%9AYOLO%20v3%E7%9B%AE%E6%A0%87%E6%A3%80%E6%B5%8B%E5%AE%9E%E7%8E%B0](https://www.jiqizhixin.com/articles/042602?from=synced&keyword=从零开始PyTorch项目：YOLO v3目标检测实现)
+该工程的作者写了个入门教程，在这个教程中，作者使用 PyTorch 实现基于 YOLO v3 的目标检测器，该教程一共有五个部分，虽然并没有含有训练部分。链接：
+
+https://blog.paperspace.com/how-to-implement-a-yolo-object-detector-in-pytorch/
+
+这个教程已经有了全的翻译版本，分为上下两个部分，上部分的链接：
+
+https://www.jiqizhixin.com/articles/2018-04-23-3
+
+下部分的链接：[从零开始PyTorch项目：YOLO v3目标检测实现](https://www.jiqizhixin.com/articles/042602?from=synced&keyword=从零开始PyTorch项目：YOLO v3目标检测实现)
 
 有了上面这些教程，我自然不会重复之前的工作，而是给出每个程序**每行代码最详细**全面的小白入门注释，不论基础多差都能看懂，注释到**每个语句每个变量是什么意思**，只有把工作做细到这个程度，才是真正对我们这些小白有利（大神们请忽略，这只是给小白们看的。）本篇是系列教程的第一篇，详细阐述程序darknet.py。
 
@@ -367,7 +375,7 @@ class Darknet(nn.Module):
 
 　　总的来说，darknet.py程序包含函数parse_cfg输入 配置文件路径返回一个列表,其中每一个元素为一个字典类型对应于一个要建立的神经网络模块（层），而函数create_modules用来创建网络层级，而Darknet类的forward函数就是实现网络前向传播函数了，还有个load_weights用来导入预训练的网络权重参数。当然，forward函数中需要产生需要的预测输出形式，因此需要变换输出即函数 predict_transform 在文件 util.py 中，我们在 Darknet 类别的 forward 中使用该函数时，将导入该函数。下一篇就要详细注释util.py 了。
 
-## 第二部分：utils.py
+# 第二部分：utils.py
 
 本篇接着上一篇去解释util.py。这个程序包含了predict_transform函数（Darknet类中的forward函数要用到），write_results函数使我们的输出满足 objectness 分数阈值和非极大值抑制（NMS），以得到「真实」检测结果。还有prep_image和letterbox_image等图片预处理函数等（前者用来将numpy数组转换成PyTorch需要的的输入格式，后者用来将图片按照纵横比进行缩放，将空白部分用(128,128,128)填充）。话不多说，直接看util.py的注释。
 
@@ -665,7 +673,7 @@ def load_classes(namesfile): #load_classes会返回一个字典——将每个�
     return names
 ```
 
-## 第三部分：detect.py
+# 第三部分：detect.py
 
 本篇是第三篇，主要是对detect.py的注释。在这一部分，我们将为我们的检测器构建输入和输出流程。这涉及到从磁盘读取图像，做出预测，使用预测结果在图像上绘制边界框，然后将它们保存到磁盘上。我们将引入一些命令行标签，以便能使用该网络的各种超参数进行一些实验。注意代码中有一处错误我进行了修改。源代码在计算scaling_factor时，用的scaling_factor = torch.min(416/im_dim_list,1)[0].view(-1,1)显然不对，应该使用用户输入的args.reso即改为scaling_factor = torch.min(int(args.reso)/im_dim_list,1)[0].view(-1,1)
 
@@ -943,7 +951,7 @@ print("----------------------------------------------------------")
 torch.cuda.empty_cache()
 ```
 
-## 第四部分：video.py
+# 第四部分：video.py
 
 本篇介绍如何让检测器在视频或者网络摄像头上实时工作。我们将引入一些命令行标签，以便能使用该网络的各种超参数进行一些实验。这个代码是video.py，代码整体上很像detect.py，只有几处变化，只是我们不会在 batch 上迭代，而是在视频的帧上迭代。
 
