@@ -1,16 +1,24 @@
 ---
-title: "从零开始学习YOLOv3系列合集"
+title: "超详细的Pytorch版yolov3代码中文注释汇总"
 author: [GiantPandaCV-逍遥王可爱]
 date: "2020-06-14"
 subject: "Markdown"
-keywords: [YOLOv3, 教程, GiantPandaCV]
+keywords: [教程, GiantPandaCV]
 subtitle: "GiantPandaCV公众号"
 titlepage: true
 titlepage-text-color: "000000"
 titlepage-background: "backgrounds/background6.pdf"
 ---
 
-# 第一部分：Darknet构建
+
+
+## 0. 序言
+
+版权声明：此份电子书整理自公众号「GiantPandaCV 」, 版权所有 GiantPandaCV , 禁止任何形式的 转载, 禁止传播、商用, 违者必究！ GiantPandaCV 公众号由专注于技术的一群 90 后创建, 专注于机器学习、深度学习、计算机视觉、图 像处理等领域。半年以来已更新 **242 篇原创技术文章**。我们编写了 **《从零开始学习YOLOv3》** 、**《从零开始学习SSD》** 、**《Faster R-CNN原理和代码讲解》** 、**《多目标跟踪快速入门》**等系列原创电子书，关注后回复对应关键字即可**免费领取**。每天更新一到两篇相关推文, 希望在传播知识、分享知识的同时能够启发你。 欢迎扫描下方二维码关注我们的公众号。
+
+![](https://img-blog.csdnimg.cn/20200116212417846.jpg)
+
+## 第一部分：darknet.py
 
 一个yolov3的pytorch版快速实现工程的见github：
 
@@ -375,7 +383,7 @@ class Darknet(nn.Module):
 
 　　总的来说，darknet.py程序包含函数parse_cfg输入 配置文件路径返回一个列表,其中每一个元素为一个字典类型对应于一个要建立的神经网络模块（层），而函数create_modules用来创建网络层级，而Darknet类的forward函数就是实现网络前向传播函数了，还有个load_weights用来导入预训练的网络权重参数。当然，forward函数中需要产生需要的预测输出形式，因此需要变换输出即函数 predict_transform 在文件 util.py 中，我们在 Darknet 类别的 forward 中使用该函数时，将导入该函数。下一篇就要详细注释util.py 了。
 
-# 第二部分：utils.py
+## 第二部分：utils.py
 
 本篇接着上一篇去解释util.py。这个程序包含了predict_transform函数（Darknet类中的forward函数要用到），write_results函数使我们的输出满足 objectness 分数阈值和非极大值抑制（NMS），以得到「真实」检测结果。还有prep_image和letterbox_image等图片预处理函数等（前者用来将numpy数组转换成PyTorch需要的的输入格式，后者用来将图片按照纵横比进行缩放，将空白部分用(128,128,128)填充）。话不多说，直接看util.py的注释。
 
@@ -673,7 +681,7 @@ def load_classes(namesfile): #load_classes会返回一个字典——将每个�
     return names
 ```
 
-# 第三部分：detect.py
+## 第三部分：detect.py
 
 本篇是第三篇，主要是对detect.py的注释。在这一部分，我们将为我们的检测器构建输入和输出流程。这涉及到从磁盘读取图像，做出预测，使用预测结果在图像上绘制边界框，然后将它们保存到磁盘上。我们将引入一些命令行标签，以便能使用该网络的各种超参数进行一些实验。注意代码中有一处错误我进行了修改。源代码在计算scaling_factor时，用的scaling_factor = torch.min(416/im_dim_list,1)[0].view(-1,1)显然不对，应该使用用户输入的args.reso即改为scaling_factor = torch.min(int(args.reso)/im_dim_list,1)[0].view(-1,1)
 
@@ -951,7 +959,7 @@ print("----------------------------------------------------------")
 torch.cuda.empty_cache()
 ```
 
-# 第四部分：video.py
+## 第四部分：video.py
 
 本篇介绍如何让检测器在视频或者网络摄像头上实时工作。我们将引入一些命令行标签，以便能使用该网络的各种超参数进行一些实验。这个代码是video.py，代码整体上很像detect.py，只有几处变化，只是我们不会在 batch 上迭代，而是在视频的帧上迭代。
 

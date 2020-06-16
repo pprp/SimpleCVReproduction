@@ -7,7 +7,7 @@
 - Simple_CenterNet 是一个简化版本的，正在试验中。
 - SmallObjectAugmentation是一个专门用于小目标增强库，实际效果不是很理想。增加了一些处理工具模块。
 - Plug-and-play module: 即插即用模块：
-  - attention 实现或者复制官方的pytorch实现，即插即用的注意力模块。
+  - Attention 实现或者复制官方的pytorch实现，即插即用的注意力模块。
   - ACBlock
   - Swish、wish Activation
   - ASPP Block
@@ -22,6 +22,7 @@
   - WeightedFeatureFusion:EfficientDet中的FPN用到的fuse方式
   - StripPooling：CVPR2020中核心代码StripPooling
   - GhostModule: CVPR2020GhostNet的核心模块
+  - SlimConv: SlimConv3x3 
 - captcha-CTC-loss CTC loss+ LSTM 
 - deep_sort-master 官方实现，通过该库理解了标准的输入输出格式。
 - easy-receptive-fields-pytorch-master: 用于计算pytorch常用CNN的感受野，非常方便
