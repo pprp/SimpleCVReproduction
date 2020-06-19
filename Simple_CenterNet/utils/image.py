@@ -91,8 +91,6 @@ def crop(img, center, scale, output_size, rot=0):
 
     return dst_img
 
-
-# todo what's this?
 def gaussian_radius(det_size, min_overlap=0.7):
     # gt框的长和宽
     height, width = det_size

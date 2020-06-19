@@ -96,12 +96,15 @@ def main():
 
     print('Setting up data...')
     Dataset = COCO if cfg.dataset == 'coco' else PascalVOC
+
     train_dataset = Dataset(cfg.data_dir,
                             'train',
                             split_ratio=cfg.split_ratio,
                             img_size=cfg.img_size)
+
     train_sampler = torch.utils.data.distributed.DistributedSampler(
         train_dataset, num_replicas=num_gpus, rank=cfg.local_rank)
+
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=cfg.batch_size // num_gpus if cfg.dist else cfg.batch_size,
@@ -112,10 +115,12 @@ def main():
         sampler=train_sampler if cfg.dist else None)
 
     Dataset_eval = COCO_eval if cfg.dataset == 'coco' else PascalVOC_eval
+
     val_dataset = Dataset_eval(cfg.data_dir,
                                'val',
                                test_scales=[1.],
                                test_flip=False)
+                               
     val_loader = torch.utils.data.DataLoader(val_dataset,
                                              batch_size=1,
                                              shuffle=False,

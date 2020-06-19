@@ -43,12 +43,15 @@ class PascalVOC(data.Dataset):
         self.eig_vec = np.array(VOC_EIGEN_VECTORS, dtype=np.float32)
 
         self.split = split  # ?
-        self.data_dir = os.path.join(data_dir, 'voc')
-        self.img_dir = os.path.join(self.data_dir, 'images')
+        self.data_dir = os.path.join(data_dir, 'voc') # ./data/voc
+        self.img_dir = os.path.join(self.data_dir, 'images') # ./data/voc/images
         _ann_name = {'train': 'train2020', 'val': 'test2020'}
         # 意思是需要json格式数据集
         self.annot_path = os.path.join(
             self.data_dir, 'annotations', 'pascal_%s.json' % _ann_name[split])
+        # ./data/voc/annotations
+        #   - pascal_train2020
+        #   - pascal_test2020
 
         # 挑选100个
         self.max_objs = 100
