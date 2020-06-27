@@ -1,6 +1,6 @@
 ---
 title: "PyramidBox代码解析"
-author: [GiantPandaCV-BBuf]
+author: [GiantPandaCV-zzk]
 date: "2020-06-27"
 subject: "Markdown"
 keywords: [卷积神经网络]
