@@ -215,7 +215,7 @@ if __name__ == "__main__":
 
             # print("iou list:" , iou_list)
 
-            if np.array(iou_list).all() < 0:
+            if np.array(iou_list).all() > 0:
                 img = extractVideoImgs(frame_id, video_frame_save_path,
                                        rand_box)
                 if img is None:
