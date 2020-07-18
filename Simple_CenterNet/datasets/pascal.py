@@ -32,6 +32,7 @@ class PascalVOC(data.Dataset):
         self.num_classes = 1
         self.class_names = VOC_NAMES
 
+        # 处理可选择id
         self.valid_ids = np.arange(1, 2, dtype=np.int32)  # 21 to 2
         self.cat_ids = {v: i for i, v in enumerate(self.valid_ids)}
 
@@ -39,6 +40,7 @@ class PascalVOC(data.Dataset):
 
         self.mean = np.array(VOC_MEAN, dtype=np.float32).reshape(1, 1, 3)
         self.std = np.array(VOC_STD, dtype=np.float32).reshape(1, 1, 3)
+        
         self.eig_val = np.array(VOC_EIGEN_VALUES, dtype=np.float32)
         self.eig_vec = np.array(VOC_EIGEN_VECTORS, dtype=np.float32)
 
