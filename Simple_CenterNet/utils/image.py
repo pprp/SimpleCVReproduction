@@ -24,26 +24,30 @@ def transform_preds(coords, center, scale, output_size):
     return target_coords
 
 
-def get_affine_transform(center,
-                         scale,
-                         rot,
+def get_affine_transform(center, # 中心坐标
+                         scale, # 放缩的尺度
+                         rot, # 角度->默认为0
                          output_size,
-                         shift=np.array([0, 0], dtype=np.float32),
+                         shift=np.array([0, 0], dtype=np.float32), # 平移
                          inv=0):
     if not isinstance(scale, np.ndarray) and not isinstance(scale, list):
         scale = np.array([scale, scale], dtype=np.float32)
 
+    # scale : [h, w] to output_size : [dst_w, dst_h]
     scale_tmp = scale
     src_w = scale_tmp[0]
+
     dst_w = output_size[0]
     dst_h = output_size[1]
 
     rot_rad = np.pi * rot / 180
+
     src_dir = get_dir([0, src_w * -0.5], rot_rad)
     dst_dir = np.array([0, dst_w * -0.5], np.float32)
 
     src = np.zeros((3, 2), dtype=np.float32)
     dst = np.zeros((3, 2), dtype=np.float32)
+
     src[0, :] = center + scale_tmp * shift
     src[1, :] = center + src_dir + scale_tmp * shift
     dst[0, :] = [dst_w * 0.5, dst_h * 0.5]
@@ -126,6 +130,7 @@ def gaussian2D(shape, sigma=1):
 
 
 def draw_umich_gaussian(heatmap, center, radius, k=1):
+    # 得到直径
     diameter = 2 * radius + 1
     gaussian = gaussian2D((diameter, diameter), sigma=diameter / 6)
     # 一个圆对应内切正方形的高斯分布
@@ -134,15 +139,21 @@ def draw_umich_gaussian(heatmap, center, radius, k=1):
 
     height, width = heatmap.shape[0:2]
 
+    # 对边界进行约束，防止越界
     left, right = min(x, radius), min(width - x, radius + 1)
     top, bottom = min(y, radius), min(height - y, radius + 1)
 
+    # 选择对应区域
     masked_heatmap = heatmap[y - top:y + bottom, x - left:x + right]
-    masked_gaussian = gaussian[radius - top:radius +
-                               bottom, radius - left:radius + right]
+    # 将高斯分布结果约束在边界内
+    masked_gaussian = gaussian[radius - top:radius + bottom, 
+                               radius - left:radius + right]
+
     if min(masked_gaussian.shape) > 0 and min(masked_heatmap.shape) > 0:  # TODO debug
         np.maximum(masked_heatmap, masked_gaussian * k, out=masked_heatmap)
-        # 将高斯分布覆盖到heatmap上，取最大，而不是叠加
+        # 将高斯分布覆盖到heatmap上，相当于不断的在heatmap基础上添加关键点的高斯，
+        # 即同一种类型的框会在一个heatmap某一个类别通道上面上面不断添加。
+        # 最终通过函数总体的for循环，相当于不断将目标画到heatmap
     return heatmap
 
 

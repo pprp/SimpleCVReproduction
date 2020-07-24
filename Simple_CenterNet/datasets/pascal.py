@@ -90,7 +90,6 @@ class PascalVOC(data.Dataset):
 
         bboxes[:, 2:] += bboxes[:, :2]  # xywh to xyxy
 
-        # print("===============", img_path)
         img = cv2.imread(img_path)
         height, width = img.shape[0], img.shape[1]
         # 获取中心坐标p
@@ -100,6 +99,7 @@ class PascalVOC(data.Dataset):
 
         flipped = False
         if self.split == 'train':
+            # 随机选择一个尺寸来训练
             scale = scale * np.random.choice(self.rand_scales)
             w_border = get_border(128, width)
             h_border = get_border(128, height)
@@ -111,62 +111,71 @@ class PascalVOC(data.Dataset):
                 img = img[:, ::-1, :]
                 center[0] = width - center[0] - 1
 
-        # 实行仿射变换
+        # 仿射变换
         trans_img = get_affine_transform(
             center, scale, 0, [self.img_size['w'], self.img_size['h']])
         img = cv2.warpAffine(
             img, trans_img, (self.img_size['w'], self.img_size['h']))
 
+        # 归一化
         img = (img.astype(np.float32) / 255.)
         if self.split == 'train':
+            # 对图片的亮度对比度等属性进行修改
             color_aug(self.data_rng, img, self.eig_val, self.eig_vec)
 
         img -= self.mean
         img /= self.std
         img = img.transpose(2, 0, 1)  # from [H, W, C] to [C, H, W]
 
+        # 对Ground Truth heatmap进行仿射变换
         trans_fmap = get_affine_transform(
-            center, scale, 0, [self.fmap_size['w'], self.fmap_size['h']])
+            center, scale, 0, [self.fmap_size['w'], self.fmap_size['h']]) # 这时候已经是下采样为原来的四分之一了
 
         # 3个最重要的变量
         hmap = np.zeros(
             (self.num_classes, self.fmap_size['h'], self.fmap_size['w']), dtype=np.float32)  # heatmap
-        # width and height
-        w_h_ = np.zeros((self.max_objs, 2), dtype=np.float32)
+        w_h_ = np.zeros((self.max_objs, 2), dtype=np.float32)  # width and height
         regs = np.zeros((self.max_objs, 2), dtype=np.float32)  # regression
 
+        # indexs
         inds = np.zeros((self.max_objs,), dtype=np.int64)
+        # 具体选择哪些index
         ind_masks = np.zeros((self.max_objs,), dtype=np.uint8)
 
         for k, (bbox, label) in enumerate(zip(bboxes, labels)):
             if flipped:
                 bbox[[0, 2]] = width - bbox[[2, 0]] - 1
+            
+            # 对检测框也进行仿射变换
             bbox[:2] = affine_transform(bbox[:2], trans_fmap)
             bbox[2:] = affine_transform(bbox[2:], trans_fmap)
+            # 防止越界
             bbox[[0, 2]] = np.clip(bbox[[0, 2]], 0, self.fmap_size['w'] - 1)
             bbox[[1, 3]] = np.clip(bbox[[1, 3]], 0, self.fmap_size['h'] - 1)
+            # 得到高和宽
             h, w = bbox[3] - bbox[1], bbox[2] - bbox[0]
 
             if h > 0 and w > 0:
-                obj_c = np.array(
-                    [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], dtype=np.float32)
-                obj_c_int = obj_c.astype(np.int32)
-                # 椭圆形状
+                obj_c = np.array([(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], 
+                                    dtype=np.float32) # 中心坐标-浮点型
+                obj_c_int = obj_c.astype(np.int32) # 整型的中心坐标
+                # 根据一元二次方程计算出最小的半径
                 radius = max(0, int(gaussian_radius((math.ceil(h), math.ceil(w)), self.gaussian_iou)))
                 # 得到高斯分布
                 draw_umich_gaussian(hmap[label], obj_c_int, radius)
 
                 w_h_[k] = 1. * w, 1. * h
+                
                 # 记录偏移量
                 regs[k] = obj_c - obj_c_int  # discretization error
                 # 当前是obj序列中的第k个 = fmap_w * cy + cx = fmap中的序列数
                 inds[k] = obj_c_int[1] * self.fmap_size['w'] + obj_c_int[0]
-                # 进行mask标记?
+                # 进行mask标记
                 ind_masks[k] = 1
 
-        return {'image': img,
-                'hmap': hmap, 'w_h_': w_h_, 'regs': regs, 'inds': inds, 'ind_masks': ind_masks,
-                'c': center, 's': scale, 'img_id': img_id}
+        return {'image': img, 'hmap': hmap, 'w_h_': w_h_, 'regs': regs, 
+                'inds': inds, 'ind_masks': ind_masks, 'c': center, 
+                's': scale, 'img_id': img_id}
 
     def __len__(self):
         return self.num_samples
