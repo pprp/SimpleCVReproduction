@@ -80,9 +80,9 @@ class PascalVOC(data.Dataset):
         annotations = self.coco.loadAnns(ids=ann_ids)
 
         labels = np.array([self.cat_ids[anno['category_id']]
-                           for anno in annotations])
+                            for anno in annotations])
         bboxes = np.array([anno['bbox']
-                           for anno in annotations], dtype=np.float32)
+                            for anno in annotations], dtype=np.float32)
 
         if len(bboxes) == 0:
             bboxes = np.array([[0., 0., 0., 0.]], dtype=np.float32)
@@ -94,7 +94,7 @@ class PascalVOC(data.Dataset):
         height, width = img.shape[0], img.shape[1]
         # 获取中心坐标p
         center = np.array([width / 2., height / 2.],
-                          dtype=np.float32)  # center of image
+                            dtype=np.float32)  # center of image
         scale = max(height, width) * 1.0  # 仿射变换
 
         flipped = False
