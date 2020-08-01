@@ -163,6 +163,10 @@ class Root(nn.Module):
 
 
 class Tree(nn.Module):
+    '''
+    self.level5 = Tree(levels[5], block, channels[4], channels[5], 2,
+                    level_root=True, root_residual=residual_root)
+    '''
     def __init__(self, levels, block, in_channels, out_channels, stride=1,
                  level_root=False, root_dim=0, root_kernel_size=1,
                  dilation=1, root_residual=False):
@@ -219,6 +223,11 @@ class Tree(nn.Module):
 
 
 class DLA(nn.Module):
+    '''
+    DLA([1, 1, 1, 2, 2, 1],
+        [16, 32, 64, 128, 256, 512],
+        block=BasicBlock, **kwargs)
+    '''
     def __init__(self, levels, channels, num_classes=1000,
                  block=BasicBlock, residual_root=False, return_levels=False,
                  pool_size=7, linear_root=False):
@@ -231,13 +240,14 @@ class DLA(nn.Module):
                       padding=3, bias=False),
             BatchNorm(channels[0]),
             nn.ReLU(inplace=True))
+        # 在最初前两层仅仅使用卷积层
         self.level0 = self._make_conv_level(
             channels[0], channels[0], levels[0])
         self.level1 = self._make_conv_level(
             channels[0], channels[1], levels[1], stride=2)
+
         self.level2 = Tree(levels[2], block, channels[1], channels[2], 2,
-                           level_root=False,
-                           root_residual=residual_root)
+                           level_root=False, root_residual=residual_root)
         self.level3 = Tree(levels[3], block, channels[2], channels[3], 2,
                            level_root=True, root_residual=residual_root)
         self.level4 = Tree(levels[4], block, channels[3], channels[4], 2,
