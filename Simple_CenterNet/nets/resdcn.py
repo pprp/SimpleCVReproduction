@@ -186,6 +186,9 @@ class PoseResNet(nn.Module):
         return deconv_kernel, padding, output_padding
 
     def _make_deconv_layer(self, num_layers, num_filters, num_kernels):
+        '''
+        self.deconv_layers = self._make_deconv_layer(3, [256, 128, 64], [4, 4, 4])
+        '''
         assert num_layers == len(num_filters), \
             'ERROR: num_deconv_layers is different len(num_deconv_filters)'
         assert num_layers == len(num_kernels), \
