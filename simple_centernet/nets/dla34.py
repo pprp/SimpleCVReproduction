@@ -208,13 +208,17 @@ class Tree(nn.Module):
 
     def forward(self, x, residual=None, children=None):
         children = [] if children is None else children
+
         bottom = self.downsample(x) if self.downsample else x
         residual = self.project(bottom) if self.project else bottom
+
         if self.level_root:
             children.append(bottom)
+
         x1 = self.tree1(x, residual)
         if self.levels == 1:
             x2 = self.tree2(x1)
+            # root是出口
             x = self.root(x2, x1, *children)
         else:
             children.append(x1)
