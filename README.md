@@ -26,6 +26,9 @@
   - Context Gating： video classification
   - EffNetBlock: EffNet
   - ECCV2020 BorderDet: Border aligment module
+  - CVPR2019 DANet: Dual Attention
+  - ICCV2019 CCNet: Criss Cross Attention
+  - Object Contextual Representation for sematic segmentation: OCRModule
 - captcha-CTC-loss CTC loss+ LSTM 
 - deep_sort-master 官方实现，通过该库理解了标准的输入输出格式。
 - easy-receptive-fields-pytorch-master: 用于计算pytorch常用CNN的感受野，非常方便
