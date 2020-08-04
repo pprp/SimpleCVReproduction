@@ -152,6 +152,7 @@ class Root(nn.Module):
         self.residual = residual
 
     def forward(self, *x):
+        # 输入是多个层输出结果
         children = x
         x = self.conv(torch.cat(x, 1))
         x = self.bn(x)
@@ -210,6 +211,7 @@ class Tree(nn.Module):
         children = [] if children is None else children
 
         bottom = self.downsample(x) if self.downsample else x
+        # project就是映射，如果输入输出通道数不同则将输入通道数映射到输出通道数
         residual = self.project(bottom) if self.project else bottom
 
         if self.level_root:
@@ -249,7 +251,10 @@ class DLA(nn.Module):
             channels[0], channels[0], levels[0])
         self.level1 = self._make_conv_level(
             channels[0], channels[1], levels[1], stride=2)
-
+        '''
+        if level_root:
+            root_dim += in_channels
+        '''
         self.level2 = Tree(levels[2], block, channels[1], channels[2], 2,
                            level_root=False, root_residual=residual_root)
         self.level3 = Tree(levels[3], block, channels[2], channels[3], 2,
