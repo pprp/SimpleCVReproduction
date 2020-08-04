@@ -358,7 +358,10 @@ class DeformConv(nn.Module):
 
 
 class IDAUp(nn.Module):
-
+    '''
+    IDAUp(channels[j], in_channels[j:], scales[j:] // scales[j])
+    ida(layers, len(layers) -i - 2, len(layers))
+    '''
     def __init__(self, o, channels, up_f):
         super(IDAUp, self).__init__()
         for i in range(1, len(channels)):
@@ -381,6 +384,7 @@ class IDAUp(nn.Module):
         for i in range(startp + 1, endp):
             upsample = getattr(self, 'up_' + str(i - startp))
             project = getattr(self, 'proj_' + str(i - startp))
+
             layers[i] = upsample(project(layers[i]))
             node = getattr(self, 'node_' + str(i - startp))
             layers[i] = node(layers[i] + layers[i - 1])
@@ -388,6 +392,11 @@ class IDAUp(nn.Module):
 
 
 class DLAUp(nn.Module):
+    '''
+    # first_level = 2 if down_ratio=4
+    # channels = [64, 128, 256, 512]
+    # scales = [1, 2, 4, 8]
+    '''
     def __init__(self, startp, channels, scales, in_channels=None):
         super(DLAUp, self).__init__()
         self.startp = startp
@@ -396,11 +405,11 @@ class DLAUp(nn.Module):
         self.channels = channels
         channels = list(channels)
         scales = np.array(scales, dtype=int)
+
         for i in range(len(channels) - 1):
             j = -i - 2
             setattr(self, 'ida_{}'.format(i),
-                    IDAUp(channels[j], in_channels[j:],
-                          scales[j:] // scales[j]))
+                    IDAUp(channels[j], in_channels[j:], scales[j:] // scales[j]))
             scales[j + 1:] = scales[j]
             in_channels[j + 1:] = [channels[j] for _ in channels[j + 1:]]
 
@@ -425,20 +434,34 @@ class Interpolate(nn.Module):
 
 
 class DLASeg(nn.Module):
+    '''
+    DLASeg('dla{}'.format(num_layers), heads,
+                 pretrained=True,
+                 down_ratio=down_ratio,
+                 final_kernel=1,
+                 last_level=5,
+                 head_conv=head_conv)
+    '''
     def __init__(self, base_name, heads, pretrained, down_ratio, final_kernel,
                  last_level, head_conv, out_channel=0):
         super(DLASeg, self).__init__()
         assert down_ratio in [2, 4, 8, 16]
         self.first_level = int(np.log2(down_ratio))
         self.last_level = last_level
+        # globals() 函数会以字典类型返回当前位置的全部全局变量。
+        # 所以这个base就相当于原来的DLA34
         self.base = globals()[base_name](pretrained=pretrained)
         channels = self.base.channels
         scales = [2 ** i for i in range(len(channels[self.first_level:]))]
+        # first_level = 2 if down_ratio=4
+        # channels = [16, 32, 64, 128, 256, 512] to [64, 128, 256, 512]
+        # scales = [1, 2, 4, 8]
         self.dla_up = DLAUp(self.first_level, channels[self.first_level:], scales)
 
         if out_channel == 0:
             out_channel = channels[self.first_level]
 
+        # 进行上采样
         self.ida_up = IDAUp(out_channel, channels[self.first_level:self.last_level], 
                             [2 ** i for i in range(self.last_level - self.first_level)])
         
