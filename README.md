@@ -4,8 +4,8 @@
 
 尽量提供简化版本的，便于理解的模型文件。
 
-- Simple_CenterNet 是一个简化版本的，正在试验中。
-- SmallObjectAugmentation是一个专门用于小目标增强库，实际效果不是很理想。增加了一些处理工具模块。
+## 即插即用模块（注意力模块）
+
 - Plug-and-play module: 即插即用模块：
   - Attention 实现或者复制官方的pytorch实现，即插即用的注意力模块。
   - ACBlock
@@ -29,6 +29,11 @@
   - CVPR2019 DANet: Dual Attention
   - ICCV2019 CCNet: Criss Cross Attention
   - Object Contextual Representation for sematic segmentation: OCRModule
+
+## 其他推荐项目
+
+- CenterNet 是一个简化版本的（并非原版），正在分析和学习源码。
+- SmallObjectAugmentation是一个专门用于小目标增强库，实际效果不是很理想。增加了一些处理工具模块。
 - captcha-CTC-loss CTC loss+ LSTM 
 - deep_sort-master 官方实现，通过该库理解了标准的输入输出格式。
 - easy-receptive-fields-pytorch-master: 用于计算pytorch常用CNN的感受野，非常方便
@@ -50,3 +55,8 @@
 - YOLOv3-complete-pruning: 基于U版进行剪枝的库，效果还不错。
 - yolov5: 于6月3日clone，删除了tensorboard（torch1.0不支持，机子cuda版本比较老）
 - TSNE: 可视化重识别数据集、分类数据集，效果挺好的，不过一般需要服务器内存比较大才能运行出来。
+
+## 感谢
+
+@zhongqiu1245 补充的borderDet中的BAM模块
+@1187697147 补充的context-gating模块
