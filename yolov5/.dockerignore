@@ -8,18 +8,16 @@ coco
 storage.googleapis.com
 
 data/samples/*
-!data/samples/zidane.jpg
-!data/samples/bus.jpg
 **/results*.txt
 *.jpg
 
 # Neural Network weights -----------------------------------------------------------------------------------------------
 **/*.weights
 **/*.pt
+**/*.pth
 **/*.onnx
 **/*.mlmodel
-**/darknet53.conv.74
-**/yolov3-tiny.conv.15
+**/*.torchscript
 
 
 # Below Copied From .gitignore -----------------------------------------------------------------------------------------
