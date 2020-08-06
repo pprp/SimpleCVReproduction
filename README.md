@@ -43,6 +43,7 @@
   - CVPR2019 DANet: Dual Attention
   - ICCV2019 CCNet: Criss Cross Attention
   - Object Contextual Representation for sematic segmentation: OCRModule
+  - FPT: 包含Self Transform、Grounding Transform、Rendering Transform
 
 ## 其他推荐项目
 
@@ -72,6 +73,6 @@
 
 ## 感谢
 
-@zhongqiu1245 补充的borderDet中的BAM模块
+@zhongqiu1245 补充的borderDet中的BAM模块,补充了FPT
 
 @1187697147 补充的context-gating模块
