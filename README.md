@@ -6,8 +6,22 @@
 
 ## 即插即用模块（注意力模块）
 
+- 注意力模块Attention
+
+  - BAM
+  - BiSeNet
+  - CBAM
+  - CCNet
+  - GCBlock
+  - HRNet
+  - Non-Local
+  - OCR
+  - ResNeSt
+  - scSE
+  - SE
+  - SK
+  - DANet: Dual Attention
 - Plug-and-play module: 即插即用模块：
-  - Attention 实现或者复制官方的pytorch实现，即插即用的注意力模块。
   - ACBlock
   - Swish、wish Activation
   - ASPP Block
