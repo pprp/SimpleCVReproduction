@@ -44,6 +44,12 @@
   - ICCV2019 CCNet: Criss Cross Attention
   - Object Contextual Representation for sematic segmentation: OCRModule
   - FPT: 包含Self Transform、Grounding Transform、Rendering Transform
+  - DOConv: 阿里提出的Depthwise Over-parameterized Convolution
+  - PyConv: 起源人工智能研究院提出的金字塔卷积
+  - ULSAM：用于紧凑型CNN的超轻量级子空间注意力模块
+  - DGC: ECCV 2020用于加速卷积神经网络的动态分组卷积
+  - DCANet: ECCV 2020 学习卷积神经网络的连接注意力
+  - PSConv: ECCV 2020 将特征金字塔压缩到紧凑的多尺度卷积层中
 
 ## 其他推荐项目
 
