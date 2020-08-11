@@ -4,9 +4,11 @@ from collections import OrderedDict
 
 
 def _gather_feature(feat, ind, mask=None):
+  # feat : [bs, wxh, c]
   dim = feat.size(2)
+  # ind : [bs, num of ind, c]
   ind = ind.unsqueeze(2).expand(ind.size(0), ind.size(1), dim)
-  feat = feat.gather(1, ind)
+  feat = feat.gather(1, ind) # 按照dim=1获取ind
   if mask is not None:
     mask = mask.unsqueeze(2).expand_as(feat)
     feat = feat[mask]
@@ -15,8 +17,9 @@ def _gather_feature(feat, ind, mask=None):
 
 
 def _tranpose_and_gather_feature(feat, ind):
-  feat = feat.permute(0, 2, 3, 1).contiguous()
-  feat = feat.view(feat.size(0), -1, feat.size(3))
+  # ind代表的是ground truth中设置的存在目标点的下角标
+  feat = feat.permute(0, 2, 3, 1).contiguous()# from [bs c h w] to [bs, h, w, c] 
+  feat = feat.view(feat.size(0), -1, feat.size(3)) # to [bs, wxh, c]
   feat = _gather_feature(feat, ind)
   return feat
 
