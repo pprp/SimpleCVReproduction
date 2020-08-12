@@ -51,6 +51,8 @@
   - DCANet: ECCV 2020 学习卷积神经网络的连接注意力
   - PSConv: ECCV 2020 将特征金字塔压缩到紧凑的多尺度卷积层中
 
+> PS: 关于如何在YOLOv3中加入以上模块，可以访问[这个博客](https://blog.csdn.net/DD_PP_JJ/article/details/104109369)，这个里边实现了SE,SK,CBAM,SPP,ASPP等在内的模型，对应的代码在https://github.com/GiantPandaCV/yolov3-point。
+
 ## 其他推荐项目
 
 - CenterNet 是一个简化版本的（并非原版），正在分析和学习源码。
