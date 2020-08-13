@@ -289,6 +289,7 @@ class DLA(nn.Module):
         for i in range(6):
             x = getattr(self, 'level{}'.format(i))(x)
             y.append(x)
+        # 此处相对于dla34的返回结果进行了变动，返回6个level的特征图
         return y
 
     def load_pretrained_model(self, data='imagenet', name='dla34', hash='ba72cf86'):
@@ -363,6 +364,10 @@ class IDAUp(nn.Module):
     ida(layers, len(layers) -i - 2, len(layers))
     '''
     def __init__(self, o, channels, up_f):
+        # j = -3
+        # o: 128 
+        # channels: [128,256,512]
+        # up_f: [1,2,4] = [2/2, 4/2,8/2]
         super(IDAUp, self).__init__()
         for i in range(1, len(channels)):
             c = channels[i]
