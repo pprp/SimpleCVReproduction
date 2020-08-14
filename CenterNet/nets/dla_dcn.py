@@ -367,11 +367,11 @@ class IDAUp(nn.Module):
         # j = -3
         # o: 128 
         # channels: [128,256,512]
-        # up_f: [1,2,4] = [2/2, 4/2,8/2]
+        # up_f: [2/2, 4/2,8/2] = [1,2,4]
         super(IDAUp, self).__init__()
-        for i in range(1, len(channels)):
+        for i in range(1, len(channels)): # i in 1, 2
             c = channels[i]
-            f = int(up_f[i])  
+            f = int(up_f[i])  # 2 
             proj = DeformConv(c, o)
             node = DeformConv(o, o)
      
@@ -386,7 +386,7 @@ class IDAUp(nn.Module):
                  
         
     def forward(self, layers, startp, endp):
-        for i in range(startp + 1, endp):
+        for i in range(startp + 1, endp):# i in 4, 5
             upsample = getattr(self, 'up_' + str(i - startp))
             project = getattr(self, 'proj_' + str(i - startp))
 
