@@ -1,3 +1,13 @@
+from utils.utils import _tranpose_and_gather_feature, load_model
+from utils.summary import (DisablePrint, create_logger, create_saver,
+                           create_summary)
+from utils.post_process import ctdet_decode
+from utils.losses import _neg_loss, _reg_loss
+from utils.image import transform_preds
+from nets.resdcn import get_pose_net
+from nets.hourglass import get_hourglass
+from datasets.pascal import PascalVOC, PascalVOC_eval
+from datasets.coco import COCO, COCO_eval
 import argparse
 import os
 import sys
@@ -8,18 +18,8 @@ import torch.distributed as dist
 import torch.nn as nn
 import torch.utils.data
 
-from datasets.coco import COCO, COCO_eval
-from datasets.pascal import PascalVOC, PascalVOC_eval
-from nets.hourglass import get_hourglass
-from nets.resdcn import get_pose_net
-from utils.image import transform_preds
-from utils.losses import _neg_loss, _reg_loss
-from utils.post_process import ctdet_decode
-from utils.summary import (DisablePrint, create_logger, create_saver,
-                           create_summary)
-from utils.utils import _tranpose_and_gather_feature, load_model
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
+
 
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
 # os.environ["CUDA_VISIBLE_DEVICES"] = '0'
@@ -48,7 +48,7 @@ parser.add_argument('--split_ratio', type=float, default=1.0)
 
 parser.add_argument('--lr', type=float, default=5e-4)
 parser.add_argument('--lr_step', type=str, default='90,120')
-parser.add_argument('--batch_size', type=int, default=32)
+parser.add_argument('--batch_size', type=int, default=1)
 parser.add_argument('--num_epochs', type=int, default=140)
 
 parser.add_argument('--test_topk', type=int, default=100)
@@ -120,7 +120,7 @@ def main():
                                'val',
                                test_scales=[1.],
                                test_flip=False)
-                               
+
     val_loader = torch.utils.data.DataLoader(val_dataset,
                                              batch_size=1,
                                              shuffle=False,

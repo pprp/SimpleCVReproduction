@@ -13,7 +13,7 @@ import pycocotools.coco as coco
 from utils.image import get_border, get_affine_transform, affine_transform, color_aug
 from utils.image import draw_umich_gaussian, gaussian_radius
 
-VOC_NAMES = ['__background__', 'dim target']
+VOC_NAMES = ['__background__', 'raccoon']
 
 # 均值和方差
 VOC_MEAN = [0.485, 0.456, 0.406]
