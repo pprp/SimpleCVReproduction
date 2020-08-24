@@ -184,6 +184,7 @@ class PascalVOC(data.Dataset):
 class PascalVOC_eval(PascalVOC):
     def __init__(self, data_dir, split, test_scales=(1,), test_flip=False, fix_size=True, **kwargs):
         super(PascalVOC_eval, self).__init__(data_dir, split, **kwargs)
+        # test_scale = [0.5,0.75,1,1.25,1.5]
         self.test_flip = test_flip
         self.test_scales = test_scales
         self.fix_size = fix_size
@@ -197,6 +198,7 @@ class PascalVOC_eval(PascalVOC):
 
         out = {}
         for scale in self.test_scales:
+            # 得到多个尺度的图片大小
             new_height = int(height * scale)
             new_width = int(width * scale)
 
@@ -208,8 +210,30 @@ class PascalVOC_eval(PascalVOC):
                 scaled_size = np.array(
                     [scaled_size, scaled_size], dtype=np.float32)
             else:
+                # self.padding = 31  # 127 for hourglass
                 img_height = (new_height | self.padding) + 1
                 img_width = (new_width | self.padding) + 1
+                # 按位或运算，找到最接近的[32,64,128,256,512]
+                '''
+                >>> 10 | 31
+                31
+                >>> 20 | 31
+                31
+                >>> 32 | 31
+                63
+                >>> 384 | 31
+                415
+                >>> 100 | 31
+                127
+                >>> 250 | 31
+                255
+                >>> 510 | 31
+                511
+                >>> 510 | 127
+                511
+                >>> 1000 | 127
+                1023
+                '''
                 center = np.array(
                     [new_width // 2, new_height // 2], dtype=np.float32)
                 scaled_size = np.array(
@@ -226,7 +250,7 @@ class PascalVOC_eval(PascalVOC):
             # from [H, W, C] to [1, C, H, W]
             img = img.transpose(2, 0, 1)[None, :, :, :]
 
-            if self.test_flip:
+            if self.test_flip: # 横向翻转
                 img = np.concatenate((img, img[:, :, :, ::-1].copy()), axis=0)
 
             out[scale] = {'image': img,
