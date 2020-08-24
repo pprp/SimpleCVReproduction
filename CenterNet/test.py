@@ -38,7 +38,7 @@ parser.add_argument('--arch', type=str, default='large_hourglass')
 
 parser.add_argument('--img_size', type=int, default=384)
 
-parser.add_argument('--test_flip', action='store_true')
+parser.add_argument('--test_flip', action='store_true') # 控制是否有翻转的数据增强
 parser.add_argument('--test_scales', type=str, default='1')  # 0.5,0.75,1,1.25,1.5
 
 parser.add_argument('--test_topk', type=int, default=100)
@@ -70,8 +70,10 @@ def main():
     max_per_image = 100
 
     Dataset_eval = COCO_eval if cfg.dataset == 'coco' else PascalVOC_eval
+
     dataset = Dataset_eval(cfg.data_dir, split='val', img_size=cfg.img_size,
                            test_scales=cfg.test_scales, test_flip=cfg.test_flip)
+
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False,
                                               num_workers=1, pin_memory=True,
                                               collate_fn=dataset.collate_fn)
@@ -91,13 +93,23 @@ def main():
     results = {}
     with torch.no_grad():
         for inputs in data_loader:
+            '''
+            out[scale] = {'image': img,
+                          'center': center,
+                          'scale': scaled_size, # [img_width, img_height]
+                          'fmap_h': img_height // self.down_ratio, # feature map的大小
+                          'fmap_w': img_width // self.down_ratio}
+            '''
             img_id, inputs = inputs[0]
 
             detections = []
-            for scale in inputs:
+            for scale in inputs: # 多个尺度如0.5,,0.75,1,1.25等
                 inputs[scale]['image'] = inputs[scale]['image'].to(cfg.device)
 
                 output = model(inputs[scale]['image'])[-1]
+                # output = [hmap, regs, w_h_]
+                # 对模型的输出结果进行解码
+                # dets-> [bboxes, scores, clses]
                 dets = ctdet_decode(*output, K=cfg.test_topk)
                 dets = dets.detach().cpu().numpy().reshape(1, -1, dets.shape[2])[0]
 

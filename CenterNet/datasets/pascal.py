@@ -203,6 +203,7 @@ class PascalVOC_eval(PascalVOC):
             new_width = int(width * scale)
 
             if self.fix_size:
+                # fix size代表根据参数固定图片大小
                 img_height, img_width = self.img_size['h'], self.img_size['w']
                 center = np.array(
                     [new_width / 2., new_height / 2.], dtype=np.float32)
@@ -256,7 +257,7 @@ class PascalVOC_eval(PascalVOC):
             out[scale] = {'image': img,
                           'center': center,
                           'scale': scaled_size,
-                          'fmap_h': img_height // self.down_ratio,
+                          'fmap_h': img_height // self.down_ratio, # feature map的大小
                           'fmap_w': img_width // self.down_ratio}
 
         return img_id, out
