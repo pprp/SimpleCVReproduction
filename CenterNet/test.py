@@ -31,10 +31,10 @@ parser.add_argument('--root_dir', type=str, default='./')
 parser.add_argument('--data_dir', type=str, default='./data')
 parser.add_argument('--log_name',
                     type=str,
-                    default='pascal_large_hourglass_384_dp')
+                    default='pascal_small_hourglass_512_dp')
 
 parser.add_argument('--dataset', type=str, default='pascal', choices=['coco', 'pascal'])
-parser.add_argument('--arch', type=str, default='large_hourglass')
+parser.add_argument('--arch', type=str, default='small_hourglass')
 
 parser.add_argument('--img_size', type=int, default=384)
 
@@ -71,7 +71,7 @@ def main():
 
     Dataset_eval = COCO_eval if cfg.dataset == 'coco' else PascalVOC_eval
 
-    dataset = Dataset_eval(cfg.data_dir, split='val', img_size=cfg.img_size,
+    dataset = Dataset_eval(cfg.data_dir, split='test', img_size=cfg.img_size,
                            test_scales=cfg.test_scales, test_flip=cfg.test_flip)
 
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=False,
@@ -86,6 +86,7 @@ def main():
     else:
         raise NotImplementedError
 
+    print(cfg.pretrain_dir)
     model = load_model(model, cfg.pretrain_dir)
     model = model.to(cfg.device)
     model.eval()

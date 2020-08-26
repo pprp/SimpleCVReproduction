@@ -48,13 +48,13 @@ parser.add_argument('--split_ratio', type=float, default=1.0)
 
 parser.add_argument('--lr', type=float, default=5e-4)
 parser.add_argument('--lr_step', type=str, default='90,120')
-parser.add_argument('--batch_size', type=int, default=1)
-parser.add_argument('--num_epochs', type=int, default=140)
+parser.add_argument('--batch_size', type=int, default=16)
+parser.add_argument('--num_epochs', type=int, default=230)
 
 parser.add_argument('--test_topk', type=int, default=100)
 
 parser.add_argument('--log_interval', type=int, default=100)
-parser.add_argument('--val_interval', type=int, default=5)
+parser.add_argument('--val_interval', type=int, default=3)
 parser.add_argument('--num_workers', type=int, default=4)
 
 cfg = parser.parse_args()
@@ -117,7 +117,7 @@ def main():
     Dataset_eval = COCO_eval if cfg.dataset == 'coco' else PascalVOC_eval
 
     val_dataset = Dataset_eval(cfg.data_dir,
-                               'val',
+                               'test',
                                test_scales=[1.],
                                test_flip=False)
 

@@ -47,7 +47,7 @@ class PascalVOC(data.Dataset):
         self.split = split  # ?
         self.data_dir = os.path.join(data_dir, 'voc') # ./data/voc
         self.img_dir = os.path.join(self.data_dir, 'images') # ./data/voc/images
-        _ann_name = {'train': 'train2020', 'val': 'test2020'}
+        _ann_name = {'train': 'train2020', 'test': 'test2020'}
         # 意思是需要json格式数据集
         self.annot_path = os.path.join(
             self.data_dir, 'annotations', 'pascal_%s.json' % _ann_name[split])
@@ -422,7 +422,7 @@ class eval_mAP:
         cachefile = os.path.join(cachedir, 'annots.pkl')
         # read list of images
 
-        print(imagesetfile, '==')
+        print(imagesetfile, '=='*3)
         with open(imagesetfile, 'r') as f:
             lines = f.readlines()
         imagenames = [x.strip() for x in lines]
