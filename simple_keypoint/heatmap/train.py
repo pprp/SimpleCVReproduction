@@ -68,7 +68,7 @@ def test(model, epoch, dataloader, criterion):
 if __name__ == "__main__":
 
     total_epoch = 100
-    bs = 20
+    bs = 2
     ########################################
     transforms_all = transforms.Compose([
         transforms.ToPILImage(),

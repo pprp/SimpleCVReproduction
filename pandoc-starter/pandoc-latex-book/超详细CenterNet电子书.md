@@ -27,7 +27,7 @@ titlepage-background: "backgrounds/background4.pdf"
 
 ## 一、训练自己的数据集
 
-这书是基于非官方的CenterNet实现，https://github.com/zzzxxxttt/pytorch_simple_CenterNet_45，这个版本的实现入门难度小一些，基于官方版本(https://github.com/xingyizhou/CenterNet)进行修改，要比官方代码更适合阅读和理解，dataloader、hourglass、训练流程等原版中比较复杂的部分都进行了重写，最终要比官方的速度更快。
+本书是基于非官方的CenterNet实现，https://github.com/zzzxxxttt/pytorch_simple_CenterNet_45，这个版本的实现入门难度小一些，基于官方版本(https://github.com/xingyizhou/CenterNet)进行修改，要比官方代码更适合阅读和理解，dataloader、hourglass、训练流程等原版中比较复杂的部分都进行了重写，最终要比官方的速度更快。
 
 本章主要讲解如何用这个版本的CenterNet训练自己的VOC数据集，环境的配置。
 
@@ -841,6 +841,8 @@ Hourglass的设计比较有层次，通过各个模块的有规律组合成完�
 
 #### 2.1 Residual模块
 
+基础的Residual模块
+
 ```python
 class residual(nn.Module):
     def __init__(self, k, inp_dim, out_dim, stride=1, with_bn=True):
@@ -881,11 +883,10 @@ class residual(nn.Module):
 
 #### 2.2 Hourglass子模块
 
+kp module指的是hourglass基本模块
+
 ```python
 class kp_module(nn.Module):
-    '''
-    kp module指的是hourglass基本模块
-    '''
     def __init__(self, n, dims, modules):
         super(kp_module, self).__init__()
 
@@ -947,6 +948,8 @@ class kp_module(nn.Module):
 ![论文中的n阶hourglass模块示意图](https://img-blog.csdnimg.cn/20200730150621168.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L0REX1BQX0pK,size_16,color_FFFFFF,t_70)
 
 #### 2.3 Hourglass
+
+exkp是Hourglass模型整体实现。
 
 ```python
 class exkp(nn.Module):

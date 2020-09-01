@@ -108,7 +108,7 @@ for i in range(bs):
     hm = cv2.applyColorMap(hm, cv2.COLORMAP_JET)
     hm = cv2.resize(hm, (480, 360))
 
-    superimposed_img = hm #* 0.1 + img
+    superimposed_img = hm * 0.2 + img
 
     coord_x, coord_y = landmark_coord[i]
 
@@ -116,6 +116,6 @@ for i in range(bs):
 
     # print("./output/%s_out.jpg" % (img_name_list[i]))
 
-    cv2.imwrite("./output/%s_out.jpg" % (img_name_list[i]), superimposed_img)
+    cv2.imwrite("./output2/%s_out.jpg" % (img_name_list[i]), superimposed_img)
 
 print("done")

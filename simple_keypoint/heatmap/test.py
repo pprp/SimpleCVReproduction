@@ -30,7 +30,7 @@ def _gather_feature(feat, ind, mask=None):
     return feat
 
 
-def _topk(scores, K=40):
+def _topk(scores, K=1):
     batch, cat, height, width = scores.size()
 
     topk_scores, topk_inds = torch.topk(scores.view(batch, cat, -1), K)
@@ -113,7 +113,7 @@ if __name__ == "__main__":
 
             print(hm.shape)
 
-            cv2.imwrite("output_%d_%d.jpg" % (iter, i), hm)
+            cv2.imwrite("./test_output/output_%d_%d.jpg" % (iter, i), hm)
             cv2.waitKey(0)
             # batch, height, width = heatmap.size()
             # print(heatmap.shape, heatmap[0])
