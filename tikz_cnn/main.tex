@@ -1,0 +1,143 @@
+\documentclass[a4paper, 10pt]{article}
+
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{pgf-umlsd}
+\usepackage{ifthen}
+\usepackage[]{fp}
+
+\usetikzlibrary{matrix,patterns,spy,fit,calc}
+\usepgfplotslibrary{groupplots}
+\pgfplotsset{compat=newest}
+
+\FPset{totalOffset}{0}
+
+\begin{document}
+
+\begin{figure}
+	\centering
+	\noindent\resizebox{\textwidth}{!}{
+	\begin{tikzpicture}
+		%\draw[use as bounding box, transparent] (-1.8,-1.8) rectangle (17.2, 3.2);
+
+		\newcommand{\networkLayer}[9]{
+			% Define the macro.
+			% 1st argument: Height and width of the layer rectangle slice.
+			% 2nd argument: Depth of the layer slice
+			% 3rd argument: X Offset --> use it to offset layers from previously drawn layers.
+			% 4th argument: Y Offset --> Use it when an output needs to be fed to multiple layers that are on the same X offset.
+			% 5th argument: Z Offset --> Use to offset layers from previous 
+			% 6th argument: Options for filldraw.
+			% 7th argument: Text to be placed below this layer.
+			% 8th argument: Name of coordinates. When name = "start" this resets the offset counter
+			% 9th argument: list of nodes to connect to (previous layers)
+			\xdef\totalOffset{\totalOffset}
+ 			\ifthenelse{\equal{#8} {start}}
+ 			{\FPset{totalOffset}{0}}
+ 			{}
+ 			\FPeval\currentOffset{0+(totalOffset)+(#3)}
+
+			\def\hw{#1} % Used to distinguish input resolution for current layer.
+			\def\b{0.02}
+			\def\c{#2} % Width of the cube to distinguish number of input channels for current layer.
+			\def\x{\currentOffset} % X offset for current layer.
+			\def\y{#4} % Y offset for current layer.
+			\def\z{#5} % Z offset for current layer.
+			\def\inText{#7}
+
+            % Define references to points on the cube surfaces
+            \coordinate (#8_front) at  (\x+\c  , \z      , \y);
+            \coordinate (#8_back) at   (\x     , \z      , \y);
+            \coordinate (#8_top) at    (\x+\c/2, \z+\hw/2, \y);
+            \coordinate (#8_bottom) at (\x+\c/2, \z-\hw/2, \y);
+            
+ 			% Define cube coords
+			\coordinate (blr) at (\c+\x,  -\hw/2+\z,  -\hw/2+\y); %back lower right
+			\coordinate (bur) at (\c+\x,   \hw/2+\z,  -\hw/2+\y); %back upper right
+			\coordinate (bul) at (0 +\x,   \hw/2+\z,  -\hw/2+\y); %back upper left
+			\coordinate (fll) at (0 +\x,  -\hw/2+\z,   \hw/2+\y); %front lower left
+			\coordinate (flr) at (\c+\x,  -\hw/2+\z,   \hw/2+\y); %front lower right
+			\coordinate (fur) at (\c+\x,   \hw/2+\z,   \hw/2+\y); %front upper right
+			\coordinate (ful) at (0 +\x,   \hw/2+\z,   \hw/2+\y); %front upper left
+
+            % Draw connections from other points to the back of this node
+            \ifthenelse{\equal{#9} {}}
+ 			{}{
+ 			    \foreach \val in #9
+ 			        \draw[line width=0.3mm] (\val)--(#8_back);
+ 			}
+ 			
+			% Draw the layer body.
+			% back plane
+			\draw[line width=0.3mm](blr) -- (bur) -- (bul);
+			% front plane
+			\draw[line width=0.3mm](fll) -- (flr) node[midway,below] {\inText} -- (fur) -- (ful) -- (fll);
+			\draw[line width=0.3mm](blr) -- (flr);
+			\draw[line width=0.3mm](bur) -- (fur);
+			\draw[line width=0.3mm](bul) -- (ful);
+
+			% Recolor visible surfaces
+			% front plane
+			\filldraw[#6] ($(fll)+(\b,\b,0)$) -- ($(flr)+(-\b,\b,0)$) -- ($(fur)+(-\b,-\b,0)$) -- ($(ful)+(\b,-\b,0)$) -- ($(fll)+(\b,\b,0)$);
+			\filldraw[#6] ($(ful)+(\b,0,-\b)$) -- ($(fur)+(-\b,0,-\b)$) -- ($(bur)+(-\b,0,\b)$) -- ($(bul)+(\b,0,\b)$);
+
+			% Colored slice.
+			\ifthenelse {\equal{#6} {}}{} % Do not draw colored slice if #4 is blank.
+			% Else, draw a colored slice.
+			{\filldraw[#6] ($(flr)+(0,\b,-\b)$) -- ($(blr)+(0,\b,\b)$) -- ($(bur)+(0,-\b,\b)$) -- ($(fur)+(0,-\b,-\b)$);}
+
+			\FPeval\totalOffset{0+(currentOffset)+\c}
+		}
+		
+	%\networkLayer{2.0}{0.5}{0.0}{0.0}{2.5}{color=red!50}{}{start}{}
+	%\networkLayer{2.0}{0.25}{1.5}{0.0}{0.0}{color=green!50}{}{bot}{{start_front}}
+	%\networkLayer{2.0}{0.25}{0.15}{0.0}{0.0}{color=green!50}{}{}{}
+	%\networkLayer{2.0}{0.5}{0.15}{0.0}{0.0}{color=green!50}{}{end}{}
+	%\networkLayer{2.0}{0.5}{-(2.8)/2}{0.0}{5.0}{color=green!50}{}{top}{{start_front}}
+	%\networkLayer{2.0}{0.5}{2.0}{0.0}{2.5}{color=blue!50}{}{add}{{end_front,top_front}}
+	%\networkLayer{1.0}{0.5}{0.15}{0.0}{2.5}{color=blue!50}{}{}{}
+	%\networkLayer{0.75}{0.5}{0.15}{0.0}{2.5}{color=blue!50}{}{}{}
+	%\networkLayer{0.5}{0.5}{0.15}{0.0}{2.5}{color=blue!50}{}{}{}
+			% INPUT
+		\networkLayer{3.0}{0.03}{0.0}{0.0}{0.0}{color=gray!80}{}{start}{}
+
+		% ENCODER
+		\networkLayer{3.0}{0.1}{0.5}{0.0}{0.0}{color=white}{conv}{}{}    % S1
+		\networkLayer{3.0}{0.1}{0.1}{0.0}{0.0}{color=white}{}{}{}        % S2
+		\networkLayer{2.5}{0.2}{0.1}{0.0}{0.0}{color=white}{conv}{}{}    % S1
+		\networkLayer{2.5}{0.2}{0.1}{0.0}{0.0}{color=white}{}{}{}        % S2
+		\networkLayer{2.0}{0.4}{0.1}{0.0}{0.0}{color=white}{conv}{}{}    % S1
+		\networkLayer{2.0}{0.4}{0.1}{0.0}{0.0}{color=white}{}{}{}        % S2
+		\networkLayer{1.5}{0.8}{0.1}{0.0}{0.0}{color=white}{conv}{}{}    % S1
+		\networkLayer{1.5}{0.8}{0.1}{0.0}{0.0}{color=white}{}{}{}        % S2
+		\networkLayer{1.0}{1.5}{0.1}{0.0}{0.0}{color=white}{conv}{}{}    % S1
+		\networkLayer{1.0}{1.5}{0.1}{0.0}{0.0}{color=white}{}{mid}{}        % S2
+
+		\networkLayer{1.0}{0.5}{1.5}{0.0}{-1.5}{color=green!50}{}{bot}{{mid_front}}
+		\networkLayer{1.0}{0.5}{-0.5}{0.0}{1.5}{color=green!50}{}{top}{{mid_front}}
+		\networkLayer{1.0}{0.5}{1.5}{0.0}{0.0}{color=blue!50}{sum}{}{{bot_front,top_front}}
+
+		% DECODER
+		\networkLayer{1.0}{1.5}{0.1}{0.0}{0.0}{color=white}{deconv}{}{} % S1
+		\networkLayer{1.0}{1.5}{0.1}{0.0}{0.0}{color=white}{}{}{}       % S2
+		\networkLayer{1.5}{0.8}{0.1}{0.0}{0.0}{color=white}{deconv}{}{} % S1
+		\networkLayer{1.5}{0.8}{0.1}{0.0}{0.0}{color=white}{}{}{}       % S2
+		\networkLayer{2.0}{0.4}{0.1}{0.0}{0.0}{color=white}{}{}{}       % S1
+		\networkLayer{2.0}{0.4}{0.1}{0.0}{0.0}{color=white}{}{}{}       % S2
+		\networkLayer{2.5}{0.2}{0.1}{0.0}{0.0}{color=white}{}{}{}       % S1
+		\networkLayer{2.5}{0.2}{0.1}{0.0}{0.0}{color=white}{}{}{}       % S2
+		\networkLayer{3.0}{0.1}{0.1}{0.0}{0.0}{color=white}{}{}{}       % S1
+		\networkLayer{3.0}{0.1}{0.1}{0.0}{0.0}{color=white}{}{}{}       % S2
+
+		% OUTPUT
+		\networkLayer{3.0}{0.05}{0.9}{0.0}{0.0}{color=red!40}{}{}{}          % Pixelwise segmentation with classes.
+
+	\end{tikzpicture}
+	}
+	\caption{Example CNN.}
+	\label{fig:cnn}
+\end{figure}
+
+\end{document}
