@@ -1,0 +1,388 @@
+\ProvidesPackage{Box}
+\usepackage{xcolor}
+
+\def\ConvColor{rgb:yellow,5;red,2.5;white,5}
+\def\ConvReLUColor{rgb:yellow,5;red,10;black,0.3}
+\def\PoolColor{rgb:red,1;black,0.3}
+\def\UnpoolColor{rgb:blue,2;green,1;black,0.3}
+\def\FcColor{rgb:blue,5;red,2.5;white,5}
+\def\FcReluColor{rgb:blue,5;red,5;white,4}
+\def\SoftmaxColor{rgb:magenta,5;black,7}   
+\def\SumColor{rgb:blue,5; green,2.5; white,5}
+\def\DconvColor{rgb:blue,5;green,15}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% This Block can draw simple block of boxes with custom colors. 
+% Can be used for conv, deconv etc
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\tikzset{BaseBox/.pic={\tikzset{/boxblock/.cd,#1}
+        \tikzstyle{box}=[every edge/.append style={pic actions, densely dashed, opacity=1},draw=\border, fill opacity=\opacity, pic actions,fill=\fill]
+        \tikzset{every node/.append style={scale=\scriptscale}}
+        
+        \xdef\y{\cubey}
+        \xdef\z{\cubez}
+        \xdef\x{\cubex}
+   
+        \coordinate (a) at (0 , \y/2 , \z/2); 
+        \coordinate (b) at (0 ,-\y/2 , \z/2); 
+        \coordinate (c) at (\x    ,-\y/2 , \z/2); 
+        \coordinate (d) at (\x    , \y/2 , \z/2); 
+        \coordinate (e) at (\x    , \y/2 ,-\z/2); 
+        \coordinate (f) at (\x    ,-\y/2 ,-\z/2); 
+        \coordinate (g) at (0 ,-\y/2 ,-\z/2); 
+        \coordinate (h) at (0 , \y/2 ,-\z/2);
+        \coordinate (k) at (0, 0, \z/2);
+        \coordinate (l) at (\x, 0, \z/2);
+         			
+        \draw [box] 
+            %dotted edges
+            (f) edge (g)
+            (b) edge (g)
+            (h) edge (g)    
+        ;     	
+        
+        % }%Loop ends
+        \draw [box] (d) -- (e) -- (f) -- (c) -- cycle
+                    (d) -- (a) -- (b) -- (c) -- cycle     
+                    (d) -- (a) -- (h) -- (e) -- cycle;
+        \draw [box, fill=black, draw=none, fill opacity=0.06]
+            (d) -- (c) -- (f) -- (e) -- cycle;
+        \draw [box, fill=white, draw=none, fill opacity=0.06]
+            (d) -- (a) -- (h) -- (e) -- cycle;
+        \draw [box] (c) -- (f) node [below, midway, sloped] {\zlabel}; %depth label
+        \path (b) edge ["\ylabel", midway, draw=\border] (a);  %height label
+        \draw [fill opacity=\opacity, draw=\border] (b) -- (c)  node [below, midway, fill opacity=1] {\xlabel};
+        \node at (\x/2, 0, \z/2) {\caption};
+        
+        %Define nodes to be used outside on the pic object
+        \coordinate (\name-left)   at (0,0,0) ;
+        \coordinate (\name-right)   at (\x, 0,0) ;
+        \coordinate (\name-face)  at (\x/2,0,\z/2);
+        \coordinate (\name-back)  at (\x/2,0,-\z/2);       
+        \coordinate (\name-head) at (\x/2,\y/2,0);
+        \coordinate (\name-bottom)  at (\x/2,-\y/2,0); 
+        \coordinate (\name-nearleft)   at (-\x/2,0,0) ;
+        \coordinate (\name-nearright)   at (1.5*\x, 0,0) ;
+        
+    },
+    /boxblock/.search also={/tikz},
+    /boxblock/.cd,
+    width/.store        in=\cubex,
+    height/.store       in=\cubey,
+    depth/.store        in=\cubez,
+    xlabel/.store       in=\xlabel,
+    ylabel/.store       in=\ylabel,
+    zlabel/.store       in=\zlabel,
+    caption/.store      in=\caption,
+    name/.store         in=\name,
+    fill/.store         in=\fill,
+    opacity/.store      in=\opacity,
+    scriptscale/.store  in=\scriptscale,
+    border/.store       in=\border,
+    border=1,
+    opacity=1,
+    scriptscale=1,
+    width=3,
+    height=6,
+    depth=3,
+    xlabel=,
+    ylabel=,
+    zlabel=,
+    caption=,
+    name=none,
+}
+
+\tikzset{BaseBox/.pic={\tikzset{/boxblock/.cd,#1}
+        \tikzstyle{box}=[every edge/.append style={pic actions, densely dashed, opacity=1},draw=\border, fill opacity=\opacity, pic actions,fill=\fill]
+        \tikzset{every node/.append style={scale=\scriptscale}}
+        
+        \xdef\y{\cubey}
+        \xdef\z{\cubez}
+        \xdef\x{\cubex}
+   
+        \coordinate (a) at (0 , \y/2 , \z/2); 
+        \coordinate (b) at (0 ,-\y/2 , \z/2); 
+        \coordinate (c) at (\x    ,-\y/2 , \z/2); 
+        \coordinate (d) at (\x    , \y/2 , \z/2); 
+        \coordinate (e) at (\x    , \y/2 ,-\z/2); 
+        \coordinate (f) at (\x    ,-\y/2 ,-\z/2); 
+        \coordinate (g) at (0 ,-\y/2 ,-\z/2); 
+        \coordinate (h) at (0 , \y/2 ,-\z/2);
+        \coordinate (k) at (0, 0, \z/2);
+        \coordinate (l) at (\x, 0, \z/2);
+         			
+        \draw [box] 
+            %dotted edges
+            (f) edge (g)
+            (b) edge (g)
+            (h) edge (g)    
+        ;     	
+        
+        % }%Loop ends
+        \draw [box] (d) -- (e) -- (f) -- (c) -- cycle
+                    (d) -- (a) -- (b) -- (c) -- cycle     
+                    (d) -- (a) -- (h) -- (e) -- cycle;
+        \draw [box, fill=black, draw=none, fill opacity=0.06]
+            (d) -- (c) -- (f) -- (e) -- cycle;
+        \draw [box, fill=white, draw=none, fill opacity=0.06]
+            (d) -- (a) -- (h) -- (e) -- cycle;
+        \draw [box] (c) -- (f) node [below, midway, sloped] {\zlabel}; %depth label
+        \path (b) edge ["\ylabel", midway, draw=\border] (a);  %height label
+        \draw [fill opacity=\opacity, draw=\border] (b) -- (c)  node [below, midway, fill opacity=1] {\xlabel};
+        \node at (\x/2, 0, \z/2) {\caption};
+        
+        %Define nodes to be used outside on the pic object
+        \coordinate (\name-left)   at (0,0,0) ;
+        \coordinate (\name-right)   at (\x, 0,0) ;
+        \coordinate (\name-face)  at (\x/2,0,\z/2);
+        \coordinate (\name-back)  at (\x/2,0,-\z/2);       
+        \coordinate (\name-head) at (\x/2,\y/2,0);
+        \coordinate (\name-bottom)  at (\x/2,-\y/2,0); 
+        \coordinate (\name-nearleft)   at (-\x/2,0,0) ;
+        \coordinate (\name-nearright)   at (1.5*\x, 0,0) ;
+        
+    },
+    /boxblock/.search also={/tikz},
+    /boxblock/.cd,
+    width/.store        in=\cubex,
+    height/.store       in=\cubey,
+    depth/.store        in=\cubez,
+    xlabel/.store       in=\xlabel,
+    ylabel/.store       in=\ylabel,
+    zlabel/.store       in=\zlabel,
+    caption/.store      in=\caption,
+    name/.store         in=\name,
+    fill/.store         in=\fill,
+    opacity/.store      in=\opacity,
+    scriptscale/.store  in=\scriptscale,
+    border/.store       in=\border,
+    border=1,
+    opacity=1,
+    scriptscale=1,
+    width=3,
+    height=6,
+    depth=3,
+    xlabel=,
+    ylabel=,
+    zlabel=,
+    caption=,
+    name=none,
+}
+\tikzset{ConvReLU/.pic={\tikzset{/boxblock/.cd,#1}
+        \tikzstyle{box}=[every edge/.append style={pic actions, densely dashed, opacity=1},fill opacity=\opacity, pic actions,fill=\fill, draw=\border]
+        \tikzset{every node/.append style={scale=\scriptscale}}
+        
+        \xdef\y{\cubey}
+        \xdef\z{\cubez}
+        \xdef\x{\cubex}
+   
+        \coordinate (a) at (0 , \y/2 , \z/2); 
+        \coordinate (b) at (0 ,-\y/2 , \z/2); 
+        \coordinate (c) at (\x    ,-\y/2 , \z/2);
+        \coordinate (d) at (\x    , \y/2 , \z/2); 
+        \coordinate (e) at (\x    , \y/2 ,-\z/2); 
+        \coordinate (f) at (\x    ,-\y/2 ,-\z/2); 
+        \coordinate (g) at (0 ,-\y/2 ,-\z/2); 
+        \coordinate (h) at (0 , \y/2 ,-\z/2);
+        \coordinate (he) at (0.7*\x    ,\y/2 , -\z/2);
+        \coordinate (gf) at (0.7*\x    ,-\y/2 , -\z/2);
+        \coordinate (bc) at (0.7*\x    ,-\y/2 , \z/2);
+        \coordinate (ad) at (0.7*\x, \y/2,\z/2);
+         			
+        \draw [box] 
+            %dotted edges
+            (f) edge (g)
+            (b) edge (g)
+            (h) edge (g)    
+        ;     	
+        
+        \draw [box] (d) -- (a) -- (b) -- (c) -- cycle
+                    (d) -- (e) -- (f) -- (c) -- cycle
+                    (d) -- (a) -- (h) -- (e) -- cycle;
+        \draw [box, fill=\ConvReLUColor, fill opacity=0.1, draw=none]
+            (f) -- (e) -- (he) -- (gf) -- cycle
+            (f) -- (gf) -- (bc) -- (c) -- cycle;
+            
+        \draw [box, fill=\ConvReLUColor, draw=none]
+            (d) -- (e) -- (he) -- (ad) -- cycle
+            (d) -- (c) -- (bc) -- (ad) -- cycle
+            (d) -- (e) -- (f) -- (c) -- cycle;
+
+        \draw [box, fill=black, draw=none, fill opacity=0.06]
+            (d) -- (c) -- (f) -- (e) -- cycle;
+        \draw [box, fill=white, draw=none, fill opacity=0.06]
+            (d) -- (a) -- (h) -- (e) -- cycle;
+        \draw [draw=\border] (c) -- (f) node [ below, midway, sloped] {\zlabel}; %depth label
+        \path (b) edge ["\ylabel", midway, draw=\border] (a);  %height label
+        \draw [draw=\border] (b) -- (c)  node [below, midway, fill opacity=1] {\xlabel};
+        \node [rotate=-90] at (\x/2, 0, \z/2) {\caption};
+        \draw [draw=\border] (ad) -- (d);
+        
+        % \path (l) 
+        % edge ["\textcolor{black}{ \bf \caption}"',midway](l) ; %Block caption/pic object label
+         
+        %Define nodes to be used outside on the pic object
+        \coordinate (\name-left)   at (0,0,0) ;
+        \coordinate (\name-right)   at (\x, 0,0) ;
+        \coordinate (\name-face)  at (\x/2,0,\z/2);
+        \coordinate (\name-back)  at (\x/2,0,-\z/2);       
+        \coordinate (\name-head) at (\x/2,\y/2,0);
+        \coordinate (\name-bottom)  at (\x/2,-\y/2,0); 
+        \coordinate (\name-nearleft)   at (-\x/2,0,0) ;
+        \coordinate (\name-nearright)   at (1.5*\x, 0,0) ;
+        
+    },
+    /boxblock/.search also={/tikz},
+    /boxblock/.cd,
+    width/.store        in=\cubex,
+    height/.store       in=\cubey,
+    depth/.store        in=\cubez,
+    xlabel/.store       in=\xlabel,
+    ylabel/.store       in=\ylabel,
+    zlabel/.store       in=\zlabel,
+    caption/.store      in=\caption,
+    name/.store         in=\name,
+    fill/.store         in=\fill,
+    opacity/.store      in=\opacity,
+    scriptscale/.store  in=\scriptscale,
+    border/.store       in=\border,
+    border=true,
+    % fill={rgb:yellow,5;red,2.5;white,5},
+    opacity=1,
+    border=1,
+    scriptscale=1,
+    width=1,
+    height=2,
+    depth=2,
+    xlabel=,
+    ylabel=,
+    zlabel=,
+    caption=,
+    name=none,
+}
+
+
+\tikzset{PixelShuffle/.pic={\tikzset{/boxblock/.cd,#1}
+        \tikzstyle{box}=[every edge/.append style={pic actions, densely dashed, opacity=1},draw=\border, fill opacity=\opacity, pic actions,fill=\fill]
+        \tikzset{every node/.append style={scale=\scriptscale}}
+        
+        \xdef\y{\cubey}
+        \xdef\z{\cubez}
+        \xdef\x{\cubex}
+   
+        \coordinate (a) at (0 , \y/2 , \z/2); 
+        \coordinate (b) at (0 ,-\y/2 , \z/2); 
+        \coordinate (c) at (\x    ,-\y/2 , \z/2); 
+        \coordinate (d) at (\x    , \y/2 , \z/2); 
+        \coordinate (e) at (\x    , \y/2 ,-\z/2); 
+        \coordinate (f) at (\x    ,-\y/2 ,-\z/2); 
+        \coordinate (g) at (0 ,-\y/2 ,-\z/2); 
+        \coordinate (h) at (0 , \y/2 ,-\z/2);
+         			
+        \draw [box] 
+            %dotted edges
+            (f) edge (g)
+            (b) edge (g)
+            (h) edge (g)    
+        ;     	
+        
+        \coordinate (2a) at (\x+\dist , \scalefactor*\y/2 , \scalefactor*\z/2); 
+        \coordinate (2b) at (\x+\dist ,-\scalefactor*\y/2 , \scalefactor*\z/2); 
+        \coordinate (2c) at (1.6*\x+\dist    ,-\scalefactor*\y/2 , \scalefactor*\z/2); 
+        \coordinate (2d) at (1.6*\x+\dist    , \scalefactor*\y/2 , \scalefactor*\z/2); 
+        \coordinate (2e) at (1.6*\x+\dist    , \scalefactor*\y/2 ,-\scalefactor*\z/2); 
+        \coordinate (2f) at (1.6*\x+\dist    ,-\scalefactor*\y/2 ,-\scalefactor*\z/2); 
+        \coordinate (2g) at (\x+\dist ,-\scalefactor*\y/2 ,-\scalefactor*\z/2); 
+        \coordinate (2h) at (\x+\dist , \scalefactor*\y/2 ,-\scalefactor*\z/2);
+         			
+        \draw [box] 
+            %dotted edges
+            (2f) edge (2g)
+            (2b) edge (2g)
+            (2h) edge (2g)    
+        ;     	
+        
+        \draw [box] (d) -- (e) -- (f) -- (c) -- cycle
+                    (d) -- (a) -- (b) -- (c) -- cycle     
+                    (d) -- (a) -- (h) -- (e) -- cycle;
+        \draw [box, fill=black, draw=none, fill opacity=0.06]
+            (d) -- (c) -- (f) -- (e) -- cycle;
+        \draw [box, fill=white, draw=none, fill opacity=0.06]
+            (d) -- (a) -- (h) -- (e) -- cycle;
+        \draw[opacity=\connectlineopacity, densely dashed]
+            (d) -- (2a)
+            (e) -- (2h)
+            (f) -- (2g)
+            (c) -- (2b);
+        \draw [box] (2d) -- (2e) -- (2f) -- (2c) -- cycle
+                    (2d) -- (2a) -- (2b) -- (2c) -- cycle     
+                    (2d) -- (2a) -- (2h) -- (2e) -- cycle;
+        \draw [box, fill=black, draw=none, fill opacity=0.06]
+            (2d) -- (2c) -- (2f) -- (2e) -- cycle;
+        \draw [box, fill=white, draw=none, fill opacity=0.06]
+            (2d) -- (2a) -- (2h) -- (2e) -- cycle;
+            
+        \draw [box] (c) -- (f) node [below, midway, sloped] {\zlabel}; %depth label
+        \path (b) edge ["\ylabel", midway, draw=\border] (a);  %height label
+        \draw [box] (b) -- (c)  node [below, midway] {\xlabel};
+        \node [rotate=-90] at (\x/2, 0, \z/2) {\caption};
+        
+        \draw [box] (2c) -- (2f) node [below, midway, sloped] {\zzlabel}; %depth label
+        \path (2b) edge ["\yylabel", midway, draw=\border] (2a);  %height label
+        \draw [box] (2b) -- (2c)  node [below, midway] {\xxlabel};
+        \node [rotate=-90] at (1.3*\x+\dist, 0, \scalefactor*\z/2) {\ccaption};
+        
+        % \path (l) 
+        % edge ["\textcolor{black}{ \bf \caption}"',midway](l) ; %Block caption/pic object label
+         
+        %Define nodes to be used outside on the pic object
+        \coordinate (\name-left)   at (0,0,0) ;
+        \coordinate (\name-right)   at (1.6*\x+\dist, 0,0) ;
+        \coordinate (\name-face)  at (\x/2,0,\z/2);
+        \coordinate (\name-back)  at (\x/2,0,-\z/2);       
+        \coordinate (\name-head) at (\x/2,\y/2,0);
+        \coordinate (\name-bottom)  at (\x/2,-\y/2,0); 
+        \coordinate (\name-nearleft)   at (-\x/2,0,0) ;
+        \coordinate (\name-nearright)   at (1.5*\x, 0,0) ;
+        
+    },
+    /boxblock/.search also={/tikz},
+    /boxblock/.cd,
+    width/.store        in=\cubex,
+    height/.store       in=\cubey,
+    depth/.store        in=\cubez,
+    xlabel/.store       in=\xlabel,
+    ylabel/.store       in=\ylabel,
+    zlabel/.store       in=\zlabel,
+    caption/.store      in=\caption,
+    name/.store         in=\name,
+    fill/.store         in=\fill,
+    opacity/.store      in=\opacity,
+    scriptscale/.store  in=\scriptscale,
+    border/.store       in=\border,
+    dist/.store         in=\dist,
+    scalefactor/.store  in=\scalefactor,
+    connectlineopacity/.store in=\connectlineopacity,
+    xxlabel/.store       in=\xxlabel,
+    yylabel/.store       in=\yylabel,
+    zzlabel/.store       in=\zzlabel,
+    ccaption/.store      in=\ccaption,
+    ccaption=,
+    xxlabel=,
+    yylabel=,
+    zzlabel=,
+    scalefactor=2,
+    dist=5
+    border=1,
+    opacity=1,
+    scriptscale=1,
+    width=3,
+    height=6,
+    depth=3,
+    xlabel=,
+    ylabel=,
+    zlabel=,
+    caption=,
+    name=none,
+}
+

@@ -1,0 +1,32 @@
+\documentclass[border=8pt, multi, tikz]{standalone} 
+\usetikzlibrary{quotes,arrows.meta,positioning,3d}
+\usepackage{xcolor}
+\definecolor{mycolorr}{RGB}{168, 143, 50} % custom color
+\usepackage{layer/Box}
+% \usepackage{/compile/netDraw/layer/Ball}
+\begin{document}
+\begin{tikzpicture}
+
+% get the box
+\pic[shift={(0,0,0)}] at (0,0,0) 
+    {ConvReLU={
+        name=demo,
+        % caption=\textbf{caption} as well as \textcolor{green}{f a c e},
+        opacity=0.6,
+        xlabel=x axis, % text appears on x axis
+        ylabel=y axis, % text appears on y axis
+        zlabel=z axis, % text appears on z axis
+        fill=mycolorr, % mixture of color, I hate this mothod
+        scriptscale=1.5, % upscale the size of text
+        height=5,
+        width=1,
+        depth=5,
+        border=none,
+        caption=\textbf{\huge caption}
+        }
+    };
+
+
+
+\end{tikzpicture}
+\end{document}

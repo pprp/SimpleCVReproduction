@@ -1,0 +1,130 @@
+\documentclass[border=8pt, multi, tikz]{standalone} 
+\usetikzlibrary{quotes,arrows.meta,positioning,3d, decorations.markings, calc}
+\usepackage{xcolor}
+\definecolor{salmon}{RGB}{250, 128, 114} % custom color
+\definecolor{lightsalmon}{RGB}{255, 160, 122}
+\definecolor{lightpink}{RGB}{255, 182, 193}
+\definecolor{PALEGOLDENROD}{RGB}{238, 232, 170}
+\definecolor{nephritis}{RGB}{39, 174, 96}
+\definecolor{blueviolet}{RGB}{148,0,211}
+\definecolor{lightblue}{RGB}{173, 216, 230}
+\definecolor{lime}{RGB}{0, 255, 0}
+\usepackage{layer/Arrow}
+\usepackage{layer/Box}
+\usepackage{layer/Ball}
+
+\begin{document}
+\begin{tikzpicture}
+\tikzstyle{connection}=[thin,every node/.style={sloped,allow upside down, midway},draw=black,opacity=0.7]
+
+\node [canvas is zy plane at x=0] at (-4,0,0) {\includegraphics[width=2cm]{Squidward.jpg}};
+
+\draw [connection] (-4,0,0) -- (-3,0,0) node{\midarrow};
+
+\pic[shift={(0,0,0)}] at (-3,0,0) 
+    {ConvReLU={
+        name=extraction,
+        opacity=1,
+        % caption=conv relu,
+        % xlabel=rcab\m, 
+        fill=lightpink,
+        scriptscale=1.5, % upscale the size of text
+        width=.4,
+        height=2,
+        depth=2,
+        border=none
+        }
+    };
+
+\draw [connection] (extraction-right) -- (0,0,0) node{\midarrow};
+
+\pic[shift={(0,0,0)}] at (0,0,0) 
+    {BaseBox={
+        name=rg1,
+        opacity=1,
+        caption=RG$_1$,
+        % xlabel=64, % text appears on x axis
+        fill=salmon, % It have defined the color in line 4
+        scriptscale=1.5, % upscale the size of text
+        width=4,
+        height=2,
+        depth=2,
+        border=none
+        }
+    };
+
+\draw [connection] (rg1-right) -- ++(2,0,0) node{\midarrow};
+
+\pic[shift={(2,0,0)}] at (rg1-right) 
+    {BaseBox={
+        name=rg2,
+        opacity=1,
+        caption=RG$_2$,
+        % xlabel=64, % text appears on x axis
+        fill=salmon, % It have defined the color in line 4
+        scriptscale=1.5, % upscale the size of text
+        width=4,
+        height=2,
+        depth=2,
+        border=none
+        }
+    };
+
+\draw [dotted, very thick] (rg2-right) -- ++(3,0,0);
+
+\pic[shift={(3,0,0)}] at (rg2-right) 
+    {BaseBox={
+        name=rg20,
+        opacity=1,
+        caption=RG$_{10}$,
+        % xlabel=64, % text appears on x axis
+        fill=salmon, % It have defined the color in line 4
+        scriptscale=1.5, % upscale the size of text
+        width=4,
+        height=2,
+        depth=2,
+        border=none
+        }
+    };
+
+
+\coordinate [shift={(0.5, 2,0)}] (sumhead) at (rg20-right);
+\draw[connection] (extraction-right) -- ++(1.5,0,0) -- ++(0,2,0) -- (sumhead) node{\midarrow} -- ++(0,-2,0);
+\draw [connection] (rg20-right) -- ++ (1,0,0) node{\elementsum} -- ++ (2,0,0) node{\midarrow};
+
+\pic[shift={(3,0,0)}] at (rg20-right) 
+    {ConvReLU={
+        name=fusing,
+        opacity=1,
+        % caption=conv relu,
+        % xlabel=rcab\m, 
+        fill=lightpink,
+        scriptscale=1.5, % upscale the size of text
+        width=.4,
+        height=2,
+        depth=2,
+        border=none
+        }
+    };
+    
+\draw [connection] (fusing-right) -- ++ (2,0,0) node{\midarrow};
+
+\pic[shift={(2,0,0)}] at (fusing-right) 
+    {PixelShuffle={
+        name=ps,
+        opacity=1,
+        fill=lightblue, % mixture of color, I hate this mothod
+        scriptscale=1.1, % upscale the size of text
+        height=2,
+        width=.4,
+        depth=2,
+        border=none,
+        dist=2,
+        scalefactor=2,
+        connectlineopacity=0.5,
+        }
+    };
+\node [canvas is zy plane at x=0] at (ps-right) {\includegraphics[width=4cm]{Squidward.jpg}};
+
+\end{tikzpicture}
+\end{document}

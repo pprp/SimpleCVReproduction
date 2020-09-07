@@ -1,0 +1,55 @@
+\ProvidesPackage{Arrow}
+
+\tikzset{vecArrow/.pic={\tikzset{/boxblock/.cd,#1}
+        \tikzstyle{box}=[draw=\border, fill opacity=\opacity, pic actions,fill=\fill]
+        \tikzset{every node/.append style={scale=\scriptscale}}
+        
+        \xdef\x{\length}
+        \xdef\y{\tall}
+        
+        \coordinate (a) at (0 , \y/2 , 0); 
+        \coordinate (b) at (\x-\tipsize , \y/2 , 0); 
+        \coordinate (c) at (\x-\tipsize, \tipsize,0); 
+        \coordinate (d) at (\x,0,0); 
+        \coordinate (e) at (\x-\tipsize, -\tipsize,0); 
+        \coordinate (f) at (\x-\tipsize , -\y/2 , 0);
+        \coordinate (g) at (0, -\y/2, 0);
+         			
+        
+        % }%Loop ends
+        \draw [box] (a) -- (b) -- (c) -- (d) -- (e) -- (f) -- (g) -- cycle;
+        
+        \draw [box, draw=none] (g) -- (f)  node [below, midway] {\xlabel};
+        \node at (\x/2, 0, 0) {\caption};
+        
+        %Define nodes to be used outside on the pic object
+        \coordinate (\name-left)   at (0,0,0) ;
+        \coordinate (\name-right)   at (\x, 0,0) ;
+        \coordinate (\name-nearleft)   at (-\x/2,0,0) ;
+        \coordinate (\name-nearright)   at (1.5*\x, 0,0) ;
+        
+    },
+    /boxblock/.search also={/tikz},
+    /boxblock/.cd,
+    length/.store        in=\length,
+    tall/.store       in=\tall,
+    tipsize/.store    in=\tipsize, %tip/whole_length
+    xlabel/.store       in=\xlabel,
+    caption/.store      in=\caption,
+    name/.store         in=\name,
+    fill/.store         in=\fill,
+    opacity/.store      in=\opacity,
+    scriptscale/.store  in=\scriptscale,
+    border/.store       in=\border,
+    length=2,
+    tall=0.2,
+    tipsize=0.1,
+    border=1,
+    opacity=1,
+    scriptscale=1,
+    xlabel=,
+    caption=,
+    name=none,
+}
+\newcommand{\midarrow}{\tikz \draw[-Stealth,line width=0.1mm,draw=black] (-0.2,0) -- ++(0.2,0);}
+\newcommand{\elementsum}{\tikz \draw [fill=lime, draw=none, opacity=1] (0,0) circle (0.4cm) node {\huge +};}

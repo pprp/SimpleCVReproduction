@@ -55,6 +55,14 @@
 	\coordinate (fur) at (\c+\x,   \hw/2+\z,   \hw/2+\y); %front upper right
 	\coordinate (ful) at (0 +\x,   \hw/2+\z,   \hw/2+\y); %front upper left
 	
+	%\node[right] at (blr) {blr};
+	%\node[right] at (bur) {bur};
+	%\node[left] at (bul) {bul};
+	%\node[left] at (fll) {fll};
+	%\node[right] at (flr) {flr};
+	%\node[right] at (fur) {fur};
+	%\node[left] at (ful) {ful};
+	
 
     % Draw connections from other points to the back of this node
     \ifthenelse{\equal{#9} {}}
@@ -87,18 +95,14 @@
 
 	\FPeval\totalOffset{0+(currentOffset)+\c}
 
-	\draw[ultra thick, red] (#8_back) circle[radius=0.02];
-	\node[left] at (#8_back) {back};
-	
-	\draw[ultra thick, red] (#8_top) circle[radius=0.02];
-	\node[above] at (#8_top) {top};
-	
-	\draw[ultra thick, red] (#8_bottom) circle[radius=0.02];
-	\node[below] at (#8_bottom) {bottom};
-	
-	\draw[ultra thick, red] (#8_front) circle[radius=0.02];
-	\node[left] at (#8_front) {front};
-
+	%\draw[ultra thick, red] (#8_back) circle[radius=0.02];
+	%\node[left] at (#8_back) {back};
+	%\draw[ultra thick, red] (#8_top) circle[radius=0.02];
+	%\node[above] at (#8_top) {top};
+	%\draw[ultra thick, red] (#8_bottom) circle[radius=0.02];
+	%\node[below] at (#8_bottom) {bottom};
+	%\draw[ultra thick, red] (#8_front) circle[radius=0.02];
+	%\node[left] at (#8_front) {front};
 }
 
 \begin{document}
@@ -110,7 +114,7 @@
     %\caption{Caption}
     % \label{fig:my_label}
     
-    %\begin{tikzpicture}[scale=3]
+    %\begin{tikzpicture}[scale=2]
         %\draw[help lines] (0,0) grid(2,2);
         %\draw[->,thick] (0,0,0) -- (0,0,2); 
         %\draw[->,thick] (0,0,0) -- (0,2,0);
@@ -141,7 +145,7 @@
     	%\networkLayer{0.5}{0.5}{0.15}{0.0}{2.5}{color=blue!50}{}{}{}
     %\end{tikzpicture}
 
-%\end{figure}
+%%\end{figure}
 
 \begin{figure}
 	\centering
@@ -182,7 +186,7 @@
 		\networkLayer{1.5}{0.8}{0.1}{0.0}{0.0}{color=white}{deconv}{}{} % S1
 		\networkLayer{1.5}{0.8}{0.1}{0.0}{0.0}{color=white}{}{}{}       % S2
 		\networkLayer{2.0}{0.4}{0.1}{0.0}{0.0}{color=white}{}{}{}       % S1
-		\networkLayer{2.0}{0.4}{0.1}{0.0}{0.0}{color=white}{}{}{}       % S2
+		\networkLayer{2.0}{0.4}{0.1}{0.0}{0.0}{color=white}{}{}{{}}       % S2
 		\networkLayer{2.5}{0.2}{0.1}{0.0}{0.0}{color=white}{}{}{}       % S1
 		\networkLayer{2.5}{0.2}{0.1}{0.0}{0.0}{color=white}{}{}{}       % S2
 		\networkLayer{3.0}{0.1}{0.1}{0.0}{0.0}{color=white}{}{}{}       % S1

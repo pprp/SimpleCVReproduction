@@ -1,0 +1,38 @@
+\documentclass[border=8pt, multi, tikz]{standalone} 
+\usetikzlibrary{quotes,arrows.meta,positioning,3d}
+\usepackage{xcolor}
+\definecolor{mycolorr}{RGB}{168, 143, 50} % custom color
+\usepackage{layer/Box}
+\begin{document}
+\begin{tikzpicture}
+
+% get the box
+\pic[shift={(0,0,0)}] at (0,0,0) 
+    {PixelShuffle={
+        name=demo,
+        % caption=\textbf{caption} as well as \textcolor{green}{f a c e},
+        opacity=1,
+        xlabel=x axis, % text appears on x axis
+        ylabel=y axis, % text appears on y axis
+        zlabel=z axis, % text appears on z axis
+        caption=caption,
+        fill=mycolorr, % mixture of color, I hate this mothod
+        scriptscale=1.1, % upscale the size of text
+        height=3,
+        width=.6,
+        depth=3,
+        border=none,
+        dist=5,
+        scalefactor=2,
+        connectlineopacity=0.5,
+        xxlabel=x axis plus,
+        yylabel=y axis plus,
+        zzlabel=z axis plus,
+        ccaption=good good study{,} day day up!
+        }
+    };
+
+
+
+\end{tikzpicture}
+\end{document}

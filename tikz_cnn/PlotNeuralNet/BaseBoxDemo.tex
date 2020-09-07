@@ -1,0 +1,70 @@
+\documentclass[border=8pt, multi, tikz]{standalone} 
+\usetikzlibrary{quotes,arrows.meta,positioning,3d}
+\usepackage{xcolor}
+\definecolor{salmon}{RGB}{250, 128, 114} % custom color
+\usepackage{layer/Box}
+\begin{document}
+\begin{tikzpicture}
+
+% define the size of the box
+\xdef\x{5};
+\xdef\y{5};
+\xdef\z{5};
+
+% get the box
+\pic[shift={(0,0,0)}] at (0,0,0) 
+    {BaseBox={
+        name=demo,
+        caption=\textbf{caption} as well as \textcolor{green}{f a c e},
+        opacity=0.6,
+        xlabel=x axis, % text appears on x axis
+        ylabel=y axis, % text appears on y axis
+        zlabel=z axis, % text appears on z axis
+        fill=salmon, % I have defined the color in line 4
+        scriptscale=1.1, % upscale the size of text
+        width=\x,
+        height=\y,
+        depth=\z,
+        border=black
+        }
+    };
+
+% an example to demonstrate the relative position and how beautiful the result is.
+\pic[shift={(3,0,0)}] at (demo-nearright) 
+    {BaseBox={
+        name=blank,
+        caption=solid material,
+        opacity=1,
+        xlabel=, % text appears on x axis
+        ylabel=, % text appears on y axis
+        zlabel=, % text appears on z axis
+        fill=salmon, % mixture of color, I hate this mothod
+        scriptscale=1.1, % upscale the size of text
+        width=\x,
+        height=\y,
+        depth=\z,
+        border=none
+        }
+    };
+
+% show the nodes. One can refer to the nodes when drawing
+\node at (0 , \y/2 , \z/2) {a}; 
+\node at (0 ,-\y/2 , \z/2) {b}; 
+\node at (\x    ,-\y/2 , \z/2) {c}; 
+\node at (\x    , \y/2 , \z/2) {d}; 
+\node at (\x    , \y/2 ,-\z/2) {e}; 
+\node at (\x    ,-\y/2 ,-\z/2) {f}; 
+\node at (0 ,-\y/2 ,-\z/2) {g}; 
+\node at (0 , \y/2 ,-\z/2) {h};
+\node [color=green] at (demo-back) {b a c k};
+\node [color=red, xslant=1.1, yscale=1.15] at (demo-head) {h e a d};
+\node [color=red, xslant=1.1, yscale=1.15] at (demo-bottom) {b o t t o m};
+\node [color=blue, yslant=1.2, yscale=1.1] at (demo-left) {l e f t};
+\node [color=blue, yslant=1.2, yscale=1.1] at (demo-right) {r i g h t};
+\node [color=blue, yslant=1.2, yscale=1.1] at (demo-nearleft) {n e a r   l e f t};
+\node [color=blue, yslant=1.2, yscale=1.1] at (demo-nearright) {n e a r    r i g h t};
+\draw [opacity=0.2](demo-left) -- ++(-2, 0, 0);
+\draw [opacity=0.2](demo-right) -- ++(2,0,0);
+
+\end{tikzpicture}
+\end{document}

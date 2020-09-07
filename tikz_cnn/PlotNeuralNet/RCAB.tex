@@ -1,0 +1,342 @@
+\documentclass[border=8pt, multi, tikz]{standalone} 
+\usetikzlibrary{quotes,arrows,positioning,3d, decorations.markings, calc}
+\usepackage{xcolor}
+\definecolor{salmon}{RGB}{250, 128, 114} % custom color
+\definecolor{lightsalmon}{RGB}{255, 160, 122}
+\definecolor{lightpink}{RGB}{255, 182, 193}
+\definecolor{PALEGOLDENROD}{RGB}{238, 232, 170}
+\definecolor{nephritis}{RGB}{39, 174, 96}
+\definecolor{peru}{RGB}{205, 133, 63}
+\definecolor{chocolate}{RGB}{210, 105, 30}
+\usepackage{layer/Arrow}
+\usepackage{layer/Box}
+
+\usepackage{layer/Ball}
+\begin{document}
+\begin{tikzpicture}
+
+
+\pic[shift={(0,0,0)}] at (0,0,0) 
+    {BaseBox={
+        name=fm1,
+        opacity=0.6,
+        xlabel=64, % text appears on x axis
+        fill=PALEGOLDENROD, % I have defined the color in line 4
+        scriptscale=0.5, % upscale the size of text
+        width=0.6,
+        height=2,
+        depth=2,
+        border=black
+        }
+    };
+
+\pic[shift={(0,0,0)}] at (fm1-right) 
+    {vecArrow={
+        name=arrow1,
+        caption=Conv + ReLU,
+        opacity=1,
+        fill=salmon, 
+        scriptscale=0.2,
+        length=1.2,
+        tall=0.08,
+        tipsize=0.06,
+        border=none
+        }
+    };
+
+\pic[shift={(.4,0,0)}] at (arrow1-right) 
+    {BaseBox={
+        name=fm2,
+        opacity=0.6,
+        xlabel=64, % text appears on x axis
+        fill=PALEGOLDENROD, % I have defined the color in line 4
+        scriptscale=0.5, % upscale the size of text
+        width=0.6,
+        height=2,
+        depth=2,
+        border=black
+        }
+    };
+    
+\pic[shift={(0,0,0)}] at (fm2-right) 
+    {vecArrow={
+        name=arrow2,
+        caption=Conv $3\times 3 $,
+        opacity=1,
+        fill=lightsalmon, 
+        scriptscale=0.2,
+        length=.6,
+        tall=0.08,
+        tipsize=0.06,
+        border=none
+        }
+    };
+
+\pic[shift={(.4,0,0)}] at (arrow2-right) 
+    {BaseBox={
+        name=fm3,
+        opacity=0.6,
+        xlabel=64, % text appears on x axis
+        fill=PALEGOLDENROD, % I have defined the color in line 4
+        scriptscale=0.5, % upscale the size of text
+        width=0.6,
+        height=2,
+        depth=2,
+        border=black
+        }
+    };
+
+\pic[shift={(0,0,0)}] at (fm3-right) 
+    {vecArrow={
+        name=arrow3,
+        caption=Avg Pooling,
+        opacity=1,
+        fill=nephritis, 
+        scriptscale=0.2,
+        length=.8,
+        tall=0.08,
+        tipsize=0.06,
+        border=none
+        }
+    };
+    
+\draw [dashed] ($(fm3-nearright)+(.2,0,0)$) -- ++(0,1,0) -- ++(4.4,0,0) node[below, midway]{Channel Attention} -- ++ (0, -2, 0) -- ++(-4.4, 0, 0) -- ++(0, 1, 0);
+
+\pic[shift={(.2,0,0)}] at (arrow3-right) 
+    {BaseBox={
+        name=fm4,
+        opacity=0.6,
+        xlabel=64, % text appears on x axis
+        fill=lightpink, % I have defined the color in line 4
+        scriptscale=0.5, % upscale the size of text
+        width=0.6,
+        height=.2,
+        depth=.2,
+        border=black
+        }
+    };
+
+\pic[shift={(.2,0,0)}] at (fm4-right) 
+    {vecArrow={
+        name=arrow4,
+        caption=Conv + ReLU,
+        opacity=1,
+        fill=salmon, 
+        scriptscale=0.2,
+        length=.5,
+        tall=0.08,
+        tipsize=0.06,
+        border=none
+        }
+    };
+
+\pic[shift={(.2,0,0)}] at (arrow4-right) 
+    {BaseBox={
+        name=fm5,
+        opacity=0.6,
+        xlabel=8, % text appears on x axis
+        fill=lightpink, % I have defined the color in line 4
+        scriptscale=0.5, % upscale the size of text
+        width=0.2,
+        height=.2,
+        depth=.2,
+        border=black
+        }
+    };
+
+\pic[shift={(.2,0,0)}] at (fm5-right) 
+    {vecArrow={
+        name=arrow5,
+        caption=Conv,
+        opacity=1,
+        fill=lightsalmon, 
+        scriptscale=0.2,
+        length=.5,
+        tall=0.08,
+        tipsize=0.06,
+        border=none
+        }
+    };
+
+\pic[shift={(.2,0,0)}] at (arrow5-right) 
+    {BaseBox={
+        name=fm6,
+        opacity=0.6,
+        xlabel=64, % text appears on x axis
+        fill=lightpink, % I have defined the color in line 4
+        scriptscale=0.5, % upscale the size of text
+        width=0.6,
+        height=.2,
+        depth=.2,
+        border=black
+        }
+    };
+    
+\pic[shift={(.2,0,0)}] at (fm5-right) 
+    {vecArrow={
+        name=arrow6,
+        caption=Sigmoid,
+        opacity=1,
+        fill=lightsalmon, 
+        scriptscale=0.2,
+        length=.5,
+        tall=0.08,
+        tipsize=0.06,
+        border=none
+        }
+    };
+
+\pic[shift={(.2,0,0)}] at (arrow6-right) 
+    {BaseBox={
+        name=fm7,
+        opacity=0.6,
+        xlabel=64, % text appears on x axis
+        fill=lightpink, % I have defined the color in line 4
+        scriptscale=0.5, % upscale the size of text
+        width=0.6,
+        height=.2,
+        depth=.2,
+        border=black
+        }
+    };
+    
+
+\pic[shift={(0,.4,0)}] at (fm3-right) 
+    {vecArrow={
+        name=arrow7,
+        caption=,
+        opacity=1,
+        fill=chocolate, 
+        scriptscale=0.2,
+        length=4.8,
+        tall=0.08,
+        tipsize=0,
+        border=none
+        }
+    };
+    
+\pic[shift={(-0.08,-0.2,0)}] at (arrow7-right) 
+    {vecArrow={
+        name=arrow8,
+        caption=,
+        opacity=1,
+        fill=chocolate, 
+        scriptscale=0.2,
+        length=.08,
+        tall=0.4,
+        tipsize=0,
+        border=none
+        }
+    };
+    
+\pic[shift={(.2,0,0)}] at (fm7-right) 
+    {vecArrow={
+        name=arrow9,
+        caption=Element-wise Product,
+        opacity=1,
+        fill=chocolate, 
+        scriptscale=0.2,
+        length=.8,
+        tall=0.08,
+        tipsize=0.06,
+        border=none
+        }
+    };
+
+    
+\pic[shift={(.4,0,0)}] at (arrow9-right) 
+    {BaseBox={
+        name=fm10,
+        opacity=0.6,
+        xlabel=64, % text appears on x axis
+        fill=PALEGOLDENROD, % I have defined the color in line 4
+        scriptscale=0.5, % upscale the size of text
+        width=0.6,
+        height=2,
+        depth=2,
+        border=black
+        }
+    };
+
+\pic[shift={(0,.16,0)}] at (fm1-head) 
+    {vecArrow={
+        name=arrow11,
+        caption=,
+        opacity=1,
+        fill=peru, 
+        scriptscale=0.2,
+        length=0.08,
+        tall=0.32,
+        tipsize=0,
+        border=none
+        }
+    };
+\pic[shift={(0,.32,0)}] at (fm1-head) 
+    {vecArrow={
+        name=arrow12,
+        caption=,
+        opacity=1,
+        fill=peru, 
+        scriptscale=0.2,
+        length=10.9,
+        tall=0.08,
+        tipsize=0,
+        border=none
+        }
+    };
+\pic[shift={(-0.08,-.66,0)}] at (arrow12-right) 
+    {vecArrow={
+        name=arrow13,
+        caption=,
+        opacity=1,
+        fill=peru, 
+        scriptscale=0.2,
+        length=.08,
+        tall=1.28,
+        tipsize=0,
+        border=none
+        }
+    };
+
+\pic[shift={(.2,0,0)}] at (fm10-right) 
+    {vecArrow={
+        name=arrow10,
+        caption=Element-wise Sum,
+        opacity=1,
+        fill=peru, 
+        scriptscale=0.2,
+        length=1.2,
+        tall=0.08,
+        tipsize=0.06,
+        border=none
+        }
+    };
+\pic[shift={(.8,0,0)}] at (fm1-right) 
+    {BaseBox={
+        name=fm11,
+        opacity=0.05,
+        xlabel=\huge RCAB, % text appears on x axis
+        fill=blue, % I have defined the color in line 4
+        scriptscale=0.7, % upscale the size of text
+        width=9.8,
+        height=5,
+        depth=5,
+        border=black
+        }
+    };
+
+\pic[shift={(.4,0,0)}] at (arrow10-right) 
+    {BaseBox={
+        name=fm11,
+        opacity=0.6,
+        xlabel=64, % text appears on x axis
+        fill=PALEGOLDENROD, % I have defined the color in line 4
+        scriptscale=0.5, % upscale the size of text
+        width=0.6,
+        height=2,
+        depth=2,
+        border=black
+        }
+    };
+\end{tikzpicture}
+\end{document}
