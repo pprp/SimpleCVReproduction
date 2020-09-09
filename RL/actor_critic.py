@@ -146,7 +146,7 @@ def main():
 
         # for each episode, only run 9999 steps so that we don't 
         # infinite loop while learning
-        for t in range(1, 10000):
+        for t in range(1, 20000):
 
             # select action from policy
             action = select_action(state)
