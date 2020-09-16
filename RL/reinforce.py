@@ -22,7 +22,7 @@ parser.add_argument('--log-interval', type=int, default=10, metavar='N',
 args = parser.parse_args()
 
 
-env = gym.make('CartPole-v1')
+env = gym.make('CartPole-v0')
 env.seed(args.seed)
 torch.manual_seed(args.seed)
 
@@ -47,6 +47,7 @@ class Policy(nn.Module):
 
 policy = Policy()
 optimizer = optim.Adam(policy.parameters(), lr=1e-2)
+# 一个比较小的数值，用于防止除以0
 eps = np.finfo(np.float32).eps.item()
 
 
@@ -68,8 +69,10 @@ def finish_episode():
         returns.insert(0, R)
     returns = torch.tensor(returns)
     returns = (returns - returns.mean()) / (returns.std() + eps)
+
     for log_prob, R in zip(policy.saved_log_probs, returns):
         policy_loss.append(-log_prob * R)
+
     optimizer.zero_grad()
     policy_loss = torch.cat(policy_loss).sum()
     policy_loss.backward()
@@ -77,15 +80,13 @@ def finish_episode():
     del policy.rewards[:]
     del policy.saved_log_probs[:]
 
-
 def main():
-    running_reward = 10
+    running_reward = 10 
     for i_episode in count(1):
         state, ep_reward = env.reset(), 0
         for t in range(1, 10000):  # Don't infinite loop while learning
             action = select_action(state)
             state, reward, done, _ = env.step(action)
-            print(state, reward, done)
             if args.render:
                 env.render()
             policy.rewards.append(reward)
@@ -96,6 +97,7 @@ def main():
         running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
         finish_episode()
         if i_episode % args.log_interval == 0:
+            print("state:" , state, "reward:", reward, "done:", done)
             print('Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}'.format(
                   i_episode, ep_reward, running_reward))
         if running_reward > env.spec.reward_threshold:
