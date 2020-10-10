@@ -23,6 +23,10 @@
   - SE
   - SK
   - DANet: Dual Attention
+  - AFF
+    - MC-CAM
+    - AFF
+    - iAFF
 - Plug-and-play module: 即插即用模块：
   - ACBlock
   - Swish、wish Activation
