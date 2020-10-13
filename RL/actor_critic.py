@@ -79,6 +79,7 @@ def select_action(state):
     probs, state_value = model(state)
 
     # create a categorical distribution over the list of probabilities of actions
+    # 根据几率采样，exploration
     m = Categorical(probs)
 
     # and sample an action using the distribution
