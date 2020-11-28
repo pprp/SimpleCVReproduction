@@ -151,7 +151,7 @@ if __name__ == "__main__":
     model = NeuralNet()
 
     # Initialize trainer
-    trainer = pl.Trainer(max_epochs=50, 
+    trainer = pl.Trainer(max_epochs=100, 
                         check_val_every_n_epoch=10, 
                         precision=32,
                         weights_summary=None,
@@ -176,7 +176,7 @@ if __name__ == "__main__":
     trainer.tune(model)
 
     # # Once everything is done, let's train the model
-    # trainer.fit(model)
+    trainer.fit(model)
 
     # # Testing the model
-    # trainer.test()
+    trainer.test()
