@@ -94,7 +94,7 @@ def draw_umich_gaussian(heatmap, center, radius, k=1):
 
     x, y = int(center[0]), int(center[1])
 
-    width, height = heatmap.shape
+    height, width = heatmap.shape
 
     left, right = min(x, radius), min(width - x, radius + 1)
     top, bottom = min(y, radius), min(height - y, radius + 1)
