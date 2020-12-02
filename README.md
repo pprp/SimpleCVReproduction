@@ -87,6 +87,7 @@
 - TSNE: 可视化重识别数据集、分类数据集，效果挺好的，不过一般需要对服务器内存要求比较高
 - tikz-cnn: 用LaTeX中tikz包绘制卷积神经网络结构图
 - nni库：AutoML中比较好用的库
+- R-CenterNet：林亿大佬写的可旋转目标检测框架，极简风格，便于快速掌握，很赞，打算拜读一下。[最新版代码点这里](https://github.com/ZeroE04/R-CenterNet)
 
 
 ## 感谢
