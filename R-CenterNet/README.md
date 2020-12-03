@@ -34,11 +34,14 @@
     * ![image](ret/DLADCN.jpg)
 
 #### 常见问题
+
  * 我对CenterNet[原版代码](https://github.com/xingyizhou/centernet) 进行了重构，使代码看起来更加简洁。
  * 如何编译DCN以及环境需求, 与[CenterNet](https://github.com/xingyizhou/centernet) 原版保持一致。
  * 关于数据处理与更多细节, 可以参考 [here](https://zhuanlan.zhihu.com/p/163696749)
  * torch版本1.2，如果你用的0.4会发生报错。
+
 #### 训练自己的多分类网络
+
  * 打标签用labelGenerator文件夹里面的代码。
  * 修改代码中所有num_classes为你的类别数目，并且修改back_bone中hm的数目为你的类别数，如：
    def DlaNet(num_layers=34, heads = {'hm': your classes num, 'wh': 2, 'ang':1, 'reg': 2}, head_conv=256, plot=False):

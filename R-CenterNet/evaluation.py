@@ -17,32 +17,31 @@ import matplotlib.pyplot as plt
 from predict import pre_process, ctdet_decode, post_process, merge_outputs
 
 
-
-
-
 # =============================================================================
 # 推断
 # =============================================================================
 def process(images, return_time=False):
     with torch.no_grad():
-      output = model(images)
-      hm = output['hm'].sigmoid_()
-      ang = output['ang'].relu_()
-      wh = output['wh']
-      reg = output['reg'] 
-     
-      torch.cuda.synchronize()
-      forward_time = time.time()
-      dets = ctdet_decode(hm, wh, ang, reg=reg, K=100) # K 是最多保留几个目标
-      
+        output = model(images)
+        hm = output['hm'].sigmoid_()
+        ang = output['ang'].relu_()
+        wh = output['wh']
+        reg = output['reg']
+
+        torch.cuda.synchronize()
+        forward_time = time.time()
+        dets = ctdet_decode(hm, wh, ang, reg=reg, K=100)  # K 是最多保留几个目标
+
     if return_time:
-      return output, dets, forward_time
+        return output, dets, forward_time
     else:
-      return output, dets
+        return output, dets
 
 # =============================================================================
 # 常规 IOU
 # =============================================================================
+
+
 def iou(bbox1, bbox2, center=False):
     """Compute the iou of two boxes.
     Parameters
@@ -74,10 +73,10 @@ def iou(bbox1, bbox2, center=False):
     yy2 = np.min([ymax1, ymax2])
 
     # 计算两个矩形框面积
-    area1 = (xmax1 - xmin1 ) * (ymax1 - ymin1 ) 
-    area2 = (xmax2 - xmin2 ) * (ymax2 - ymin2 )
- 
-    # 计算交集面积 
+    area1 = (xmax1 - xmin1) * (ymax1 - ymin1)
+    area2 = (xmax2 - xmin2) * (ymax2 - ymin2)
+
+    # 计算交集面积
     inter_area = (np.max([0, xx2 - xx1])) * (np.max([0, yy2 - yy1]))
     # 计算交并比
     iou = inter_area / (area1 + area2 - inter_area + 1e-6)
@@ -85,15 +84,14 @@ def iou(bbox1, bbox2, center=False):
 #bbox1 = [1,1,2,2]
 #bbox2 = [2,2,2,2]
 #ret = iou(bbox1,bbox2,True)
-    
 
 
 # =============================================================================
 # 旋转 IOU
 # =============================================================================
 def iou_rotate_calculate(boxes1, boxes2):
-#    print("####boxes2:", boxes1.shape)
-#    print("####boxes2:", boxes2.shape)
+    #    print("####boxes2:", boxes1.shape)
+    #    print("####boxes2:", boxes2.shape)
     area1 = boxes1[2] * boxes1[3]
     area2 = boxes2[2] * boxes2[3]
     r1 = ((boxes1[0], boxes1[1]), (boxes1[2], boxes1[3]), boxes1[4])
@@ -106,19 +104,18 @@ def iou_rotate_calculate(boxes1, boxes2):
         ious = int_area * 1.0 / (area1 + area2 - int_area)
 #        print(int_area)
     else:
-        ious=0
+        ious = 0
     return ious
 # 用中心点坐标、长宽、旋转角
 #boxes1 = np.array([1,1,2,2,0],dtype='float32')
 #boxes2 = np.array([2,2,2,2,0],dtype='float32')
 #ret = iou_rotate_calculate(boxes1,boxes2)
-    
 
 
 # =============================================================================
 # 获得标签信息
 # =============================================================================
-def get_lab_ret(xml_path):    
+def get_lab_ret(xml_path):
     ret = []
     with open(xml_path, 'r', encoding='UTF-8') as fp:
         ob = []
@@ -148,23 +145,23 @@ def get_lab_ret(xml_path):
                 ob = []
                 flag = 0
     return ret
-    
+
 
 def get_pre_ret(img_path, device):
     image = cv2.imread(img_path)
     images, meta = pre_process(image)
     images = images.to(device)
     output, dets, forward_time = process(images, return_time=True)
-    
+
     dets = post_process(dets, meta)
     ret = merge_outputs(dets)
-    
-    res = np.empty([1,7])
+
+    res = np.empty([1, 7])
     for i, c in ret.items():
-        tmp_s = ret[i][ret[i][:,5]>0.3]
+        tmp_s = ret[i][ret[i][:, 5] > 0.3]
         tmp_c = np.ones(len(tmp_s)) * (i+1)
-        tmp = np.c_[tmp_c,tmp_s]
-        res = np.append(res,tmp,axis=0)
+        tmp = np.c_[tmp_c, tmp_s]
+        res = np.append(res, tmp, axis=0)
     res = np.delete(res, 0, 0)
     res = res.tolist()
     return res
@@ -185,7 +182,7 @@ def pre_recall(root_path, device, iou=0.5):
             lab_ret = get_lab_ret(xml_path)
             all_pre_num += len(pre_ret)
             all_lab_num += len(lab_ret)
-            for class_name,lx,ly,rx,ry,ang, prob in pre_ret:
+            for class_name, lx, ly, rx, ry, ang, prob in pre_ret:
                 pre_one = np.array([(rx+lx)/2, (ry+ly)/2, rx-lx, ry-ly, ang])
                 for cx, cy, w, h, ang_l in lab_ret:
                     lab_one = np.array([cx, cy, w, h, ang_l])
@@ -205,6 +202,6 @@ if __name__ == '__main__':
     model.load_state_dict(torch.load('model\\res_dcn_34_best.pth'))
     model.eval()
     model.cuda()
-    
+
     p, r, mang, miou = pre_recall('imgs', device)
     F1 = (2*p*r)/(p+r)
