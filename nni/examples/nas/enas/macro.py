@@ -13,6 +13,7 @@ class ENASLayer(mutables.MutableScope):
         super().__init__(key)
         self.in_filters = in_filters
         self.out_filters = out_filters
+        
         self.mutable = mutables.LayerChoice([
             ConvBranch(in_filters, out_filters, 3, 1, 1, separable=False),
             ConvBranch(in_filters, out_filters, 3, 1, 1, separable=True),

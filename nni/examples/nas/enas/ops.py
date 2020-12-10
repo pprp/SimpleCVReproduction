@@ -50,9 +50,11 @@ class ConvBranch(nn.Module):
         super(ConvBranch, self).__init__()
         self.preproc = StdConv(C_in, C_out)
         if separable:
-            self.conv = SeparableConv(C_out, C_out, kernel_size, stride, padding)
+            self.conv = SeparableConv(
+                C_out, C_out, kernel_size, stride, padding)
         else:
-            self.conv = nn.Conv2d(C_out, C_out, kernel_size, stride=stride, padding=padding)
+            self.conv = nn.Conv2d(C_out, C_out, kernel_size,
+                                  stride=stride, padding=padding)
         self.postproc = nn.Sequential(
             nn.BatchNorm2d(C_out, affine=False),
             nn.ReLU()
@@ -68,8 +70,10 @@ class ConvBranch(nn.Module):
 class FactorizedReduce(nn.Module):
     def __init__(self, C_in, C_out, affine=False):
         super().__init__()
-        self.conv1 = nn.Conv2d(C_in, C_out // 2, 1, stride=2, padding=0, bias=False)
-        self.conv2 = nn.Conv2d(C_in, C_out // 2, 1, stride=2, padding=0, bias=False)
+        self.conv1 = nn.Conv2d(C_in, C_out // 2, 1,
+                               stride=2, padding=0, bias=False)
+        self.conv2 = nn.Conv2d(C_in, C_out // 2, 1,
+                               stride=2, padding=0, bias=False)
         self.bn = nn.BatchNorm2d(C_out, affine=affine)
 
     def forward(self, x):
@@ -84,7 +88,8 @@ class Pool(nn.Module):
         if pool_type.lower() == 'max':
             self.pool = nn.MaxPool2d(kernel_size, stride, padding)
         elif pool_type.lower() == 'avg':
-            self.pool = nn.AvgPool2d(kernel_size, stride, padding, count_include_pad=False)
+            self.pool = nn.AvgPool2d(
+                kernel_size, stride, padding, count_include_pad=False)
         else:
             raise ValueError()
 
@@ -104,3 +109,13 @@ class SepConvBN(nn.Module):
         x = self.conv(x)
         x = self.bn(x)
         return x
+
+
+if __name__ == "__main__":
+    ts = torch.zeros(8, 64, 16, 16)
+    model = FactorizedReduce(64, 32)
+    print(model.forward(ts).shape)
+
+    # ts2 = torch.zeros(8, 64, 17, 17)
+    # model = FactorizedReduce(64, 32)
+    # print(model.forward(ts2).shape)

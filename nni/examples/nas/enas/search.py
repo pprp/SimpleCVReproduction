@@ -21,7 +21,7 @@ logger = logging.getLogger('nni')
 
 if __name__ == "__main__":
     parser = ArgumentParser("enas")
-    parser.add_argument("--batch-size", default=128, type=int)
+    parser.add_argument("--batch-size", default=8, type=int)
     parser.add_argument("--log-frequency", default=10, type=int)
     parser.add_argument("--search-for", choices=["macro", "micro"], default="macro")
     parser.add_argument("--epochs", default=None, type=int, help="Number of epochs (default: macro 310, micro 150)")
