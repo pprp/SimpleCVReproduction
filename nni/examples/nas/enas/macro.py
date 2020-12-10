@@ -13,7 +13,7 @@ class ENASLayer(mutables.MutableScope):
         super().__init__(key)
         self.in_filters = in_filters
         self.out_filters = out_filters
-        
+
         self.mutable = mutables.LayerChoice([
             ConvBranch(in_filters, out_filters, 3, 1, 1, separable=False),
             ConvBranch(in_filters, out_filters, 3, 1, 1, separable=True),
@@ -23,7 +23,8 @@ class ENASLayer(mutables.MutableScope):
             PoolBranch('max', in_filters, out_filters, 3, 1, 1)
         ])
         if len(prev_labels) > 0:
-            self.skipconnect = mutables.InputChoice(choose_from=prev_labels, n_chosen=None)
+            self.skipconnect = mutables.InputChoice(
+                choose_from=prev_labels, n_chosen=None)
         else:
             self.skipconnect = None
         self.batch_norm = nn.BatchNorm2d(out_filters, affine=False)
@@ -44,6 +45,7 @@ class GeneralNetwork(nn.Module):
         self.num_layers = num_layers
         self.num_classes = num_classes
         self.out_filters = out_filters
+        self.dropout_rate = dropout_rate
 
         self.stem = nn.Sequential(
             nn.Conv2d(in_channels, out_filters, 3, 1, 1, bias=False),
@@ -51,25 +53,28 @@ class GeneralNetwork(nn.Module):
         )
 
         pool_distance = self.num_layers // 3
+        # 进行pool操作是num_layers // 3
         self.pool_layers_idx = [pool_distance - 1, 2 * pool_distance - 1]
-        self.dropout_rate = dropout_rate
         self.dropout = nn.Dropout(self.dropout_rate)
 
-        self.layers = nn.ModuleList()
-        self.pool_layers = nn.ModuleList()
+        self.layers = nn.ModuleList() # convolutional 
+        self.pool_layers = nn.ModuleList() # reduction 
+
         labels = []
-        for layer_id in range(self.num_layers):
+        for layer_id in range(self.num_layers): # 设置12个layer
             labels.append("layer_{}".format(layer_id))
-            if layer_id in self.pool_layers_idx:
-                self.pool_layers.append(FactorizedReduce(self.out_filters, self.out_filters))
-            self.layers.append(ENASLayer(labels[-1], labels[:-1], self.out_filters, self.out_filters))
+            if layer_id in self.pool_layers_idx: # 如果使用pool
+                self.pool_layers.append(FactorizedReduce(
+                    self.out_filters, self.out_filters))
+            self.layers.append( # 相当于Node节点
+                ENASLayer(labels[-1], labels[:-1], self.out_filters, self.out_filters))
 
         self.gap = nn.AdaptiveAvgPool2d(1)
         self.dense = nn.Linear(self.out_filters, self.num_classes)
 
     def forward(self, x):
         bs = x.size(0)
-        cur = self.stem(x)
+        cur = self.stem(x) # 前两个node
 
         layers = [cur]
 
@@ -77,6 +82,7 @@ class GeneralNetwork(nn.Module):
             cur = self.layers[layer_id](layers)
             layers.append(cur)
             if layer_id in self.pool_layers_idx:
+                # 如果轮到了池化层
                 for i, layer in enumerate(layers):
                     layers[i] = self.pool_layers[self.pool_layers_idx.index(layer_id)](layer)
                 cur = layers[-1]
