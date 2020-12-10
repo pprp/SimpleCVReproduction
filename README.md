@@ -95,3 +95,5 @@
 @zhongqiu1245 补充的borderDet中的BAM模块,补充了FPT
 
 @1187697147 补充的context-gating模块
+
+@cmsfw-github 指出了simple_keypoint中的bug
