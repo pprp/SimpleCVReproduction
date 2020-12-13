@@ -88,6 +88,7 @@
 - tikz-cnn: 用LaTeX中tikz包绘制卷积神经网络结构图
 - nni库：AutoML中比较好用的库
 - R-CenterNet：林亿大佬写的可旋转目标检测框架，极简风格，便于快速掌握，很赞，打算拜读一下。[最新版代码点这里](https://github.com/ZeroE04/R-CenterNet)
+- cvtranforms: 可以替代pytorch中transform(PIL-based)，据说让数据读取快三倍，用它！
 
 
 ## 感谢
