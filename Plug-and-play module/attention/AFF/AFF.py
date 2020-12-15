@@ -1,32 +1,56 @@
 # source: https://mp.weixin.qq.com/s/La6rbQpnZzjWH3psB2gD6Q
 # code: https://github.com/YimianDai/open-aff
-
+# https://github.com/YimianDai/open-aff/blob/master/aff_pytorch/aff_net/fusion.py
 # AFF
-class AXYforXplusYAddFuse(HybridBlock):
-    def __init__(self, channels=64):
-        super(AXYforXplusYAddFuse, self).__init__()
+import torch
+import torch.nn as nn
 
-        with self.name_scope():
 
-            self.local_att = nn.HybridSequential(prefix='local_att')
-            self.local_att.add(nn.Conv2D(channels, kernel_size=1, strides=1, padding=0))
-            self.local_att.add(nn.BatchNorm())
+class DAF(nn.Module):
+    '''
+    直接相加 DirectAddFuse
+    '''
 
-            self.global_att = nn.HybridSequential(prefix='global_att')
-            self.global_att.add(nn.GlobalAvgPool2D())
-            self.global_att.add(nn.Conv2D(channels, kernel_size=1, strides=1, padding=0))
-            self.global_att.add(nn.BatchNorm())
+    def __init__(self):
+        super(DAF, self).__init__()
 
-            self.sig = nn.Activation('sigmoid')
+    def forward(self, x, residual):
+        return x + residual
 
-    def hybrid_forward(self, F, x, residual):
+class AFF(nn.Module):
+    '''
+    多特征融合 AFF
+    '''
 
-        xi = x + residual
-        xl = self.local_att(xi)
-        xg = self.global_att(xi)
-        xlg = F.broadcast_add(xl, xg)
-        wei = self.sig(xlg)
+    def __init__(self, channels=64, r=4):
+        super(AFF, self).__init__()
+        inter_channels = int(channels // r)
 
-        xo = F.broadcast_mul(wei, residual) + x
+        self.local_att = nn.Sequential(
+            nn.Conv2d(channels, inter_channels, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(inter_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(inter_channels, channels, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(channels),
+        )
 
+        self.global_att = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(channels, inter_channels, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(inter_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(inter_channels, channels, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(channels),
+        )
+
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x, residual):
+        xa = x + residual
+        xl = self.local_att(xa)
+        xg = self.global_att(xa)
+        xlg = xl + xg
+        wei = self.sigmoid(xlg)
+
+        xo = 2 * x * wei + 2 * residual * (1 - wei)
         return xo
