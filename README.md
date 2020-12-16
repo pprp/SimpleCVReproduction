@@ -98,3 +98,5 @@
 @1187697147 补充的context-gating模块
 
 @cmsfw-github 指出了simple_keypoint中的bug
+
+@1187697147 建议更新了AFF和iAFF模块源码
