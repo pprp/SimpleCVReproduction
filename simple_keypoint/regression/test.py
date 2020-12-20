@@ -10,6 +10,9 @@ from datasets import KeyPointDatasets
 from model import KeyPointModel
 import PIL
 
+SIZE = 360,480
+
+
 transforms_test = transforms.Compose([
     transforms.ToPILImage(),
     transforms.Resize((360,480)),
