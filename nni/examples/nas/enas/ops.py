@@ -20,7 +20,7 @@ class StdConv(nn.Module):
 
 
 class PoolBranch(nn.Module):
-    # pool branch max or avg 
+    # pool branch max or avg
     # 设计：conv + pool + bn
     def __init__(self, pool_type, C_in, C_out, kernel_size, stride, padding, affine=False):
         super().__init__()
@@ -73,6 +73,54 @@ class ConvBranch(nn.Module):
         out = self.conv(out)
         out = self.postproc(out)
         return out
+
+
+class SEConvBranch(nn.Module):
+    # FIRST ATTEMPT
+    # https://github.com/moskomule/senet.pytorch/blob/master/senet/se_resnet.py
+    # Conv + BN + SE
+    def __init__(self, c_in, c_out, reduction=16):
+        super(SELayer, self).__init__()
+        self.preproc = StdConv(c_in, c_out)
+        self.conv = nn.Conv2d(c_out, c_out, kernel_size=3)
+        self.bn = nn.BatchNorm2d(c_out, affine=False)
+
+        # SE Part
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channel, channel//reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(channel//reduction, channel, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x = self.preproc(x)
+        x = self.conv(x)
+        x = self.bn(x)
+        
+        b, c, h, w = x.size()
+        y = self.avgpool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y.expand_as(x)
+
+
+class SELayer(nn.Module):
+    def __init__(self, channel, reduction=16):
+        super(SELayer, self).__init__()
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channel, channel//reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(channel//reduction, channel, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, h, w = x.size()
+        y = self.avgpool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y.expand_as(x)
 
 
 class FactorizedReduce(nn.Module):
