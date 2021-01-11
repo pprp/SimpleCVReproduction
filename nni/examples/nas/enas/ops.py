@@ -79,10 +79,11 @@ class SEConvBranch(nn.Module):
     # FIRST ATTEMPT
     # https://github.com/moskomule/senet.pytorch/blob/master/senet/se_resnet.py
     # Conv + BN + SE
-    def __init__(self, c_in, c_out, reduction=16):
+    def __init__(self, c_in, c_out, kernel_size, stride, padding, reduction=16):
         super(SELayer, self).__init__()
         self.preproc = StdConv(c_in, c_out)
-        self.conv = nn.Conv2d(c_out, c_out, kernel_size=3)
+        self.conv = nn.Conv2d(
+            c_out, c_out, kernel_size=kernel_size, stride=stride, padding=padding)
         self.bn = nn.BatchNorm2d(c_out, affine=False)
 
         # SE Part
@@ -98,7 +99,7 @@ class SEConvBranch(nn.Module):
         x = self.preproc(x)
         x = self.conv(x)
         x = self.bn(x)
-        
+
         b, c, h, w = x.size()
         y = self.avgpool(x).view(b, c)
         y = self.fc(y).view(b, c, 1, 1)

@@ -4,7 +4,7 @@
 import torch.nn as nn
 
 from nni.nas.pytorch import mutables
-from ops import FactorizedReduce, ConvBranch, PoolBranch
+from ops import FactorizedReduce, ConvBranch, PoolBranch, SEConvBranch
 
 
 class ENASLayer(mutables.MutableScope):
@@ -20,7 +20,8 @@ class ENASLayer(mutables.MutableScope):
             ConvBranch(in_filters, out_filters, 5, 1, 2, separable=False),
             ConvBranch(in_filters, out_filters, 5, 1, 2, separable=True),
             PoolBranch('avg', in_filters, out_filters, 3, 1, 1),
-            PoolBranch('max', in_filters, out_filters, 3, 1, 1)
+            PoolBranch('max', in_filters, out_filters, 3, 1, 1),
+            SEConvBranch(in_filters, out_filters, 3, 1, 1, reduction=4)
         ])
         if len(prev_labels) > 0:
             self.skipconnect = mutables.InputChoice(
@@ -57,18 +58,18 @@ class GeneralNetwork(nn.Module):
         self.pool_layers_idx = [pool_distance - 1, 2 * pool_distance - 1]
         self.dropout = nn.Dropout(self.dropout_rate)
 
-        self.layers = nn.ModuleList() # convolutional 
-        self.pool_layers = nn.ModuleList() # reduction 
+        self.layers = nn.ModuleList()  # convolutional
+        self.pool_layers = nn.ModuleList()  # reduction
 
         labels = []
-        for layer_id in range(self.num_layers): # 设置12个layer
+        for layer_id in range(self.num_layers):  # 设置12个layer
             labels.append("layer_{}".format(layer_id))
-            
-            if layer_id in self.pool_layers_idx: # 如果使用pool
+
+            if layer_id in self.pool_layers_idx:  # 如果使用pool
                 self.pool_layers.append(FactorizedReduce(
                     self.out_filters, self.out_filters))
 
-            self.layers.append( # 相当于Node节点
+            self.layers.append(  # 相当于Node节点
                 ENASLayer(labels[-1], labels[:-1], self.out_filters, self.out_filters))
 
         self.gap = nn.AdaptiveAvgPool2d(1)
@@ -76,7 +77,7 @@ class GeneralNetwork(nn.Module):
 
     def forward(self, x):
         bs = x.size(0)
-        cur = self.stem(x) # 前两个node
+        cur = self.stem(x)  # 前两个node
 
         layers = [cur]
 
@@ -86,7 +87,8 @@ class GeneralNetwork(nn.Module):
             if layer_id in self.pool_layers_idx:
                 # 如果轮到了池化层
                 for i, layer in enumerate(layers):
-                    layers[i] = self.pool_layers[self.pool_layers_idx.index(layer_id)](layer)
+                    layers[i] = self.pool_layers[self.pool_layers_idx.index(
+                        layer_id)](layer)
                 cur = layers[-1]
 
         cur = self.gap(cur).view(bs, -1)
