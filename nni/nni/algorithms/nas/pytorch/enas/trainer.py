@@ -119,6 +119,7 @@ class EnasTrainer(Trainer):
         self.model.train()
         self.mutator.eval()
         meters = AverageMeterGroup()
+        # COMMENT: 先训练模型
         for step in range(1, self.child_steps + 1):
             x, y = next(self.train_loader)
             x, y = to_device(x, self.device), to_device(y, self.device)
@@ -150,6 +151,7 @@ class EnasTrainer(Trainer):
         # Train sampler (mutator)
         self.model.eval()
         self.mutator.train()
+        # 然后训练变化器，突变器
         meters = AverageMeterGroup()
         for mutator_step in range(1, self.mutator_steps + 1):
             self.mutator_optim.zero_grad()
@@ -162,6 +164,7 @@ class EnasTrainer(Trainer):
                     logits = self.model(x)
                 self._write_graph_status()
                 metrics = self.metrics(logits, y)
+                # 得到reward
                 reward = self.reward_function(logits, y)
                 if self.entropy_weight:
                     reward += self.entropy_weight * self.mutator.sample_entropy.item()
@@ -190,6 +193,7 @@ class EnasTrainer(Trainer):
             self.mutator_optim.step()
 
     def validate_one_epoch(self, epoch):
+        
         with torch.no_grad():
             for arc_id in range(self.test_arc_per_epoch):
                 meters = AverageMeterGroup()

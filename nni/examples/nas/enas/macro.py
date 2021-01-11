@@ -63,9 +63,11 @@ class GeneralNetwork(nn.Module):
         labels = []
         for layer_id in range(self.num_layers): # 设置12个layer
             labels.append("layer_{}".format(layer_id))
+            
             if layer_id in self.pool_layers_idx: # 如果使用pool
                 self.pool_layers.append(FactorizedReduce(
                     self.out_filters, self.out_filters))
+
             self.layers.append( # 相当于Node节点
                 ENASLayer(labels[-1], labels[:-1], self.out_filters, self.out_filters))
 

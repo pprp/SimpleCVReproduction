@@ -95,7 +95,9 @@ class MutableScope(Mutable):
     look like "sub-search-space" in the scope. Scopes can be nested.
 
     There are two ways mutators can use mutable scope. One is to traverse the search space as a tree during initialization
-    and reset. The other is to implement `enter_mutable_scope` and `exit_mutable_scope`. They are called before and after
+    and reset. 
+    
+    The other is to implement `enter_mutable_scope` and `exit_mutable_scope`. They are called before and after
     the forward method of the class inheriting mutable scope.
 
     Mutable scopes are also mutables that are listed in the mutator.mutables (search space), but they are not supposed
@@ -241,7 +243,9 @@ class InputChoice(Mutable):
     The keys in ``choose_from`` can be keys that appear in past mutables, or ``NO_KEY`` if there are no suitable ones.
     The keys are designed to be the keys of the sources. To help mutators make better decisions,
     mutators might be interested in how the tensors to choose from come into place. For example, the tensor is the
-    output of some operator, some node, some cell, or some module. If this operator happens to be a mutable (e.g.,
+    output of some operator, some node, some cell, or some module.
+    
+    If this operator happens to be a mutable (e.g.,
     ``LayerChoice`` or ``InputChoice``), it has a key naturally that can be used as a source key. If it's a
     module/submodule, it needs to be annotated with a key: that's where a :class:`MutableScope` is needed.
 

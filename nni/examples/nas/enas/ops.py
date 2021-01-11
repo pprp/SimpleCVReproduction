@@ -6,6 +6,7 @@ import torch.nn as nn
 
 
 class StdConv(nn.Module):
+    # 普通的卷积+ bn + relu
     def __init__(self, C_in, C_out):
         super(StdConv, self).__init__()
         self.conv = nn.Sequential(
@@ -19,6 +20,8 @@ class StdConv(nn.Module):
 
 
 class PoolBranch(nn.Module):
+    # pool branch max or avg 
+    # 设计：conv + pool + bn
     def __init__(self, pool_type, C_in, C_out, kernel_size, stride, padding, affine=False):
         super().__init__()
         self.preproc = StdConv(C_in, C_out)
@@ -33,6 +36,7 @@ class PoolBranch(nn.Module):
 
 
 class SeparableConv(nn.Module):
+    # 可分离卷积
     def __init__(self, C_in, C_out, kernel_size, stride, padding):
         super(SeparableConv, self).__init__()
         self.depthwise = nn.Conv2d(C_in, C_in, kernel_size=kernel_size, padding=padding, stride=stride,
@@ -46,6 +50,10 @@ class SeparableConv(nn.Module):
 
 
 class ConvBranch(nn.Module):
+    # 卷积分支
+    #   - conv 整合channel
+    #   - conv 进行卷积操作
+    #   - bn+relu
     def __init__(self, C_in, C_out, kernel_size, stride, padding, separable):
         super(ConvBranch, self).__init__()
         self.preproc = StdConv(C_in, C_out)
@@ -68,6 +76,7 @@ class ConvBranch(nn.Module):
 
 
 class FactorizedReduce(nn.Module):
+    # 条纹状降维
     def __init__(self, C_in, C_out, affine=False):
         super().__init__()
         self.conv1 = nn.Conv2d(C_in, C_out // 2, 1,
@@ -83,6 +92,7 @@ class FactorizedReduce(nn.Module):
 
 
 class Pool(nn.Module):
+    # pool 提供max or avg
     def __init__(self, pool_type, kernel_size, stride, padding):
         super().__init__()
         if pool_type.lower() == 'max':
@@ -98,6 +108,7 @@ class Pool(nn.Module):
 
 
 class SepConvBN(nn.Module):
+    # relu + 可分离卷积 + bn
     def __init__(self, C_in, C_out, kernel_size, padding):
         super().__init__()
         self.relu = nn.ReLU()
