@@ -72,12 +72,16 @@ class EnasMutator(Mutator):
         self.branch_bias = branch_bias
 
         self.lstm = StackedLSTMCell(self.lstm_num_layers, self.lstm_size, False)
+
         self.attn_anchor = nn.Linear(self.lstm_size, self.lstm_size, bias=False)
         self.attn_query = nn.Linear(self.lstm_size, self.lstm_size, bias=False)
         self.v_attn = nn.Linear(self.lstm_size, 1, bias=False)
-        self.g_emb = nn.Parameter(torch.randn(1, self.lstm_size) * 0.1)
+        
+        self.g_emb = nn.Parameter(torch.randn(1, self.lstm_size) * 0.1) # 随机的初始化向量作为输入
         self.skip_targets = nn.Parameter(torch.tensor([1.0 - self.skip_target, self.skip_target]), requires_grad=False)  # pylint: disable=not-callable
+        
         assert entropy_reduction in ["sum", "mean"], "Entropy reduction must be one of sum and mean."
+        
         self.entropy_reduction = torch.sum if entropy_reduction == "sum" else torch.mean
         self.cross_entropy_loss = nn.CrossEntropyLoss(reduction="none")
         self.bias_dict = nn.ParameterDict()
@@ -87,6 +91,7 @@ class EnasMutator(Mutator):
             if isinstance(mutable, LayerChoice):
                 if self.max_layer_choice == 0:
                     self.max_layer_choice = len(mutable)
+                    # 层选择的最大个数就是 mutable 可变对象的长度
                 assert self.max_layer_choice == len(mutable), \
                     "ENAS mutator requires all layer choice have the same number of candidates."
                 # We are judging by keys and module types to add biases to layer choices. Needs refactor.
@@ -98,7 +103,7 @@ class EnasMutator(Mutator):
                     self.bias_dict[mutable.key] = nn.Parameter(bias, requires_grad=False)
 
         self.embedding = nn.Embedding(self.max_layer_choice + 1, self.lstm_size)
-        self.soft = nn.Linear(self.lstm_size, self.max_layer_choice, bias=False)
+        self.soft = nn.Linear(self.lstm_size, self.max_layer_choice, bias=False) # 得到其中一个选择
 
     def sample_search(self):
         self._initialize()
@@ -139,18 +144,21 @@ class EnasMutator(Mutator):
         self._h, self._c = self.lstm(self._inputs, (self._h, self._c))
 
     def _mark_anchor(self, key):
+        # 锚 估计是用于定位连接位置的
         self._anchors_hid[key] = self._h[-1]
 
     def _sample_layer_choice(self, mutable):
+        # 选择 某个层
         self._lstm_next_step()
         logit = self.soft(self._h[-1])
         if self.temperature is not None:
             logit /= self.temperature
         if self.tanh_constant is not None:
             logit = self.tanh_constant * torch.tanh(logit)
+
         if mutable.key in self.bias_dict:
             logit += self.bias_dict[mutable.key]
-        branch_id = torch.multinomial(F.softmax(logit, dim=-1), 1).view(-1)
+        branch_id = torch.multinomial(F.softmax(logit, dim=-1), 1).view(-1) # 多项式？
         log_prob = self.cross_entropy_loss(logit, branch_id)
         self.sample_log_prob += self.entropy_reduction(log_prob)
         entropy = (log_prob * torch.exp(-log_prob)).detach()  # pylint: disable=invalid-unary-operand-type
@@ -159,6 +167,7 @@ class EnasMutator(Mutator):
         return F.one_hot(branch_id, num_classes=self.max_layer_choice).bool().view(-1)
 
     def _sample_input_choice(self, mutable):
+        # 选择某个输入，即连接方式
         query, anchors = [], []
         for label in mutable.choose_from:
             if label not in self._anchors_hid:

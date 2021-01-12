@@ -80,7 +80,7 @@ class SEConvBranch(nn.Module):
     # https://github.com/moskomule/senet.pytorch/blob/master/senet/se_resnet.py
     # Conv + BN + SE
     def __init__(self, c_in, c_out, kernel_size, stride, padding, reduction=16):
-        super(SELayer, self).__init__()
+        super(SEConvBranch, self).__init__()
         self.preproc = StdConv(c_in, c_out)
         self.conv = nn.Conv2d(
             c_out, c_out, kernel_size=kernel_size, stride=stride, padding=padding)
@@ -89,9 +89,9 @@ class SEConvBranch(nn.Module):
         # SE Part
         self.avgpool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
-            nn.Linear(channel, channel//reduction, bias=False),
+            nn.Linear(c_out, c_out//reduction, bias=False),
             nn.ReLU(inplace=True),
-            nn.Linear(channel//reduction, channel, bias=False),
+            nn.Linear(c_out//reduction, c_out, bias=False),
             nn.Sigmoid()
         )
 
