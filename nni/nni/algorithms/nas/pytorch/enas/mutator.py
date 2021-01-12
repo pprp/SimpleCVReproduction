@@ -139,12 +139,12 @@ class EnasMutator(Mutator):
         if isinstance(mutable, MutableScope) and mutable.key not in self._anchors_hid:
             if self.cell_exit_extra_step:
                 self._lstm_next_step()
-            self._mark_anchor(mutable.key)
+            self._mark_anchor(mutable.key) # 标记key
 
     def _initialize(self):
         # 初始化各个参数
-        self._choices = dict()
-        self._anchors_hid = dict()
+        self._choices = dict() # 选项
+        self._anchors_hid = dict() 
         self._inputs = self.g_emb.data # 这是随机初始化的一个tensor，用于作为lstm的输入
 
         # lstm的参数
@@ -166,7 +166,7 @@ class EnasMutator(Mutator):
 
 
     def _mark_anchor(self, key):
-        # 锚 估计是用于定位连接位置的
+        # 锚 一个字典，记录：key：隐藏层
         self._anchors_hid[key] = self._h[-1]
 
     def _sample_layer_choice(self, mutable):
@@ -205,13 +205,16 @@ class EnasMutator(Mutator):
     def _sample_input_choice(self, mutable):
         # 选择某个输入，即连接方式
         query, anchors = [], []
-        
+
         for label in mutable.choose_from:
             if label not in self._anchors_hid:
-                self._lstm_next_step()
+                self._lstm_next_step() # lstm前向传播一次
                 self._mark_anchor(label)  # empty loop, fill not found
+        
+            # attn_anchor: 
             query.append(self.attn_anchor(self._anchors_hid[label]))
             anchors.append(self._anchors_hid[label])
+
         query = torch.cat(query, 0)
         query = torch.tanh(query + self.attn_query(self._h[-1]))
         query = self.v_attn(query)
@@ -222,7 +225,6 @@ class EnasMutator(Mutator):
 
         if mutable.n_chosen is None:
             logit = torch.cat([-query, query], 1)  # pylint: disable=invalid-unary-operand-type
-
             skip = torch.multinomial(F.softmax(logit, dim=-1), 1).view(-1)
             skip_prob = torch.sigmoid(logit)
             kl = torch.sum(skip_prob * torch.log(skip_prob / self.skip_targets))

@@ -18,13 +18,15 @@ from utils import accuracy, reward_accuracy
 
 logger = logging.getLogger('nni')
 
+# torch.multiprocessing.set_sharing_strategy('file_system')
+
 
 if __name__ == "__main__":
     parser = ArgumentParser("enas")
-    parser.add_argument("--batch-size", default=2, type=int)
+    parser.add_argument("--batch-size", default=512, type=int)
     parser.add_argument("--log-frequency", default=10, type=int)
-    parser.add_argument("--search-for", choices=["macro", "micro"], default="macro")
-    parser.add_argument("--epochs", default=None, type=int, help="Number of epochs (default: macro 310, micro 150)")
+    parser.add_argument("--search-for", choices=["macro", "micro"], default="micro")
+    parser.add_argument("--epochs", default=300, type=int, help="Number of epochs (default: macro 310, micro 150)")
     parser.add_argument("--visualization", default=False, action="store_true")
     args = parser.parse_args()
 
