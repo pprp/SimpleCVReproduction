@@ -18,7 +18,7 @@ from utils import accuracy, reward_accuracy
 
 logger = logging.getLogger('nni')
 
-torch.multiprocessing.set_sharing_strategy('file_system')
+# torch.multiprocessing.set_sharing_strategy('file_system')
 
 
 if __name__ == "__main__":
