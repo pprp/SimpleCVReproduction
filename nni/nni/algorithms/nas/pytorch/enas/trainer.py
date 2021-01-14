@@ -127,8 +127,6 @@ class EnasTrainer(Trainer):
 
             with torch.no_grad():
                 self.mutator.reset()
-                # 调用sample search方法来进行采样，保存采样结果，
-                # 之后on_forward_layer_choice和on_forward_input_choice就可以使用这个采样结果
             self._write_graph_status()
             logits = self.model(x)
 
