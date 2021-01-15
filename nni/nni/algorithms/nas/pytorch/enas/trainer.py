@@ -163,6 +163,7 @@ class EnasTrainer(Trainer):
                 with torch.no_grad():
                     logits = self.model(x)
                 self._write_graph_status()
+                
                 metrics = self.metrics(logits, y)
                 # 得到reward
                 reward = self.reward_function(logits, y)
