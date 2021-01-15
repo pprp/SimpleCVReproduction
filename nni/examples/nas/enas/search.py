@@ -23,11 +23,11 @@ logger = logging.getLogger('nni')
 
 if __name__ == "__main__":
     parser = ArgumentParser("enas")
-    parser.add_argument("--batch-size", default=512, type=int)
+    parser.add_argument("--batch-size", default=64, type=int)
     parser.add_argument("--log-frequency", default=10, type=int)
-    parser.add_argument("--search-for", choices=["macro", "micro"], default="micro")
+    parser.add_argument("--search-for", choices=["macro", "micro"], default="macro")
     parser.add_argument("--epochs", default=None, type=int, help="Number of epochs (default: macro 310, micro 150)")
-    parser.add_argument("--visualization", default=True, action="store_true")
+    parser.add_argument("--visualization", default=False, action="store_true")
     args = parser.parse_args()
 
     dataset_train, dataset_valid = datasets.get_dataset("cifar10")

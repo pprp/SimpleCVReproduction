@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 class EnasTrainer(Trainer):
     """
     ENAS trainer.
-
     Parameters
     ----------
     model : nn.Module
@@ -136,11 +135,19 @@ class EnasTrainer(Trainer):
             else:
                 aux_loss = 0.
             metrics = self.metrics(logits, y)
+            # 计算acc 
+
             loss = self.loss(logits, y)
+            # 计算loss
+
             loss = loss + self.aux_weight * aux_loss
+
             loss.backward()
+
             nn.utils.clip_grad_norm_(self.model.parameters(), 5.)
+
             self.optimizer.step()
+
             metrics["loss"] = loss.item()
             meters.update(metrics)
 
@@ -160,19 +167,37 @@ class EnasTrainer(Trainer):
                 x, y = to_device(x, self.device), to_device(y, self.device)
 
                 self.mutator.reset()
+
                 with torch.no_grad():
                     logits = self.model(x)
+
                 self._write_graph_status()
-                
+
+                # 得到acc
                 metrics = self.metrics(logits, y)
                 # 得到reward
-                reward = self.reward_function(logits, y)
-                if self.entropy_weight:
-                    reward += self.entropy_weight * self.mutator.sample_entropy.item()
+
+                '''
+                def reward_accuracy(output, target, topk=(1,)):
+                    batch_size = target.size(0)
+                    
+                    _, predicted = torch.max(output.data, 1)
+                    return (predicted == target).sum().item() / batch_size
+                '''
+
+                reward = self.reward_function(logits, y) # 当前这个batch正确的个数
+
+                if self.entropy_weight: # 交叉熵权重 
+                    reward += self.entropy_weight * self.mutator.sample_entropy.item() # 得到样本熵
+                
                 self.baseline = self.baseline * self.baseline_decay + reward * (1 - self.baseline_decay)
+                # 有点policy gradient的感觉了
+                
                 loss = self.mutator.sample_log_prob * (reward - self.baseline)
+
                 if self.skip_weight:
                     loss += self.skip_weight * self.mutator.sample_skip_penalty
+                
                 metrics["reward"] = reward
                 metrics["loss"] = loss.item()
                 metrics["ent"] = self.mutator.sample_entropy.item()

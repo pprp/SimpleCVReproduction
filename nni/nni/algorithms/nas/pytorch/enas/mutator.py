@@ -175,29 +175,30 @@ class EnasMutator(Mutator):
         logit = self.soft(self._h[-1]) # linear 从隐藏层embedd得到可选的层的逻辑评分
 
         if self.temperature is not None:
-            logit /= self.temperature # 一个常量
+            logit /= self.temperature # 一个常量 貌似是RL中的trick
 
         if self.tanh_constant is not None:
             # tanh_constant * tanh(logits) 用tanh再激活一次（可选）
             logit = self.tanh_constant * torch.tanh(logit)
 
         if mutable.key in self.bias_dict:
-            logit += self.bias_dict[mutable.key] 
+            logit += self.bias_dict[mutable.key]
             # 对卷积层进行了偏好处理，如果是卷积层，那就在对应的值加上一个0.25，增大被选中的概率
         
         # softmax, view(-1), 
         branch_id = torch.multinomial(F.softmax(logit, dim=-1), 1).view(-1) 
-        # 依据概率来选下角标，如果数量不为1，选择的多个中没有重复的
+        # 依据概率来选下角标，如果数量不为1，选择的多个中没有重复的 
+        # eg: [100,1,1] 最有可能选择100对应的下标0
          
-        log_prob = self.cross_entropy_loss(logit, branch_id) # 交叉熵损失函数
+        log_prob = self.cross_entropy_loss(logit, branch_id) # 交叉熵损失函数 - 判断logit和branchid分布是否相似程度
 
         self.sample_log_prob += self.entropy_reduction(log_prob) # 求和或者求平均
         
-        entropy = (log_prob * torch.exp(-log_prob)).detach()  # pylint: disable=invalid-unary-operand-type
+        entropy = (log_prob * torch.exp(-log_prob)).detach()  # pylint: disable=invalid-unary-operand-type　??
         
-        self.sample_entropy += self.entropy_reduction(entropy)
+        self.sample_entropy += self.entropy_reduction(entropy) # 样本熵？
 
-        self._inputs = self.embedding(branch_id) # 得到对应id的embedding, 
+        self._inputs = self.embedding(branch_id) # 得到对应id的embedding, 从选择空间 - 映射到 - 隐空间
 
         return F.one_hot(branch_id, num_classes=self.max_layer_choice).bool().view(-1) # 将选择变成one_hot向量
 
@@ -211,9 +212,12 @@ class EnasMutator(Mutator):
                 self._mark_anchor(label)  # empty loop, fill not found
             query.append(self.attn_anchor(self._anchors_hid[label]))
             anchors.append(self._anchors_hid[label])
+
         query = torch.cat(query, 0)
         query = torch.tanh(query + self.attn_query(self._h[-1]))
-        query = self.v_attn(query)
+        query = self.v_attn(query) # Linear : query to 1
+
+        
         if self.temperature is not None:
             query /= self.temperature
         if self.tanh_constant is not None:
