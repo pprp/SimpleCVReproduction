@@ -45,3 +45,6 @@ tensorflow2/summary_logs/gradient_tape/20200417-160520/train/events.out.tfevents
 *.yaml
 *.ckpt
 nni/data/*
+*.3
+*events*
+*.pth
