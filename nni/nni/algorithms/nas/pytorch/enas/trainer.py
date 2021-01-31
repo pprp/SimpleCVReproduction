@@ -179,8 +179,7 @@ class EnasTrainer(Trainer):
 
                 '''
                 def reward_accuracy(output, target, topk=(1,)):
-                    batch_size = target.size(0)
-                    
+                    batch_size = target.size(0)                    
                     _, predicted = torch.max(output.data, 1)
                     return (predicted == target).sum().item() / batch_size
                 '''
