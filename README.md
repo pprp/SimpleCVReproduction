@@ -10,55 +10,7 @@
 
 > PS: 在GiantPandaCV公众号后台回复即插即用可以得到一份简单的指导手册。
 
-- 注意力模块Attention
-
-  - BAM
-  - BiSeNet
-  - CBAM
-  - CCNet
-  - GCBlock
-  - HRNet
-  - Non-Local
-  - OCR
-  - ResNeSt
-  - scSE
-  - SE
-  - SK
-  - DANet: Dual Attention
-  - AFF
-    - MC-CAM
-    - AFF
-    - iAFF
-- Plug-and-play module: 即插即用模块：
-  - ACBlock
-  - Swish、wish Activation
-  - ASPP Block
-  - DepthWise Convolution
-  - Fused Conv & BN
-  - MixedDepthwise Convolution
-  - PSP Module
-  - RFBModule
-  - SematicEmbbedBlock
-  - SSH Context Module
-  - Some other usefull tools such as concate feature map、flatten feature map
-  - WeightedFeatureFusion:EfficientDet中的FPN用到的fuse方式
-  - StripPooling：CVPR2020中核心代码StripPooling
-  - GhostModule: CVPR2020GhostNet的核心模块
-  - SlimConv: SlimConv3x3 
-  - Context Gating： video classification
-  - EffNetBlock: EffNet
-  - ECCV2020 BorderDet: Border aligment module
-  - CVPR2019 DANet: Dual Attention
-  - ICCV2019 CCNet: Criss Cross Attention
-  - Object Contextual Representation for sematic segmentation: OCRModule
-  - FPT: 包含Self Transform、Grounding Transform、Rendering Transform
-  - DOConv: 阿里提出的Depthwise Over-parameterized Convolution
-  - PyConv: 起源人工智能研究院提出的金字塔卷积
-  - ULSAM：用于紧凑型CNN的超轻量级子空间注意力模块
-  - DGC: ECCV 2020用于加速卷积神经网络的动态分组卷积
-  - DCANet: ECCV 2020 学习卷积神经网络的连接注意力
-  - PSConv: ECCV 2020 将特征金字塔压缩到紧凑的多尺度卷积层中
-  - Dynamic Convolution: CVPR2020 动态滤波器卷积（非官方实现，蹲）
+注意力模块Attention & 即插即用模块 现在已经迁移到[awesome-attention-mechanism-in-cv](https://github.com/pprp/awesome-attention-mechanism-in-cv)欢迎关注
 
 > PS: 关于如何在YOLOv3中加入以上模块，可以访问[这个博客](https://blog.csdn.net/DD_PP_JJ/article/details/104109369)，这个里边实现了SE,SK,CBAM,SPP,ASPP等在内的模型，对应的代码在https://github.com/GiantPandaCV/yolov3-point。
 
