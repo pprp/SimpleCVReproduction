@@ -1,4 +1,4 @@
-authorName: default
+authorName: pprp
 experimentName: example_mnist_pytorch
 trialConcurrency: 1
 maxExecDuration: 1h
@@ -7,7 +7,11 @@ maxTrialNum: 10
 trainingServicePlatform: local
 searchSpacePath: search_space.json
 #choice: true, false
+localConfig:
+  useActiveGpu: true			# 该参数将允许NNI使用活动的GPU运行任务
+  maxTrialNumPerGpu: 1
 useAnnotation: false
+logDir: /home/pdluser/project/copy_nni/examples/trials/mnist-pytorch/nniexp
 tuner:
   #choice: TPE, Random, Anneal, Evolution, BatchTuner, MetisTuner, GPTuner
   #SMAC (SMAC should be installed through nnictl)
@@ -18,4 +22,4 @@ tuner:
 trial:
   command: python3 mnist.py
   codeDir: .
-  gpuNum: 0
+  gpuNum: 1
