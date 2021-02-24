@@ -62,7 +62,7 @@ class GeneralNetwork(nn.Module):
         self.pool_layers = nn.ModuleList()  # reduction
 
         labels = []
-        for layer_id in range(self.num_layers):  # 设置12个layer
+        for layer_id in range(self.num_layers):  # 设置6个layer
             labels.append("layer_{}".format(layer_id))
 
             if layer_id in self.pool_layers_idx:  # 如果使用pool
@@ -77,7 +77,7 @@ class GeneralNetwork(nn.Module):
 
     def forward(self, x):
         bs = x.size(0)
-        cur = self.stem(x)  # 前两个node
+        cur = self.stem(x)  # 第一个node
 
         layers = [cur]
 

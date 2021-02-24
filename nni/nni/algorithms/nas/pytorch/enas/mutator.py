@@ -194,7 +194,7 @@ class EnasMutator(Mutator):
 
         self.sample_log_prob += self.entropy_reduction(log_prob) # 求和或者求平均
         
-        entropy = (log_prob * torch.exp(-log_prob)).detach()  # pylint: disable=invalid-unary-operand-type　??
+        entropy = (log_prob * torch.exp(-log_prob)).detach()  
         
         self.sample_entropy += self.entropy_reduction(entropy) # 样本熵？
 

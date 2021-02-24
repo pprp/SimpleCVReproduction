@@ -73,6 +73,7 @@ class EnasTrainer(Trainer):
                  entropy_weight=0.0001, skip_weight=0.8, baseline_decay=0.999, child_steps=500,
                  mutator_lr=0.00035, mutator_steps_aggregate=20, mutator_steps=50, aux_weight=0.4,
                  test_arc_per_epoch=1):
+                 
         super().__init__(model, mutator if mutator is not None else EnasMutator(model),
                          loss, metrics, optimizer, num_epochs, dataset_train, dataset_valid,
                          batch_size, workers, device, log_frequency, callbacks)

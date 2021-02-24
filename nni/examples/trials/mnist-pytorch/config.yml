@@ -1,15 +1,15 @@
 authorName: pprp
 experimentName: example_mnist_pytorch
 trialConcurrency: 1
-maxExecDuration: 1h
+maxExecDuration: 3h
 maxTrialNum: 10
 #choice: local, remote, pai
 trainingServicePlatform: local
 searchSpacePath: search_space.json
 #choice: true, false
 localConfig:
-  useActiveGpu: true			# 该参数将允许NNI使用活动的GPU运行任务
-  maxTrialNumPerGpu: 1
+  useActiveGpu: true
+  maxTrialNumPerGpu: 3
 useAnnotation: false
 logDir: /home/pdluser/project/copy_nni/examples/trials/mnist-pytorch/nniexp
 tuner:
@@ -20,6 +20,6 @@ tuner:
     #choice: maximize, minimize
     optimize_mode: maximize
 trial:
-  command: python3 mnist.py
+  command: python mnist.py
   codeDir: .
-  gpuNum: 1
+  gpuNum: 0
