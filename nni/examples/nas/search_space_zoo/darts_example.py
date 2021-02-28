@@ -10,9 +10,9 @@ import torch.nn as nn
 
 import datasets
 from nni.nas.pytorch.callbacks import ArchitectureCheckpoint, LRSchedulerCallback
-from nni.nas.pytorch.darts import DartsTrainer
+# from nni.nas.pytorch.darts import DartsTrainer
 from utils import accuracy
-
+from nni.algorithms.nas.pytorch.darts import DartsTrainer
 from nni.nas.pytorch.search_space_zoo import DartsCell
 from darts_stack_cells import DartsStackedCells
 
@@ -21,7 +21,7 @@ logger = logging.getLogger('nni')
 if __name__ == "__main__":
     parser = ArgumentParser("darts")
     parser.add_argument("--layers", default=8, type=int)
-    parser.add_argument("--batch-size", default=64, type=int)
+    parser.add_argument("--batch-size", default=16, type=int)
     parser.add_argument("--log-frequency", default=10, type=int)
     parser.add_argument("--epochs", default=50, type=int)
     parser.add_argument("--channels", default=16, type=int)
