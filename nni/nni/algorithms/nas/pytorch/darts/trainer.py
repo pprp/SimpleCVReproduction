@@ -51,6 +51,7 @@ class DartsTrainer(Trainer):
     unrolled : float
         ``True`` if using second order optimization, else first order optimization.
     """
+
     def __init__(self, model, loss, metrics,
                  optimizer, num_epochs, dataset_train, dataset_valid,
                  mutator=None, batch_size=64, workers=4, device=None, log_frequency=None,
@@ -61,13 +62,15 @@ class DartsTrainer(Trainer):
 
         self.ctrl_optim = torch.optim.Adam(self.mutator.parameters(), arc_learning_rate, betas=(0.5, 0.999),
                                            weight_decay=1.0E-3)
-        self.unrolled = unrolled
+        self.unrolled = unrolled  # 用于控制一阶或者二阶优化
 
         n_train = len(self.dataset_train)
         split = n_train // 2
         indices = list(range(n_train))
-        train_sampler = torch.utils.data.sampler.SubsetRandomSampler(indices[:split])
-        valid_sampler = torch.utils.data.sampler.SubsetRandomSampler(indices[split:])
+        train_sampler = torch.utils.data.sampler.SubsetRandomSampler(
+            indices[:split])
+        valid_sampler = torch.utils.data.sampler.SubsetRandomSampler(
+            indices[split:])
         self.train_loader = torch.utils.data.DataLoader(self.dataset_train,
                                                         batch_size=batch_size,
                                                         sampler=train_sampler,
@@ -81,9 +84,12 @@ class DartsTrainer(Trainer):
                                                        num_workers=workers)
 
     def train_one_epoch(self, epoch):
+
         self.model.train()
         self.mutator.train()
+
         meters = AverageMeterGroup()
+
         for step, ((trn_X, trn_y), (val_X, val_y)) in enumerate(zip(self.train_loader, self.valid_loader)):
             trn_X, trn_y = trn_X.to(self.device), trn_y.to(self.device)
             val_X, val_y = val_X.to(self.device), val_y.to(self.device)
@@ -100,7 +106,8 @@ class DartsTrainer(Trainer):
             self.optimizer.zero_grad()
             logits, loss = self._logits_and_loss(trn_X, trn_y)
             loss.backward()
-            nn.utils.clip_grad_norm_(self.model.parameters(), 5.)  # gradient clipping
+            nn.utils.clip_grad_norm_(
+                self.model.parameters(), 5.)  # gradient clipping
             self.optimizer.step()
 
             metrics = self.metrics(logits, trn_y)
@@ -149,12 +156,14 @@ class DartsTrainer(Trainer):
         lr = self.optimizer.param_groups[0]["lr"]
         momentum = self.optimizer.param_groups[0]["momentum"]
         weight_decay = self.optimizer.param_groups[0]["weight_decay"]
+
         self._compute_virtual_model(trn_X, trn_y, lr, momentum, weight_decay)
 
         # calculate unrolled loss on validation data
         # keep gradients for model here for compute hessian
         _, loss = self._logits_and_loss(val_X, val_y)
-        w_model, w_ctrl = tuple(self.model.parameters()), tuple(self.mutator.parameters())
+        w_model, w_ctrl = tuple(self.model.parameters()), tuple(
+            self.mutator.parameters())
         w_grads = torch.autograd.grad(loss, w_model + w_ctrl)
         d_model, d_ctrl = w_grads[:len(w_model)], w_grads[len(w_model):]
 
@@ -197,7 +206,8 @@ class DartsTrainer(Trainer):
         norm = torch.cat([w.view(-1) for w in dw]).norm()
         eps = 0.01 / norm
         if norm < 1E-8:
-            logger.warning("In computing hessian, norm is smaller than 1E-8, cause eps to be %.6f.", norm.item())
+            logger.warning(
+                "In computing hessian, norm is smaller than 1E-8, cause eps to be %.6f.", norm.item())
 
         dalphas = []
         for e in [eps, -2. * eps]:
@@ -207,8 +217,11 @@ class DartsTrainer(Trainer):
                     p += e * d
 
             _, loss = self._logits_and_loss(trn_X, trn_y)
-            dalphas.append(torch.autograd.grad(loss, self.mutator.parameters()))
+            dalphas.append(torch.autograd.grad(
+                loss, self.mutator.parameters()))
 
-        dalpha_pos, dalpha_neg = dalphas  # dalpha { L_trn(w+) }, # dalpha { L_trn(w-) }
-        hessian = [(p - n) / (2. * eps) for p, n in zip(dalpha_pos, dalpha_neg)]
+        # dalpha { L_trn(w+) }, # dalpha { L_trn(w-) }
+        dalpha_pos, dalpha_neg = dalphas
+        hessian = [(p - n) / (2. * eps)
+                   for p, n in zip(dalpha_pos, dalpha_neg)]
         return hessian

@@ -34,12 +34,14 @@ class DartsMutator(Mutator):
     choices: ParameterDict
         dict that maps keys of LayerChoices to weighted-connection float tensors.
     """
+
     def __init__(self, model):
         super().__init__(model)
         self.choices = nn.ParameterDict()
         for mutable in self.mutables:
             if isinstance(mutable, LayerChoice):
-                self.choices[mutable.key] = nn.Parameter(1.0E-3 * torch.randn(mutable.length + 1))
+                self.choices[mutable.key] = nn.Parameter(
+                    1.0E-3 * torch.randn(mutable.length + 1))
 
     def device(self):
         for v in self.choices.values():
@@ -49,9 +51,11 @@ class DartsMutator(Mutator):
         result = dict()
         for mutable in self.mutables:
             if isinstance(mutable, LayerChoice):
-                result[mutable.key] = F.softmax(self.choices[mutable.key], dim=-1)[:-1]
+                result[mutable.key] = F.softmax(
+                    self.choices[mutable.key], dim=-1)[:-1]
             elif isinstance(mutable, InputChoice):
-                result[mutable.key] = torch.ones(mutable.n_candidates, dtype=torch.bool, device=self.device())
+                result[mutable.key] = torch.ones(
+                    mutable.n_candidates, dtype=torch.bool, device=self.device())
         return result
 
     def sample_final(self):
@@ -59,19 +63,24 @@ class DartsMutator(Mutator):
         edges_max = dict()
         for mutable in self.mutables:
             if isinstance(mutable, LayerChoice):
-                max_val, index = torch.max(F.softmax(self.choices[mutable.key], dim=-1)[:-1], 0)
+                max_val, index = torch.max(
+                    F.softmax(self.choices[mutable.key], dim=-1)[:-1], 0)
                 edges_max[mutable.key] = max_val
-                result[mutable.key] = F.one_hot(index, num_classes=len(mutable)).view(-1).bool()
+                result[mutable.key] = F.one_hot(
+                    index, num_classes=len(mutable)).view(-1).bool()
         for mutable in self.mutables:
             if isinstance(mutable, InputChoice):
                 if mutable.n_chosen is not None:
                     weights = []
                     for src_key in mutable.choose_from:
                         if src_key not in edges_max:
-                            _logger.warning("InputChoice.NO_KEY in '%s' is weighted 0 when selecting inputs.", mutable.key)
+                            _logger.warning(
+                                "InputChoice.NO_KEY in '%s' is weighted 0 when selecting inputs.", mutable.key)
                         weights.append(edges_max.get(src_key, 0.))
-                    weights = torch.tensor(weights)  # pylint: disable=not-callable
-                    _, topk_edge_indices = torch.topk(weights, mutable.n_chosen)
+                    weights = torch.tensor(
+                        weights)  # pylint: disable=not-callable
+                    _, topk_edge_indices = torch.topk(
+                        weights, mutable.n_chosen)
                     selected_multihot = []
                     for i, src_key in enumerate(mutable.choose_from):
                         if i not in topk_edge_indices and src_key in result:
@@ -79,7 +88,9 @@ class DartsMutator(Mutator):
                             # This is to eliminate redundant calculation.
                             result[src_key] = torch.zeros_like(result[src_key])
                         selected_multihot.append(i in topk_edge_indices)
-                    result[mutable.key] = torch.tensor(selected_multihot, dtype=torch.bool, device=self.device())  # pylint: disable=not-callable
+                    result[mutable.key] = torch.tensor(
+                        selected_multihot, dtype=torch.bool, device=self.device())  # pylint: disable=not-callable
                 else:
-                    result[mutable.key] = torch.ones(mutable.n_candidates, dtype=torch.bool, device=self.device())  # pylint: disable=not-callable
+                    result[mutable.key] = torch.ones(
+                        mutable.n_candidates, dtype=torch.bool, device=self.device())  # pylint: disable=not-callable
         return result

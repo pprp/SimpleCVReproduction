@@ -12,14 +12,16 @@ from nni.nas.pytorch import mutables
 
 class AuxiliaryHead(nn.Module):
     """ Auxiliary head in 2/3 place of network to let the gradient flow well """
+    # 辅助头 最初在InceptionV3中提出，相当于一个loss，进行梯度的回传
 
     def __init__(self, input_size, C, n_classes):
         """ assuming input size 7x7 or 8x8 """
-        assert input_size in [7, 8]
+        assert input_size in [7, 8]  # ??
         super().__init__()
         self.net = nn.Sequential(
             nn.ReLU(inplace=True),
-            nn.AvgPool2d(5, stride=input_size - 5, padding=0, count_include_pad=False),  # 2x2 out
+            nn.AvgPool2d(5, stride=input_size - 5, padding=0,
+                         count_include_pad=False),  # 2x2 out
             nn.Conv2d(C, 128, kernel_size=1, bias=False),
             nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
@@ -33,61 +35,103 @@ class AuxiliaryHead(nn.Module):
         out = self.net(x)
         out = out.view(out.size(0), -1)  # flatten
         logits = self.linear(out)
-        return logits
+        return logits  # 用于随后计算loss
 
 
 class Node(nn.Module):
+    '''
+    节点，每个节点负责与之前出现过的节点相连接
+          每个节点由几个可选操作，这些操作组成了边
+    '''
+
     def __init__(self, node_id, num_prev_nodes, channels, num_downsample_connect):
+        '''
+        Node("{}_n{}".format("reduce" if reduction else "normal", depth),
+             depth, channels, 2 if reduction else 0)
+        num_prev_nodes: 之前的节点个数
+        '''
+
         super().__init__()
         self.ops = nn.ModuleList()
-        choice_keys = []
-        for i in range(num_prev_nodes):
+        choice_keys = []  # 记录 节点+边 组合的名称
+
+        for i in range(num_prev_nodes):  # 枚举之前的节点
             stride = 2 if i < num_downsample_connect else 1
+            # 统一设置stride
+            # 如果是reduction cell, stride=2,
+            # 如果是normal cell, stride=1
             choice_keys.append("{}_p{}".format(node_id, i))
+
             self.ops.append(
                 mutables.LayerChoice(OrderedDict([
                     ("maxpool", ops.PoolBN('max', channels, 3, stride, 1, affine=False)),
                     ("avgpool", ops.PoolBN('avg', channels, 3, stride, 1, affine=False)),
-                    ("skipconnect", nn.Identity() if stride == 1 else ops.FactorizedReduce(channels, channels, affine=False)),
-                    ("sepconv3x3", ops.SepConv(channels, channels, 3, stride, 1, affine=False)),
-                    ("sepconv5x5", ops.SepConv(channels, channels, 5, stride, 2, affine=False)),
-                    ("dilconv3x3", ops.DilConv(channels, channels, 3, stride, 2, 2, affine=False)),
-                    ("dilconv5x5", ops.DilConv(channels, channels, 5, stride, 4, 2, affine=False))
+                    ("skipconnect", nn.Identity() if stride == 1 else ops.FactorizedReduce(
+                        channels, channels, affine=False)),
+                    ("sepconv3x3", ops.SepConv(channels,
+                                               channels, 3, stride, 1, affine=False)),
+                    ("sepconv5x5", ops.SepConv(channels,
+                                               channels, 5, stride, 2, affine=False)),
+                    ("dilconv3x3", ops.DilConv(channels,
+                                               channels, 3, stride, 2, 2, affine=False)),
+                    ("dilconv5x5", ops.DilConv(channels,
+                                               channels, 5, stride, 4, 2, affine=False))
                 ]), key=choice_keys[-1]))
-        self.drop_path = ops.DropPath()
-        self.input_switch = mutables.InputChoice(choose_from=choice_keys, n_chosen=2, key="{}_switch".format(node_id))
+
+        self.drop_path = ops.DropPath()  # 以0.2的概率drop path
+
+        self.input_switch = mutables.InputChoice(  # 控制连接方式， 维护choice_key就是为了这个使用
+            choose_from=choice_keys, n_chosen=2, key="{}_switch".format(node_id))
 
     def forward(self, prev_nodes):
-        assert len(self.ops) == len(prev_nodes)
+        # 前向传播
+        assert len(self.ops) == len(prev_nodes)  
+
         out = [op(node) for op, node in zip(self.ops, prev_nodes)]
+
         out = [self.drop_path(o) if o is not None else None for o in out]
-        return self.input_switch(out)
+
+        return self.input_switch(out) # ？？
 
 
 class Cell(nn.Module):
 
     def __init__(self, n_nodes, channels_pp, channels_p, channels, reduction_p, reduction):
+        '''
+        channel_pp代表两个cell前
+        channel_p 代表一个cell前
+        '''
         super().__init__()
         self.reduction = reduction
         self.n_nodes = n_nodes
 
         # If previous cell is reduction cell, current input size does not match with
         # output size of cell[k-2]. So the output[k-2] should be reduced by preprocessing.
+
         if reduction_p:
-            self.preproc0 = ops.FactorizedReduce(channels_pp, channels, affine=False)
+            # 预处理前前个cell的通道个数
+            self.preproc0 = ops.FactorizedReduce(
+                channels_pp, channels, affine=False)
         else:
-            self.preproc0 = ops.StdConv(channels_pp, channels, 1, 1, 0, affine=False)
-        self.preproc1 = ops.StdConv(channels_p, channels, 1, 1, 0, affine=False)
+            self.preproc0 = ops.StdConv(
+                channels_pp, channels, 1, 1, 0, affine=False)
+
+        # 预处理前个cell的通道个数
+        self.preproc1 = ops.StdConv(
+            channels_p, channels, 1, 1, 0, affine=False)
 
         # generate dag
         self.mutable_ops = nn.ModuleList()
-        for depth in range(2, self.n_nodes + 2):
+
+        for depth in range(2, self.n_nodes + 2):  # ？
+            # 深度depth：2, 
             self.mutable_ops.append(Node("{}_n{}".format("reduce" if reduction else "normal", depth),
                                          depth, channels, 2 if reduction else 0))
 
     def forward(self, s0, s1):
         # s0, s1 are the outputs of previous previous cell and previous cell, respectively.
         tensors = [self.preproc0(s0), self.preproc1(s1)]
+
         for node in self.mutable_ops:
             cur_tensor = node(tensors)
             tensors.append(cur_tensor)
@@ -126,13 +170,15 @@ class CNN(nn.Module):
                 c_cur *= 2
                 reduction = True
 
-            cell = Cell(n_nodes, channels_pp, channels_p, c_cur, reduction_p, reduction)
+            cell = Cell(n_nodes, channels_pp, channels_p,
+                        c_cur, reduction_p, reduction)
             self.cells.append(cell)
             c_cur_out = c_cur * n_nodes
             channels_pp, channels_p = channels_p, c_cur_out
 
             if i == self.aux_pos:
-                self.aux_head = AuxiliaryHead(input_size // 4, channels_p, n_classes)
+                self.aux_head = AuxiliaryHead(
+                    input_size // 4, channels_p, n_classes)
 
         self.gap = nn.AdaptiveAvgPool2d(1)
         self.linear = nn.Linear(channels_p, n_classes)

@@ -45,7 +45,7 @@ class PoolBN(nn.Module):
 
     def forward(self, x):
         out = self.pool(x)
-        out = self.bn(out)
+        out = self.bn(out) #?
         return out
 
 
@@ -134,3 +134,6 @@ class FactorizedReduce(nn.Module):
         out = torch.cat([self.conv1(x), self.conv2(x[:, :, 1:, 1:])], dim=1)
         out = self.bn(out)
         return out
+
+
+   

@@ -38,6 +38,7 @@ class Mutable(nn.Module):
 
     def __init__(self, key=None):
         super().__init__()
+
         if key is not None:
             if not isinstance(key, str):
                 key = str(key)
@@ -45,6 +46,7 @@ class Mutable(nn.Module):
             self._key = key
         else:
             self._key = self.__class__.__name__ + str(global_mutable_counting())
+            
         self.init_hook = self.forward_hook = None
 
     def __deepcopy__(self, memodict=None):
