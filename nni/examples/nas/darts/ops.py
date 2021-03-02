@@ -51,7 +51,7 @@ class PoolBN(nn.Module):
 
 class StdConv(nn.Module):
     """
-    Standard conv: ReLU - Conv - BN
+    Standard conv: ReLU - Conv - BN - ReLU - Conv - BN
     """
     def __init__(self, C_in, C_out, kernel_size, stride, padding, affine=True):
         super().__init__()

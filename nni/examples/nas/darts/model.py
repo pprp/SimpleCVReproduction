@@ -43,7 +43,6 @@ class Node(nn.Module):
     节点，每个节点负责与之前出现过的节点相连接
           每个节点由几个可选操作，这些操作组成了边
     '''
-
     def __init__(self, node_id, num_prev_nodes, channels, num_downsample_connect):
         '''
         Node("{}_n{}".format("reduce" if reduction else "normal", depth),
@@ -163,6 +162,8 @@ class CNN(nn.Module):
 
         self.cells = nn.ModuleList()
         reduction_p, reduction = False, False
+
+        
         for i in range(n_layers):
             reduction_p, reduction = reduction, False
             # Reduce featuremap size and double channels in 1/3 and 2/3 layer.
