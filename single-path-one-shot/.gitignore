@@ -1,0 +1,6 @@
+*.pyc
+*.swp
+.DS_Store
+data
+log
+models
