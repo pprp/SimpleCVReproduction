@@ -121,6 +121,7 @@ if __name__ == "__main__":
     # scale_list = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6]
     # scale_ids = [6, 5, 3, 5, 2, 6, 3, 4, 2, 5, 7, 5, 4, 6, 7, 4, 4, 5, 4, 3]
     channels_scales = []
+    
     for i in range(len(scale_ids)):
         channels_scales.append(scale_list[scale_ids[i]])
     model = ShuffleNetV2_OneShot()
