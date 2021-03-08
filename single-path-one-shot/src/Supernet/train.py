@@ -1,21 +1,23 @@
+import argparse
+import logging
 import os
 import sys
-import torch
-import argparse
-import torch.nn as nn
-import torchvision.transforms as transforms
-import torchvision.datasets as datasets
+import time
+
 import cv2
 import numpy as np
 import PIL
+import torch
+import torch.nn as nn
+import torchvision.datasets as datasets
+import torchvision.transforms as transforms
 from PIL import Image
-import time
-import logging
-import argparse
-from network import ShuffleNetV2_OneShot
-from utils import accuracy, AvgrageMeter, CrossEntropyLabelSmooth, save_checkpoint, get_lastest_model, get_parameters
-from flops import get_cand_flops
+
 from cifar100_dataset import get_dataset
+from flops import get_cand_flops
+from network import ShuffleNetV2_OneShot
+from utils import (AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
+                   get_lastest_model, get_parameters, save_checkpoint)
 
 
 class OpencvResize(object):
@@ -143,8 +145,8 @@ def main():
     # assert os.path.exists(args.val_dir)
     val_loader = torch.utils.data.DataLoader(val_dataset,
                                              batch_size=200, shuffle=False,
-                                             num_workers=1, pin_memory=use_gpu
-                                             )
+                                             num_workers=1, pin_memory=use_gpu)
+
     val_dataprovider = DataIterator(val_loader)
     print('load data successfully')
 
@@ -170,7 +172,7 @@ def main():
     model = model.to(device)
 
     all_iters = 0
-    if args.auto_continue:
+    if args.auto_continue:  # 自动进行？？
         lastest_model, iters = get_lastest_model()
         if lastest_model is not None:
             all_iters = iters
@@ -181,6 +183,7 @@ def main():
             for i in range(iters):
                 scheduler.step()
 
+    # 参数设置
     args.optimizer = optimizer
     args.loss_function = loss_function
     args.scheduler = scheduler
@@ -230,8 +233,8 @@ def train(model, device, args, *, val_interval, bn_process=False, all_iters=None
         data, target = data.to(device), target.to(device)
         data_time = time.time() - d_st
 
-        def get_random_cand(): return tuple(np.random.randint(4)
-                                            for i in range(20))
+        def get_random_cand():
+            return tuple(np.random.randint(4) for i in range(20))
         flops_l, flops_r, flops_step = 290, 360, 10
         bins = [[i, i+flops_step] for i in range(flops_l, flops_r, flops_step)]
 

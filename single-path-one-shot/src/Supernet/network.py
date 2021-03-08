@@ -22,24 +22,31 @@ class ShuffleNetV2_OneShot(nn.Module):
         )
 
         self.features = torch.nn.ModuleList()
-        archIndex = 0
-        for idxstage in range(len(self.stage_repeats)):
-            numrepeat = self.stage_repeats[idxstage]
-            output_channel = self.stage_out_channels[idxstage + 2]
 
-            for i in range(numrepeat):
+        archIndex = 0 # 计算具体层数
+
+        for idxstage in range(len(self.stage_repeats)):
+            numrepeat = self.stage_repeats[idxstage] # 重复次数
+            output_channel = self.stage_out_channels[idxstage + 2] # 通道参数
+
+            for i in range(numrepeat):                   
                 if i == 0:
+                    # 在一个block第一个卷积，设置stride为2
                     inp, outp, stride = input_channel, output_channel, 2
                 else:
+                    # block随后的卷积，input_channel // 2
                     inp, outp, stride = input_channel // 2, output_channel, 1
 
-                base_mid_channels = outp // 2
+                base_mid_channels = outp // 2 # 由于分为两个通道，所以channel减半
+
                 mid_channels = int(base_mid_channels)
+                
                 archIndex += 1
+                
                 self.features.append(torch.nn.ModuleList())
                 for blockIndex in range(4):
                     if blockIndex == 0:
-                        print('Shuffle3x3')
+                        print(' Shuffle3x3')
                         self.features[-1].append(
                             Shufflenet(inp, outp, mid_channels=mid_channels, ksize=3, stride=stride))
                     elif blockIndex == 1:
@@ -56,11 +63,13 @@ class ShuffleNetV2_OneShot(nn.Module):
                             Shuffle_Xception(inp, outp, mid_channels=mid_channels, stride=stride))
                     else:
                         raise NotImplementedError
+                    print('-'*10)
                 input_channel = output_channel
 
         self.archLen = archIndex
         # self.features = nn.Sequential(*self.features)
 
+        # 最后一个卷积
         self.conv_last = nn.Sequential(
             nn.Conv2d(
                 input_channel, self.stage_out_channels[
@@ -68,18 +77,22 @@ class ShuffleNetV2_OneShot(nn.Module):
             nn.BatchNorm2d(self.stage_out_channels[-1], affine=False),
             nn.ReLU(inplace=True),
         )
-        self.globalpool = nn.AvgPool2d(7)
+        self.globalpool = nn.AvgPool2d(7) # 其实就是global average pooling
         self.dropout = nn.Dropout(0.1)
+
         self.classifier = nn.Sequential(
             nn.Linear(self.stage_out_channels[-1], n_class, bias=False))
         self._initialize_weights()
 
     def forward(self, x, architecture):
+        # x是特征图
+        # architecture是 [0, 0, 3, 1, 1, 1, 0, 0, 2, 0, 2, 1, 1, 0, 2, 0, 2, 1, 3, 2]
         assert self.archLen == len(architecture)
 
         x = self.first_conv(x)
 
         for archs, arch_id in zip(self.features, architecture):
+            # len(self.features) = stage_repeat * num_repeat = 4 + 4 + 8 + 4 = 20
             x = archs[arch_id](x)
 
         x = self.conv_last(x)
@@ -124,6 +137,7 @@ if __name__ == "__main__":
     for i in range(len(scale_ids)):
         channels_scales.append(scale_list[scale_ids[i]])
     model = ShuffleNetV2_OneShot()
+
     # print(model)
 
     test_data = torch.rand(5, 3, 224, 224)
