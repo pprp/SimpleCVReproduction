@@ -109,9 +109,7 @@ class EvolutionSearcher(object):
             return False
 
         info['err'] = get_cand_err(self.model, cand, self.args)
-
         info['visited'] = True
-
         return True
 
     def update_top_k(self, candidates, *, k, key, reverse=False):
