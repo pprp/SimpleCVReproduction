@@ -31,6 +31,9 @@ class SlimmableConv2d(nn.Conv2d):
     # stride: 1
     # padding: 3
     # bias=False
+    '''
+    传给该对象的应该是：
+    '''
     def __init__(self,
                  in_channels_list,
                  out_channels_list,
