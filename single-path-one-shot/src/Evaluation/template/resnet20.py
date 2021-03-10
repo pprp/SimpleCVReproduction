@@ -70,7 +70,7 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.in_planes = 16
 
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=3,
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=3,        
                                stride=1, padding=1, bias=False) # 01
         self.bn1 = nn.BatchNorm2d(16)
         self.layer1 = self._make_layer(block, 16, num_blocks[0], stride=1) 
@@ -85,7 +85,6 @@ class ResNet(nn.Module):
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
-        print('stride:', strides)
         layers = []
         for stride in strides:
             layers.append(block(self.in_planes, planes, stride))
