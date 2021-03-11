@@ -256,14 +256,7 @@ class MutableBlock(nn.Module):
 
         self.body = nn.Sequential(*layers)
 
-        # self.residual_connection = stride != 1
-
-        # if self.residual_connection:  # 构建shortcut层
-        # 由于通道可变，必定存在shortcut
-
-        # print('shortcut idx list:', idx_list,
-        #       "\t two list: [in, out]: ", self.mc[idx_list[0]], self.mc[idx_list[1]+1])
-
+        # LambdaLayer(lambda x: F.pad(x[:, :, ::2, ::2], (0, 0, 0, 0, planes//4, planes//4), "constant", 0))
         self.shortcut = nn.Sequential(
             SlimmableConv2d(
                 in_channels_list=self.mc[idx_list[0]],
@@ -278,8 +271,24 @@ class MutableBlock(nn.Module):
 
     def forward(self, x):
         res = self.body(x)
+        # res = x
+        # for i in range(len(self.body)):
+        #     # 设置属性
+        #     setattr(self.body[i], "in_idx", arc_list[i])
+        #     setattr(self.body[i], "out_idx", arc_list[i])
+        #     res = self.body[i](res)
+
         res += self.shortcut(x)
         return self.post_relu(res)
+
+
+class LambdaLayer(nn.Module):
+    def __init__(self, lambd):
+        super(LambdaLayer, self).__init__()
+        self.lambd = lambd
+
+    def forward(self, x):
+        return self.lambd(x)
 
 
 class MutableModel(nn.Module):
@@ -380,10 +389,35 @@ def mutableResNet20():
                         [3, 3, 3])
 
 
+def modify_channel(module):
+    if isinstance(module, SlimmableConv2d):
+        print("SlimmableConv2d")
+        # module.in_choice =
+        # module.out_choice =
+
+    if isinstance(module, SwitchableBatchNorm2d):
+        # module.out_choice =
+        print("SwitableBatchNorm2d")
+
+    if isinstance(module, SlimmableLinear):
+        # module.in_choice =
+        # module.out_choice =
+        print("SimmableLinear")
+
+
 if __name__ == "__main__":
     model = mutableResNet20()
 
     input = torch.zeros(16, 3, 32, 32)
     output = model(input)
+
+    print('='*100)
+
+    model.apply(modify_channel)
+
+    # for i in model.children():
+    #     print(i)
+    print('='*100)
+
     print(model)
-    print(output.shape)
+    # print(output.shape)
