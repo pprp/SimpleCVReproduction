@@ -70,15 +70,15 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.in_planes = 16
 
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=3,        
-                               stride=1, padding=1, bias=False) # 01
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=3,
+                               stride=1, padding=1, bias=False)  # 01
         self.bn1 = nn.BatchNorm2d(16)
-        self.layer1 = self._make_layer(block, 16, num_blocks[0], stride=1) 
+        self.layer1 = self._make_layer(block, 16, num_blocks[0], stride=1)
         # 02 03 / 04 05 / 06 07
-        self.layer2 = self._make_layer(block, 32, num_blocks[1], stride=2) 
+        self.layer2 = self._make_layer(block, 32, num_blocks[1], stride=2)
         # 08 09 / 10 11 / 12 13
-        self.layer3 = self._make_layer(block, 64, num_blocks[2], stride=2) 
-        # 14 15 / 16 17 / 18 19 
+        self.layer3 = self._make_layer(block, 64, num_blocks[2], stride=2)
+        # 14 15 / 16 17 / 18 19
         self.linear = nn.Linear(64, num_classes)
 
         self.apply(_weights_init)
@@ -94,12 +94,21 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))
+        print(out.shape)
         out = self.layer1(out)
+        print(out.shape)
+
         out = self.layer2(out)
+        print(out.shape)
+
         out = self.layer3(out)
+        print(out.shape)
+
         out = F.avg_pool2d(out, out.size()[3])
         out = out.view(out.size(0), -1)
         out = self.linear(out)
+        print(out.shape)
+
         return out
 
 
@@ -134,14 +143,22 @@ def test(net):
     for x in filter(lambda p: p.requires_grad, net.parameters()):
         total_params += np.prod(x.data.numpy().shape)
     print("Total number of params", total_params)
-    print("Total layers", len(list(filter(lambda p: p.requires_grad and len(p.data.size()) > 1, net.parameters()))))
+    print("Total layers", len(list(filter(
+        lambda p: p.requires_grad and len(p.data.size()) > 1, net.parameters()))))
 
+
+# if __name__ == "__main__":
+#     for net_name in __all__:
+#         if net_name.startswith('resnet20'):
+#             print(net_name)
+#             test(globals()[net_name]())
+#             print()
+#     model = resnet20()
+#     print(model)
 
 if __name__ == "__main__":
-    for net_name in __all__:
-        if net_name.startswith('resnet20'):
-            print(net_name)
-            test(globals()[net_name]())
-            print()
     model = resnet20()
-    print(model)
+
+    input = torch.zeros(16, 3, 32, 32)
+    output = model(input)
+    print(output.shape)
