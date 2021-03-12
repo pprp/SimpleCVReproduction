@@ -307,7 +307,8 @@ class MutableModel(nn.Module):
             padding=1, bias=False
         )
 
-        print("first conv [in, out]:", [3 for _ in range(len(self.mc[self.idx]))], self.mc[self.idx])
+        print("first conv [in, out]:", [3 for _ in range(
+            len(self.mc[self.idx]))], self.mc[self.idx])
 
         self.idx += 1  # 增加层
 
@@ -373,11 +374,51 @@ class MutableModel(nn.Module):
                 arc_index.append(self.lc[level_name].index(i)+1)
             return arc_index
 
-        true_arc_list = [*convert_idx(arc_level1, "level1"), *convert_idx(arc_level2, "level2"), *convert_idx(arc_level3, "level3")]
-        
+        true_arc_list = [*convert_idx(arc_level1, "level1"), *convert_idx(
+            arc_level2, "level2"), *convert_idx(arc_level3, "level3")]
+
         print(convert_idx(arc_level1, "level1"), '@'*10)
         print(convert_idx(arc_level2, "level2"), '@'*10)
         print(convert_idx(arc_level3, "level3"), '@'*10)
+
+        slimmableConv2d_in_choice_list = []
+        slimmableLinear_in_choice_list = []
+        slimmableLinear_out_choice_list = []
+        slimmableConv2d_out_choice_list = []
+        switchableBatchNorm2d_out_choice_list = true_arc_list[:-2]
+
+        slimmableConv2d_in_choice_list.append(1)
+
+        for num, index in enumerate(true_arc_list):
+            # if num
+            if num % 2 == 0:
+                # shortcut node
+                if num == 0:
+                    # first
+                    slimmableConv2d_in_choice_list.append(index)
+                else:
+                    # other node
+                    slimmableConv2d_in_choice_list.append(true_arc_list[num-2])
+                    slimmableConv2d_in_choice_list.append(index)
+            else:
+                # normal node
+                slimmableConv2d_in_choice_list.append(index)
+
+        for num, index in enumerate(true_arc_list):
+            if num % 2 == 0:
+                # 第一个
+                if num == 0:
+                    slimmableConv2d_out_choice_list.append(index)
+                else:
+                    # 两次
+                    slimmableConv2d_out_choice_list.append(index)
+                    slimmableConv2d_out_choice_list.append(index)
+            else:
+                slimmableConv2d_out_choice_list.append(index)
+
+        print(slimmableConv2d_in_choice_list)
+        print(slimmableConv2d_out_choice_list)
+        print(switchableBatchNorm2d_out_choice_list)
 
         return true_arc_list
 
@@ -398,20 +439,22 @@ def modify_channel(module):
     slimmableLinear_in_choice_list = []
     slimmableLinear_out_choice_list = []
 
-
     if isinstance(module, SlimmableConv2d):
         print("SlimmableConv2d")
+        print(module.in_channels_list, module.out_channels_list)
         # module.in_choice = slimmableConv2d_in_choice_list.pop(0)
         # module.out_choice = slimmableConv2d_out_choice_list.pop(0)
 
     if isinstance(module, SwitchableBatchNorm2d):
         # module.out_choice = switchableBatchNorm2d_out_choice_list.pop(0)
         print("SwitableBatchNorm2d")
+        print(module.out_choose_list)
 
     if isinstance(module, SlimmableLinear):
         # module.in_choice = slimmableLinear_in_choice_list.pop(0)
         # module.out_choice = slimmableLinear_out_choice_list.pop(0)
         print("SimmableLinear")
+        print(module.in_choose_list, module.out_choose_list)
 
 
 if __name__ == "__main__":
@@ -422,7 +465,7 @@ if __name__ == "__main__":
 
     print('='*100)
 
-    # model.apply(modify_channel)
+    model.apply(modify_channel)
 
     # for i in model.children():
     #     print(i)
