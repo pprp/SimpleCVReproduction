@@ -53,7 +53,7 @@ class BasicBlock(nn.Module):
                     nn.Conv2d(in_planes, self.expansion * planes,
                               kernel_size=1, stride=stride, bias=False),
                     nn.BatchNorm2d(self.expansion * planes)
-                )
+                )if stride != 1 or sub_channel !=
 
     def forward(self, x):
         out = F.relu(self.bn1(self.conv1(x)))

@@ -26,7 +26,7 @@ def get_configs():
     for i in range(13, 20):
         model_config[i] = level_config["level3"]
 
-    return level_config, model_config
+    return model_config
 
 
 class SlimmableLinear(nn.Linear):
@@ -218,7 +218,7 @@ class MutableBlock(nn.Module):
 
         assert stride in [1, 2]
 
-        self.lc, self.mc = get_configs()
+        self.mc = get_configs()
 
         layers = []
 
@@ -256,20 +256,36 @@ class MutableBlock(nn.Module):
 
         self.body = nn.Sequential(*layers)
 
-        self.shortcut = nn.Sequential(
-            SlimmableConv2d(
-                in_channels_list=self.mc[idx_list[0]],
-                out_channels_list=self.mc[idx_list[1]+1],
-                kernel_size=1,
-                stride=stride,
-                bias=False),
-            SwitchableBatchNorm2d(self.mc[idx_list[1]+1])
-        )
+        self.sub_channel = (self.mc[idx_list[1]+1][0]-self.mc[idx_list[0]][0])//2
+
+        self.shortcut = nn.Sequential()
+
+        if stride != 1 or self.sub_channel != 0:
+            self.shortcut = LambdaLayer(lambda x: F.pad(
+                x[:, :, ::2, ::2], (0, 0, 0, 0, self.sub_channel, self.sub_channel), "constant", 0))
+
+        # nn.Sequential(
+        #     SlimmableConv2d(
+        #         in_channels_list=self.mc[idx_list[0]],
+        #         out_channels_list=self.mc[idx_list[1]+1],
+        #         kernel_size=1,
+        #         stride=stride,
+        #         bias=False),
+        #     SwitchableBatchNorm2d(self.mc[idx_list[1]+1])
+        # )
 
         self.post_relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
         res = self.body(x)
+        # res = x
+        # for i in range(len(self.body)):
+        #     # 设置属性
+        #     setattr(self.body[i], "in_idx", arc_list[i])
+        #     setattr(self.body[i], "out_idx", arc_list[i])
+        #     res = self.body[i](res)
+        print('='*10,x.shape, res.shape, self.shortcut(x).shape, self.sub_channel)
+
         res += self.shortcut(x)
         return self.post_relu(res)
 
@@ -292,11 +308,11 @@ class MutableModel(nn.Module):
                  num_classes=100):
         super(MutableModel, self).__init__()
 
-        self.lc, self.mc = get_configs()
+        self.mc = get_configs()
 
         self.idx = 0  # 代表当前model的layer层数
 
-        self.true_arc_index_list = self.get_true_arc_list(arc_representation)
+        self.true_arc_dict = self.get_true_arc_dict(arc_representation)
 
         self.first_conv = SlimmableConv2d(
             in_channels_list=[3 for _ in range(
@@ -307,7 +323,8 @@ class MutableModel(nn.Module):
             padding=1, bias=False
         )
 
-        print("first conv [in, out]:", [3 for _ in range(len(self.mc[self.idx]))], self.mc[self.idx])
+        print("first conv [in, out]:", [3 for _ in range(
+            len(self.mc[self.idx]))], self.mc[self.idx])
 
         self.idx += 1  # 增加层
 
@@ -339,47 +356,39 @@ class MutableModel(nn.Module):
         # 第一个layer
         x = F.relu(self.first_bn(self.first_conv(x)))
         # 三个层级
-        # print(x.shape)
+        print(x.shape)
         x = self.layer1(x)
-        # print(x.shape)
+        print(x.shape)
         x = self.layer2(x)
-        # print(x.shape)
+        print(x.shape)
         x = self.layer3(x)
-        # print(x.shape)
+        print(x.shape)
         x = F.avg_pool2d(x, x.size()[3])
         x = x.view(x.size(0), -1)
-        # print(x.shape)
+        print(x.shape)
         x = self.mutable_linear(x)
-        # print(x.shape)
+        print(x.shape)
         x = self.last_linear(x)
-        # print(x.shape)
+        print(x.shape)
         return x
 
-    def get_true_arc_list(self, arc_rep):
+    def get_true_arc_dict(self, arc_rep):
         '''
         实际的网络架构
         '''
         arc_list = [int(item) for item in arc_rep.split('-')]
         first_conv = arc_list[0]
-        arc_level1 = arc_list[:7]
+        arc_level1 = arc_list[:6]
         arc_level2 = arc_list[7:13]
-        arc_level3 = arc_list[13:20]
+        arc_level3 = arc_list[14:19]
 
         print(arc_level1, arc_level2, arc_level3)
 
-        def convert_idx(arc_level, level_name):
-            arc_index = []
-            for i in arc_level:
-                arc_index.append(self.lc[level_name].index(i)+1)
-            return arc_index
-
-        true_arc_list = [*convert_idx(arc_level1, "level1"), *convert_idx(arc_level2, "level2"), *convert_idx(arc_level3, "level3")]
-        
-        print(convert_idx(arc_level1, "level1"), '@'*10)
-        print(convert_idx(arc_level2, "level2"), '@'*10)
-        print(convert_idx(arc_level3, "level3"), '@'*10)
-
-        return true_arc_list
+        return {
+            "arc_level1": arc_level1,
+            "arc_level2": arc_level2,
+            "arc_level3": arc_level3
+        }
 
 
 def mutableResNet20():
@@ -389,28 +398,18 @@ def mutableResNet20():
 
 
 def modify_channel(module):
-
-    slimmableConv2d_in_choice_list = []
-    slimmableConv2d_out_choice_list = []
-
-    switchableBatchNorm2d_out_choice_list = []
-
-    slimmableLinear_in_choice_list = []
-    slimmableLinear_out_choice_list = []
-
-
     if isinstance(module, SlimmableConv2d):
         print("SlimmableConv2d")
-        # module.in_choice = slimmableConv2d_in_choice_list.pop(0)
-        # module.out_choice = slimmableConv2d_out_choice_list.pop(0)
+        # module.in_choice =
+        # module.out_choice =
 
     if isinstance(module, SwitchableBatchNorm2d):
-        # module.out_choice = switchableBatchNorm2d_out_choice_list.pop(0)
+        # module.out_choice =
         print("SwitableBatchNorm2d")
 
     if isinstance(module, SlimmableLinear):
-        # module.in_choice = slimmableLinear_in_choice_list.pop(0)
-        # module.out_choice = slimmableLinear_out_choice_list.pop(0)
+        # module.in_choice =
+        # module.out_choice =
         print("SimmableLinear")
 
 
@@ -422,11 +421,11 @@ if __name__ == "__main__":
 
     print('='*100)
 
-    # model.apply(modify_channel)
+    model.apply(modify_channel)
 
     # for i in model.children():
     #     print(i)
     print('='*100)
 
-    # print(model)
+    print(model)
     # print(output.shape)
