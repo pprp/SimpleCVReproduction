@@ -21,7 +21,7 @@ class ShuffleNetV2OneShot(nn.Module):
     ]
 
     def __init__(self, input_size=224, first_conv_channels=16, last_conv_channels=1024, n_classes=1000,
-                 op_flops_path="./data/op_flops_dict.pkl", affine=False):
+                 op_flops_path="data/op_flops_dict.pkl", affine=False):
         super().__init__()
 
         assert input_size % 32 == 0

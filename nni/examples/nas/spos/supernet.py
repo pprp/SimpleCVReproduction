@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 from nni.nas.pytorch.callbacks import LRSchedulerCallback
 from nni.nas.pytorch.callbacks import ModelCheckpoint
-from nni.algorithms.nas.pytorch.spos import SPOSSupernetTrainingMutator, SPOSSupernetTrainer
+from nni.nas.pytorch.spos import SPOSSupernetTrainingMutator, SPOSSupernetTrainer
 
 from dataloader import get_imagenet_iter_dali
 from network import ShuffleNetV2OneShot, load_and_parse_state_dict
@@ -20,7 +20,7 @@ logger = logging.getLogger("nni.spos.supernet")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("SPOS Supernet Training")
-    parser.add_argument("--imagenet-dir", type=str, default="./data/imagenet")
+    parser.add_argument("--imagenet-dir", type=str, default="/media/niu/niu_g/data/imagenet")
     parser.add_argument("--load-checkpoint", action="store_true", default=False)
     parser.add_argument("--spos-preprocessing", action="store_true", default=False,
                         help="When true, image values will range from 0 to 255 and use BGR "
