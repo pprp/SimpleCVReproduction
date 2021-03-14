@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
+from prettytable import PrettyTable
+
 
 arc_representation = "4-12-4-4-16-8-4-12-32-24-16-8-8-24-60-12-64-64-52-60"
 
@@ -252,7 +254,7 @@ class MutableBlock(nn.Module):
             layers.append(
                 SwitchableBatchNorm2d(self.mc[idx+1])
             )
-            layers.append(nn.ReLU(inplace=True))
+            layers.append(nn.ReLU())
 
         self.body = nn.Sequential(*layers)
 
@@ -266,7 +268,7 @@ class MutableBlock(nn.Module):
             SwitchableBatchNorm2d(self.mc[idx_list[1]+1])
         )
 
-        self.post_relu = nn.ReLU(inplace=True)
+        self.post_relu = nn.ReLU()
 
     def forward(self, x):
         res = self.body(x)
@@ -293,6 +295,9 @@ class MutableModel(nn.Module):
         super(MutableModel, self).__init__()
 
         self.lc, self.mc = get_configs()
+
+        self.tb = PrettyTable()
+        self.tb.field_names = ["op", "in", "out"]
 
         self.idx = 0  # 代表当前model的layer层数
 
@@ -336,7 +341,10 @@ class MutableModel(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x, arc):
+        self.get_true_arc_list(arc)
+        self.apply(self.modify_channel)
+
         # 第一个layer
         x = F.relu(self.first_bn(self.first_conv(x)))
         # 三个层级
@@ -366,8 +374,6 @@ class MutableModel(nn.Module):
         arc_level2 = arc_list[7:13]
         arc_level3 = arc_list[13:20]
 
-        print(arc_level1, arc_level2, arc_level3)
-
         def convert_idx(arc_level, level_name):
             arc_index = []
             for i in arc_level:
@@ -376,10 +382,6 @@ class MutableModel(nn.Module):
 
         true_arc_list = [*convert_idx(arc_level1, "level1"), *convert_idx(
             arc_level2, "level2"), *convert_idx(arc_level3, "level3")]
-
-        # print(convert_idx(arc_level1, "level1"), '@'*10)
-        # print(convert_idx(arc_level2, "level2"), '@'*10)
-        # print(convert_idx(arc_level3, "level3"), '@'*10)
 
         self.slimmableConv2d_in_choice_list = []
         self.slimmableLinear_in_choice_list = []
@@ -429,38 +431,33 @@ class MutableModel(nn.Module):
                 self.slimmableConv2d_out_choice_list.append(index)
                 self.switchableBatchNorm2d_out_choice_list.append(index)
 
-        print('^'*100)
-        print(self.slimmableConv2d_in_choice_list)
-        print(self.slimmableConv2d_out_choice_list)
-        print(self.switchableBatchNorm2d_out_choice_list)
-        print('^'*100)
+        # print('^'*100)
+        # print(self.slimmableConv2d_in_choice_list)
+        # print(self.slimmableConv2d_out_choice_list)
+        # print(self.switchableBatchNorm2d_out_choice_list)
+        # print('^'*100)
 
         return true_arc_list
 
     def modify_channel(self, module):
-
-        # slimmableConv2d_in_choice_list = []
-        # slimmableConv2d_out_choice_list = []
-        # switchableBatchNorm2d_out_choice_list = []
-        # slimmableLinear_in_choice_list = []
-        # slimmableLinear_out_choice_list = []
-
         if isinstance(module, SlimmableConv2d):
-            # print("SlimmableConv2d")
-            # print(module.in_channels_list, module.out_channels_list)
             module.in_choice = self.slimmableConv2d_in_choice_list.pop(0)
             module.out_choice = self.slimmableConv2d_out_choice_list.pop(0)
+            self.tb.add_row(
+                ["SlimmableConv2d", module.in_choice, module.out_choice])
 
         if isinstance(module, SwitchableBatchNorm2d):
-            module.out_choice = self.switchableBatchNorm2d_out_choice_list.pop(0)
-            # print("SwitableBatchNorm2d")
-            # print(module.out_choose_list)
+            module.out_choice = self.switchableBatchNorm2d_out_choice_list.pop(
+                0)
+            self.tb.add_row(["SwitchableBatchNorm2d", 0, module.out_choice])
 
         if isinstance(module, SlimmableLinear):
             module.in_choice = self.slimmableLinear_in_choice_list.pop(0)
             module.out_choice = self.slimmableLinear_out_choice_list.pop(0)
-            # print("SimmableLinear")
-            # print(module.in_choose_list, module.out_choose_list)
+            self.tb.add_row(
+                ["SlimmableLinear", module.in_choice, module.out_choice])
+
+        # print(self.tb)
 
 
 def mutableResNet20():
@@ -473,15 +470,12 @@ if __name__ == "__main__":
     model = mutableResNet20()
 
     input = torch.zeros(16, 3, 32, 32)
-    output = model(input)
+    output = model(input, arc_representation)
 
-    print('='*100)
-
-    model.apply(model.modify_channel)
+    # model.apply(model.modify_channel)
 
     # for i in model.children():
     #     print(i)
-    print('='*100)
 
     # print(model)
     # print(output.shape)

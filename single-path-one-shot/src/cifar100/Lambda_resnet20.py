@@ -252,7 +252,7 @@ class MutableBlock(nn.Module):
             layers.append(
                 SwitchableBatchNorm2d(self.mc[idx+1])
             )
-            layers.append(nn.ReLU(inplace=True))
+            layers.append(nn.ReLU())
 
         self.body = nn.Sequential(*layers)
 
@@ -274,7 +274,7 @@ class MutableBlock(nn.Module):
         #     SwitchableBatchNorm2d(self.mc[idx_list[1]+1])
         # )
 
-        self.post_relu = nn.ReLU(inplace=True)
+        self.post_relu = nn.ReLU()
 
     def forward(self, x):
         res = self.body(x)
