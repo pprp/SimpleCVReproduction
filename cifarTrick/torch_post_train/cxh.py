@@ -344,6 +344,7 @@ class CXH(Module):
 
 
 class CXH_Squeeze_Excitation(Module):
+    # RELU
     def __init__(self):
         super(CXH_Squeeze_Excitation, self).__init__()
         self.stem = nn.Sequential(
@@ -442,6 +443,108 @@ class CXH_Squeeze_Excitation(Module):
         d = self.f2(d)
         return d
 
+
+
+class CXH_SE_SWISH(Module):
+    # RELU
+    def __init__(self):
+        super(CXH_SE_SWISH, self).__init__()
+        self.stem = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.Hardswish(inplace=True),
+            ,
+
+            # se
+            SqueezeAndExcitation(64, 16, activation_fun='relu'),
+
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.Hardswish(inplace=True),
+
+            # se
+            SqueezeAndExcitation(64, 16, activation_fun='relu')
+        )
+        self.a1 = nn.Sequential(
+            nn.Conv2d(64, 256, kernel_size=1, stride=2, padding=0),
+            nn.BatchNorm2d(256),
+            SqueezeAndExcitation(256, 64, activation_fun='relu')
+        )
+        self.a2 = nn.Sequential(
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0),
+            nn.Conv2d(64, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            SqueezeAndExcitation(256, 64, activation_fun='relu')
+        )
+        self.b = nn.Sequential(
+            nn.Hardswish(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.Hardswish(inplace=True),
+
+            SqueezeAndExcitation(256, 64, activation_fun='relu')
+        )
+        self.c1 = nn.Sequential(
+            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+
+            SqueezeAndExcitation(256, 64, activation_fun='relu')
+        )
+        self.d = nn.Sequential(
+            nn.Hardswish(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.Hardswish(inplace=True),
+            SqueezeAndExcitation(256, 64, activation_fun='relu'),
+
+            nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.Hardswish(inplace=True),
+            SqueezeAndExcitation(256, 64, activation_fun='relu'),
+
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0),
+            nn.Conv2d(256, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.Hardswish(inplace=True),
+            SqueezeAndExcitation(64, 16, activation_fun='relu'),
+
+            nn.MaxPool2d(kernel_size=2, stride=2, padding=0),
+            nn.AdaptiveAvgPool2d(1),
+            nn.Dropout(p=0.25)
+        )
+        self.f1 = nn.Linear(64, 64)
+        self.active = nn.Hardswish(inplace=True)
+        self.f2 = nn.Linear(64, 10)
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.constant_(m.bias, 0)
+
+    def forward(self, x):
+        stem = self.stem(x)
+        a1 = self.a1(stem)
+        a2 = self.a2(stem)
+        bf = a1+a2
+        b = self.b(bf)
+        c1 = self.c1(b)
+        df = c1+b
+        d = self.d(df)
+        d = torch.flatten(d, 1)
+        d = self.f1(d)
+        d = self.active(d)
+        d = self.f2(d)
+        return d
 
 if __name__ == '__main__':
     net = CXH()

@@ -13,6 +13,7 @@ import torchvision
 import torchvision.transforms as transforms
 
 from autoaugmentation import CIFAR10Policy
+from labelsmooth import CrossEntropyLabelSmooth
 
 import os
 import sys
@@ -102,7 +103,8 @@ def prepare(args):
         net = torch.nn.DataParallel(net)
         cudnn.benchmark = True
 
-    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.CrossEntropyLoss()
+    criterion = CrossEntropyLabelSmooth(10)
     optimizer = optim.SGD(net.parameters(), lr=0.1,
                           momentum=0.9, weight_decay=5e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
