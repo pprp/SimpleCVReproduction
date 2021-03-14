@@ -42,8 +42,6 @@ Model Estimation分类：
 
 
 
-
-
 ## 网络架构搜索论文
 
 
@@ -54,6 +52,9 @@ Model Estimation分类：
 | Efficient neural architecture search via parameter sharing | 提出权重共享的方法，提升效率，提出cell-based方法     | https://arxiv.org/pdf/1802.03268.pdf | [ENAS]()   |      | 2.89%-4.23%        |
 |                                                            |                                                      |                                      | DARTS      |      |                    |
 |                                                            |                                                      |                                      | P-DARTS    |      |                    |
+|                                                            |                                                      |                                      | HierNAS    |      |                    |
+|                                                            |                                                      |                                      | PNAS       |      |                    |
+|                                                            |                                                      |                                      |            |      |                    |
 
 
 

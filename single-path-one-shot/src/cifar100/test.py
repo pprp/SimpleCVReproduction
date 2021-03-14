@@ -97,10 +97,9 @@ def get_args():
     parser.add_argument('--display-interval', type=int,
                         default=20, help='report frequency')
     parser.add_argument('--val-interval', type=int,
-                        default=100, help='report frequency')
+                        default=10000, help='report frequency')
     parser.add_argument('--save-interval', type=int,
-                        default=1000, help='report frequency')
-    
+                        default=10000, help='report frequency')
 
     parser.add_argument('--train-dir', type=str,
                         default='data/train', help='path to training dataset')
@@ -196,79 +195,11 @@ def main():
             validate(model, device, args, all_iters=all_iters,arch_loader=arch_loader)
         exit(0)
 
-    while all_iters < args.total_iters:
-        all_iters = train(model, device, args, val_interval=args.val_interval,
-                          bn_process=False, all_iters=all_iters, arch_loader=arch_loader, arch_batch=args.arch_batch)
+    # while all_iters < args.total_iters:
+    #     all_iters = train(model, device, args, val_interval=args.val_interval,
+    #                       bn_process=False, all_iters=all_iters, arch_loader=arch_loader, arch_batch=args.arch_batch)
     # all_iters = train(model, device, args, val_interval=int(1280000/args.batch_size), bn_process=True, all_iters=all_iters)
     # save_checkpoint({'state_dict': model.state_dict(),}, args.total_iters, tag='bnps-')
-
-
-def adjust_bn_momentum(model, iters):
-    for m in model.modules():
-        if isinstance(m, nn.BatchNorm2d):
-            m.momentum = 1 / iters
-
-
-def train(model, device, args, *, val_interval, bn_process=False, all_iters=None, arch_loader=None, arch_batch=100):
-    assert arch_loader is not None
-
-    optimizer = args.optimizer
-    loss_function = args.loss_function
-    scheduler = args.scheduler
-    train_dataprovider = args.train_dataprovider
-
-    t1 = time.time()
-    Top1_err, Top5_err = 0.0, 0.0
-    model.train()
-    for iters in range(1, val_interval + 1):
-        scheduler.step()
-        if bn_process:
-            adjust_bn_momentum(model, iters)
-
-        all_iters += 1
-        d_st = time.time()
-        data, target = train_dataprovider.next()
-
-        target = target.type(torch.LongTensor)
-        data, target = data.to(device), target.to(device)
-        data_time = time.time() - d_st
-
-        arch_batches = arch_loader.sample_batch_arc(arch_batch)
-
-        for i in range(len(arch_batches)):
-            # 一个批次
-            output = model(data, arch_batches[i])
-            loss = loss_function(output, target)
-            optimizer.zero_grad()
-        loss.backward()
-
-        for p in model.parameters():
-            if p.grad is not None and p.grad.sum() == 0:
-                p.grad = None
-
-        optimizer.step()
-        prec1, prec5 = accuracy(output, target, topk=(1, 5))
-
-        Top1_err += 1 - prec1.item() / 100
-        Top5_err += 1 - prec5.item() / 100
-
-        if all_iters % args.display_interval == 0:
-            printInfo = 'TRAIN Iter {}: lr = {:.6f},\tloss = {:.6f},\t'.format(all_iters, scheduler.get_lr()[0], loss.item()) + \
-                        'Top-1 err = {:.6f},\t'.format(Top1_err / args.display_interval) + \
-                        'Top-5 err = {:.6f},\t'.format(Top5_err / args.display_interval) + \
-                        'data_time = {:.6f},\ttrain_time = {:.6f}'.format(
-                            data_time, (time.time() - t1) / args.display_interval)
-            logging.info(printInfo)
-            t1 = time.time()
-            Top1_err, Top5_err = 0.0, 0.0
-
-        if all_iters % args.save_interval == 0:
-            save_checkpoint({
-                'state_dict': model.state_dict(),
-            }, all_iters)
-
-    return all_iters
-
 
 def validate(model, device, args, *, all_iters=None, arch_loader=None):
     assert arch_loader is not None
@@ -286,7 +217,7 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
 
     result_dict = {}
 
-    arch_dict = arch_loader.get_arch_dict()[:100]  # 为了速度暂且测评前100个
+    arch_dict = arch_loader.get_arch_dict()
 
     with torch.no_grad():
         for key, value in arch_dict.items():
@@ -306,11 +237,6 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
 
             result_dict[key] = top1.avg / 100
 
-    # logInfo = 'TEST Iter {}: loss = {:.6f},\t'.format(all_iters, objs.avg) + \
-    #           'Top-1 err = {:.6f},\t'.format(1 - top1.avg / 100) + \
-    #           'Top-5 err = {:.6f},\t'.format(1 - top5.avg / 100) + \
-    #           'val_time = {:.6f}'.format(time.time() - t1)
-    # logging.info(logInfo)
 
     print("="*50, "RESULTS", "="*50)
     for key, value in result_dict:
