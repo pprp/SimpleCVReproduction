@@ -97,14 +97,14 @@ def prepare(args):
 
     # Model
     print('==> Building model..')
-    net = CXH_Squeeze_Excitation() #CXH()
+    net = CXH_SE_SWISH()#CXH_Squeeze_Excitation() #CXH()
 
     if device == 'cuda':
         net = torch.nn.DataParallel(net)
         cudnn.benchmark = True
 
-    # criterion = nn.CrossEntropyLoss()
-    criterion = CrossEntropyLabelSmooth(10)
+    criterion = nn.CrossEntropyLoss()
+    # criterion = CrossEntropyLabelSmooth(10)
     optimizer = optim.SGD(net.parameters(), lr=0.1,
                           momentum=0.9, weight_decay=5e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
@@ -193,7 +193,7 @@ def test(epoch):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=600)
+    parser.add_argument("--epochs", type=int, default=1000)
     parser.add_argument('--alpha', default=1., type=float,
                         help='mixup interpolation coefficient (default: 1)')
     parser.add_argument('--n_holes', type=int, default=1,

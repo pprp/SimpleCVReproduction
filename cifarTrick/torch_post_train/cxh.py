@@ -453,7 +453,6 @@ class CXH_SE_SWISH(Module):
             nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(64),
             nn.Hardswish(inplace=True),
-            ,
 
             # se
             SqueezeAndExcitation(64, 16, activation_fun='relu'),

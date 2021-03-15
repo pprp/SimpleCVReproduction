@@ -100,7 +100,6 @@ def get_args():
                         default=100, help='report frequency')
     parser.add_argument('--save-interval', type=int,
                         default=1000, help='report frequency')
-    
 
     parser.add_argument('--train-dir', type=str,
                         default='data/train', help='path to training dataset')
@@ -193,7 +192,8 @@ def main():
             checkpoint = torch.load(
                 args.eval_resume, map_location=None if use_gpu else 'cpu')
             model.load_state_dict(checkpoint, strict=True)
-            validate(model, device, args, all_iters=all_iters,arch_loader=arch_loader)
+            validate(model, device, args, all_iters=all_iters,
+                     arch_loader=arch_loader)
         exit(0)
 
     while all_iters < args.total_iters:
@@ -237,16 +237,17 @@ def train(model, device, args, *, val_interval, bn_process=False, all_iters=None
 
         for i in range(len(arch_batches)):
             # 一个批次
+            optimizer.zero_grad()
             output = model(data, arch_batches[i])
             loss = loss_function(output, target)
-            optimizer.zero_grad()
-        loss.backward()
+            loss.backward()
 
-        for p in model.parameters():
-            if p.grad is not None and p.grad.sum() == 0:
-                p.grad = None
+            for p in model.parameters():
+                if p.grad is not None and p.grad.sum() == 0:
+                    p.grad = None
 
-        optimizer.step()
+            optimizer.step()
+
         prec1, prec5 = accuracy(output, target, topk=(1, 5))
 
         Top1_err += 1 - prec1.item() / 100
