@@ -235,9 +235,11 @@ def train(model, device, args, *, val_interval, bn_process=False, all_iters=None
 
         arch_batches = arch_loader.sample_batch_arc(arch_batch)
 
+        optimizer.zero_grad()
+
         for i in range(len(arch_batches)):
             # 一个批次
-            optimizer.zero_grad()
+            
             output = model(data, arch_batches[i])
             loss = loss_function(output, target)
             loss.backward()
@@ -246,7 +248,7 @@ def train(model, device, args, *, val_interval, bn_process=False, all_iters=None
                 if p.grad is not None and p.grad.sum() == 0:
                     p.grad = None
 
-            optimizer.step()
+        optimizer.step()
 
         prec1, prec5 = accuracy(output, target, topk=(1, 5))
 

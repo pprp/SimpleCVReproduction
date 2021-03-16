@@ -49,3 +49,4 @@ nni/data/*
 *events*
 *.pth
 *.tar
+*.hdf5

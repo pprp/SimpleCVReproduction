@@ -1,9 +1,10 @@
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from prettytable import PrettyTable
-
 
 arc_representation = "4-12-4-4-16-8-4-12-32-24-16-8-8-24-60-12-64-64-52-60"
 
@@ -330,6 +331,8 @@ class MutableModel(nn.Module):
         self.last_linear = SlimmableLinear(
             self.mc[self.idx], [num_classes for _ in range(len(self.mc[self.idx]))])
 
+        self._initialize_weights()
+
     def _make_layer(self, block, num_blocks, stride):
         strides = [stride] + [1] * (num_blocks-1)
         layers = []
@@ -340,6 +343,22 @@ class MutableModel(nn.Module):
             self.idx += 2
 
         return nn.Sequential(*layers)
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1.0)
+                m.bias.data.zero_()
+            elif isinstance(m, nn.Linear):
+                n = m.weight.size(0)  # fan-out
+                init_range = 1.0 / math.sqrt(n)
+                m.weight.data.uniform_(-init_range, init_range)
+                m.bias.data.zero_()
 
     def forward(self, x, arc):
         self.get_true_arc_list(arc)
