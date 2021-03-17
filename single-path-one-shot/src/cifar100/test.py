@@ -1,8 +1,5 @@
-from utils import (AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
-                   get_lastest_model, get_parameters, save_checkpoint, ArchLoader)
-from slimmable_resnet20 import mutableResNet20
-from cifar100_dataset import get_dataset
 import argparse
+import json
 import logging
 import os
 import sys
@@ -16,57 +13,13 @@ import torch.nn as nn
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from PIL import Image
-import json
 
-torch.autograd.set_detect_anomaly(True)
+from cifar100_dataset import get_dataset
+from slimmable_resnet20 import mutableResNet20
+from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
+                   get_lastest_model, get_parameters, save_checkpoint)
 
-
-class OpencvResize(object):
-
-    def __init__(self, size=32):
-        self.size = size
-
-    def __call__(self, img):
-        assert isinstance(img, PIL.Image.Image)
-        img = np.asarray(img)  # (H,W,3) RGB
-        img = img[:, :, ::-1]  # 2 BGR
-        img = np.ascontiguousarray(img)
-        H, W, _ = img.shape
-        target_size = (int(self.size/H * W + 0.5),
-                       self.size) if H < W else (self.size, int(self.size/W * H + 0.5))
-        img = cv2.resize(img, target_size, interpolation=cv2.INTER_LINEAR)
-        img = img[:, :, ::-1]  # 2 RGB
-        img = np.ascontiguousarray(img)
-        img = Image.fromarray(img)
-        return img
-
-
-class ToBGRTensor(object):
-
-    def __call__(self, img):
-        assert isinstance(img, (np.ndarray, PIL.Image.Image))
-        if isinstance(img, PIL.Image.Image):
-            img = np.asarray(img)
-        img = img[:, :, ::-1]  # 2 BGR
-        img = np.transpose(img, [2, 0, 1])  # 2 (3, H, W)
-        img = np.ascontiguousarray(img)
-        img = torch.from_numpy(img).float()
-        return img
-
-
-class DataIterator(object):
-
-    def __init__(self, dataloader):
-        self.dataloader = dataloader
-        self.iterator = enumerate(self.dataloader)
-
-    def next(self):
-        try:
-            _, data = next(self.iterator)
-        except Exception:
-            self.iterator = enumerate(self.dataloader)
-            _, data = next(self.iterator)
-        return data[0], data[1]
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 def get_args():
@@ -79,14 +32,8 @@ def get_args():
     parser.add_argument('--eval-resume', type=str,
                         default='./snet_detnas.pkl', help='path for eval model')
     parser.add_argument('--batch-size', type=int,
-                        default=5120, help='batch size')
-    parser.add_argument('--total-iters', type=int,
-                        default=15000, help='total iters')
-    parser.add_argument('--learning-rate', type=float,
-                        default=0.5, help='init learning rate')
-    parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
-    parser.add_argument('--weight-decay', type=float,
-                        default=4e-5, help='weight decay')
+                        default=10240, help='batch size')
+
     parser.add_argument('--save', type=str, default='./models',
                         help='path for saving trained models')
     parser.add_argument('--label-smooth', type=float,
@@ -133,25 +80,15 @@ def main():
     if torch.cuda.is_available():
         use_gpu = True
 
-    train_dataset, val_dataset = get_dataset('cifar100')
-
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                               num_workers=1, pin_memory=use_gpu)
-    train_dataprovider = DataIterator(train_loader)
+    _, val_dataset = get_dataset('cifar100')
 
     val_loader = torch.utils.data.DataLoader(val_dataset,
                                              batch_size=200, shuffle=False,
-                                             num_workers=1, pin_memory=use_gpu)
+                                             num_workers=12, pin_memory=use_gpu)
 
-    val_dataprovider = DataIterator(val_loader)
     print('load data successfully')
 
     model = mutableResNet20()
-
-    optimizer = torch.optim.SGD(get_parameters(model),
-                                lr=args.learning_rate,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
 
     criterion_smooth = CrossEntropyLabelSmooth(1000, 0.1)
 
@@ -163,43 +100,26 @@ def main():
         loss_function = criterion_smooth
         device = torch.device("cpu")
 
-    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer,
-                                                  lambda step: (1.0-step/args.total_iters) if step <= args.total_iters else 0, last_epoch=-1)
-
     model = model.to(device)
+    print("load model successfully")
 
     all_iters = 0
-    if args.auto_continue:  # 自动进行？？
-        lastest_model, iters = get_lastest_model()
-        if lastest_model is not None:
-            all_iters = iters
-            checkpoint = torch.load(
-                lastest_model, map_location=None if use_gpu else 'cpu')
-            model.load_state_dict(checkpoint['state_dict'], strict=True)
-            print('load from checkpoint')
-            for i in range(iters):
-                scheduler.step()
+    print('load from latest checkpoint')
+    lastest_model, iters = get_lastest_model()
+    if lastest_model is not None:
+        all_iters = iters
+        checkpoint = torch.load(
+            lastest_model, map_location=None if use_gpu else 'cpu')
+        model.load_state_dict(checkpoint['state_dict'], strict=True)
 
     # 参数设置
-    args.optimizer = optimizer
     args.loss_function = loss_function
-    args.scheduler = scheduler
-    args.train_dataprovider = train_dataprovider
-    args.val_dataprovider = val_dataprovider
+    args.val_dataloader = val_loader
 
-    if args.eval:
-        if args.eval_resume is not None:
-            checkpoint = torch.load(
-                args.eval_resume, map_location=None if use_gpu else 'cpu')
-            model.load_state_dict(checkpoint, strict=True)
-            validate(model, device, args, all_iters=all_iters,arch_loader=arch_loader)
-        exit(0)
+    print("start to validate model")
 
-    # while all_iters < args.total_iters:
-    #     all_iters = train(model, device, args, val_interval=args.val_interval,
-    #                       bn_process=False, all_iters=all_iters, arch_loader=arch_loader, arch_batch=args.arch_batch)
-    # all_iters = train(model, device, args, val_interval=int(1280000/args.batch_size), bn_process=True, all_iters=all_iters)
-    # save_checkpoint({'state_dict': model.state_dict(),}, args.total_iters, tag='bnps-')
+    validate(model, device, args, all_iters=all_iters, arch_loader=arch_loader)
+
 
 def validate(model, device, args, *, all_iters=None, arch_loader=None):
     assert arch_loader is not None
@@ -209,10 +129,10 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
     top5 = AvgrageMeter()
 
     loss_function = args.loss_function
-    val_dataprovider = args.val_dataprovider
+    val_dataloader = args.val_dataloader
 
     model.eval()
-    max_val_iters = 250
+    max_val_iters = 25
     t1 = time.time()
 
     result_dict = {}
@@ -220,9 +140,12 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
     arch_dict = arch_loader.get_arch_dict()
 
     with torch.no_grad():
-        for key, value in arch_dict.items():
-            for _ in range(1, max_val_iters + 1):
-                data, target = val_dataprovider.next()
+        for key, value in arch_dict.items():  # 每一个网络
+            max_val_iters -= 1
+            print('\r ', key, ' iter:', max_val_iters, end='')
+            if max_val_iters == 0:
+                break
+            for data, target in val_dataloader:  # 过一遍数据集
                 target = target.type(torch.LongTensor)
                 data, target = data.to(device), target.to(device)
 
@@ -231,15 +154,15 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
 
                 prec1, prec5 = accuracy(output, target, topk=(1, 5))
                 n = data.size(0)
+
                 objs.update(loss.item(), n)
                 top1.update(prec1.item(), n)
                 top5.update(prec5.item(), n)
 
             result_dict[key] = top1.avg / 100
 
-
-    print("="*50, "RESULTS", "="*50)
-    for key, value in result_dict:
+    print('\n',"="*50, "RESULTS", "="*50)
+    for key, value in result_dict.items():
         print(key, "\t", value)
     print("="*50, "E N D", "="*50)
 

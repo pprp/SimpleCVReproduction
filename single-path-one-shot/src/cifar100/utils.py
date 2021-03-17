@@ -14,9 +14,13 @@ class ArchLoader():
     def __init__(self, path):
         super(ArchLoader, self).__init__()
 
-        self.arc_list, self.arc_dict = self.get_arch_list(path)
+        # self.arc_list, self.arc_dict = self.get_arch_list_dict(path)
+        self.arc_list = []
+        self.arc_dict = {}
         # arc_list for train
         # arc_dict for valid
+        self.get_arch_list_dict(path)
+        # print(self.arc_list, self.arc_dict)
 
     def sample_batch_arc(self, batch):
         # for train
@@ -28,18 +32,14 @@ class ArchLoader():
     def get_arch_dict(self):
         return self.arc_dict
 
-    def get_arch_list(self, path):
-        arch_dict = {}
+    def get_arch_list_dict(self, path):
         with open(path, "r") as f:
-            arc_dict = json.load(f)
+            self.arc_dict = json.load(f)
 
-        arc_list = []
+        self.arc_list = []
 
-        for i, v in arc_dict.items():
-            arc_list.append(v["arch"])
-
-        return arc_list, arch_dict
-
+        for _, v in self.arc_dict.items():
+            self.arc_list.append(v["arch"])
 
 class CrossEntropyLabelSmooth(nn.Module):
 
@@ -98,9 +98,9 @@ def save_checkpoint(state, iters, tag=''):
     filename = os.path.join(
         "./models/{}checkpoint-{:06}.pth.tar".format(tag, iters))
     torch.save(state, filename)
-    latestfilename = os.path.join(
-        "./models/{}checkpoint-latest.pth.tar".format(tag))
-    torch.save(state, latestfilename)
+    # latestfilename = os.path.join(
+    #     "./models/{}checkpoint-latest.pth.tar".format(tag))
+    # torch.save(state, latestfilename)
 
 
 def get_lastest_model():

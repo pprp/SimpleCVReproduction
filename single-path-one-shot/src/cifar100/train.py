@@ -1,8 +1,5 @@
-from utils import (AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
-                   get_lastest_model, get_parameters, save_checkpoint, ArchLoader)
-from slimmable_resnet20 import mutableResNet20
-from cifar100_dataset import get_dataset
 import argparse
+import json
 import logging
 import os
 import sys
@@ -16,62 +13,17 @@ import torch.nn as nn
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from PIL import Image
-import json
 
-torch.autograd.set_detect_anomaly(True)
+from cifar100_dataset import get_dataset
+from slimmable_resnet20 import mutableResNet20
+from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
+                   get_lastest_model, get_parameters, save_checkpoint)
 
-
-class OpencvResize(object):
-
-    def __init__(self, size=32):
-        self.size = size
-
-    def __call__(self, img):
-        assert isinstance(img, PIL.Image.Image)
-        img = np.asarray(img)  # (H,W,3) RGB
-        img = img[:, :, ::-1]  # 2 BGR
-        img = np.ascontiguousarray(img)
-        H, W, _ = img.shape
-        target_size = (int(self.size/H * W + 0.5),
-                       self.size) if H < W else (self.size, int(self.size/W * H + 0.5))
-        img = cv2.resize(img, target_size, interpolation=cv2.INTER_LINEAR)
-        img = img[:, :, ::-1]  # 2 RGB
-        img = np.ascontiguousarray(img)
-        img = Image.fromarray(img)
-        return img
-
-
-class ToBGRTensor(object):
-
-    def __call__(self, img):
-        assert isinstance(img, (np.ndarray, PIL.Image.Image))
-        if isinstance(img, PIL.Image.Image):
-            img = np.asarray(img)
-        img = img[:, :, ::-1]  # 2 BGR
-        img = np.transpose(img, [2, 0, 1])  # 2 (3, H, W)
-        img = np.ascontiguousarray(img)
-        img = torch.from_numpy(img).float()
-        return img
-
-
-class DataIterator(object):
-
-    def __init__(self, dataloader):
-        self.dataloader = dataloader
-        self.iterator = enumerate(self.dataloader)
-
-    def next(self):
-        try:
-            _, data = next(self.iterator)
-        except Exception:
-            self.iterator = enumerate(self.dataloader)
-            _, data = next(self.iterator)
-        return data[0], data[1]
-
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 def get_args():
     parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot")
-    parser.add_argument('--arch-batch', default=200,
+    parser.add_argument('--arch-batch', default=10,
                         type=int, help="arch batch size")
     parser.add_argument(
         '--path', default="Track1_final_archs.json", help="path for json arch files")
@@ -79,7 +31,7 @@ def get_args():
     parser.add_argument('--eval-resume', type=str,
                         default='./snet_detnas.pkl', help='path for eval model')
     parser.add_argument('--batch-size', type=int,
-                        default=5120, help='batch size')
+                        default=10240, help='batch size')
     parser.add_argument('--total-iters', type=int,
                         default=15000, help='total iters')
     parser.add_argument('--learning-rate', type=float,
@@ -97,7 +49,7 @@ def get_args():
     parser.add_argument('--display-interval', type=int,
                         default=20, help='report frequency')
     parser.add_argument('--val-interval', type=int,
-                        default=100, help='report frequency')
+                        default=1000, help='report frequency')
     parser.add_argument('--save-interval', type=int,
                         default=1000, help='report frequency')
 
@@ -136,17 +88,19 @@ def main():
     train_dataset, val_dataset = get_dataset('cifar100')
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                               num_workers=1, pin_memory=use_gpu)
-    train_dataprovider = DataIterator(train_loader)
+                                               num_workers=12, pin_memory=True)
+    # train_dataprovider = DataIterator(train_loader)
 
     val_loader = torch.utils.data.DataLoader(val_dataset,
                                              batch_size=200, shuffle=False,
-                                             num_workers=1, pin_memory=use_gpu)
+                                             num_workers=12, pin_memory=True)
 
-    val_dataprovider = DataIterator(val_loader)
+    # val_dataprovider = DataIterator(val_loader)
     print('load data successfully')
 
     model = mutableResNet20()
+
+    print('load model successfully')
 
     optimizer = torch.optim.SGD(get_parameters(model),
                                 lr=args.learning_rate,
@@ -184,8 +138,10 @@ def main():
     args.optimizer = optimizer
     args.loss_function = loss_function
     args.scheduler = scheduler
-    args.train_dataprovider = train_dataprovider
-    args.val_dataprovider = val_dataprovider
+    args.train_loader = train_loader
+    args.val_loader = val_loader
+    # args.train_dataprovider = train_dataprovider
+    # args.val_dataprovider = val_dataprovider
 
     if args.eval:
         if args.eval_resume is not None:
@@ -210,52 +166,59 @@ def adjust_bn_momentum(model, iters):
 
 
 def train(model, device, args, *, val_interval, bn_process=False, all_iters=None, arch_loader=None, arch_batch=100):
+    print("start training...")
     assert arch_loader is not None
 
     optimizer = args.optimizer
     loss_function = args.loss_function
     scheduler = args.scheduler
-    train_dataprovider = args.train_dataprovider
+    # train_dataprovider = args.train_dataprovider
+    train_loader = args.train_loader
 
     t1 = time.time()
     Top1_err, Top5_err = 0.0, 0.0
     model.train()
     for iters in range(1, val_interval + 1):
-        scheduler.step()
         if bn_process:
             adjust_bn_momentum(model, iters)
 
         all_iters += 1
         d_st = time.time()
-        data, target = train_dataprovider.next()
 
-        target = target.type(torch.LongTensor)
-        data, target = data.to(device), target.to(device)
-        data_time = time.time() - d_st
+        for data, target in train_loader:
 
-        arch_batches = arch_loader.sample_batch_arc(arch_batch)
+            target = target.type(torch.LongTensor)
+            data, target = data.to(device), target.to(device)
+            data_time = time.time() - d_st
 
-        optimizer.zero_grad()
+            arch_batches = arch_loader.sample_batch_arc(arch_batch)
 
-        for i in range(len(arch_batches)):
-            # 一个批次
-            
-            output = model(data, arch_batches[i])
-            loss = loss_function(output, target)
-            loss.backward()
+            optimizer.zero_grad()
 
-            for p in model.parameters():
-                if p.grad is not None and p.grad.sum() == 0:
-                    p.grad = None
+            for i in range(len(arch_batches)):
+                # 一个批次
+
+                output = model(data, arch_batches[i])
+                loss = loss_function(output, target)
+                loss.backward()
+
+                for p in model.parameters():
+                    if p.grad is not None and p.grad.sum() == 0:
+                        p.grad = None
+
+                acc1, acc5 = accuracy(output, target, topk=(1, 5))
+                print("\rsmall batch acc1:", acc1.item() / 100, end='')
 
         optimizer.step()
+        scheduler.step()
 
         prec1, prec5 = accuracy(output, target, topk=(1, 5))
 
         Top1_err += 1 - prec1.item() / 100
         Top5_err += 1 - prec5.item() / 100
 
-        if all_iters % args.display_interval == 0:
+        # if all_iters % args.display_interval == 0:
+        if True:
             printInfo = 'TRAIN Iter {}: lr = {:.6f},\tloss = {:.6f},\t'.format(all_iters, scheduler.get_lr()[0], loss.item()) + \
                         'Top-1 err = {:.6f},\t'.format(Top1_err / args.display_interval) + \
                         'Top-5 err = {:.6f},\t'.format(Top5_err / args.display_interval) + \
@@ -281,7 +244,8 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
     top5 = AvgrageMeter()
 
     loss_function = args.loss_function
-    val_dataprovider = args.val_dataprovider
+    # val_dataprovider = args.val_dataprovider
+    val_loader = args.val_loader
 
     model.eval()
     max_val_iters = 250
@@ -294,18 +258,19 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
     with torch.no_grad():
         for key, value in arch_dict.items():
             for _ in range(1, max_val_iters + 1):
-                data, target = val_dataprovider.next()
-                target = target.type(torch.LongTensor)
-                data, target = data.to(device), target.to(device)
+                # data, target = val_dataprovider.next()
+                for data, target in val_loader:
+                    target = target.type(torch.LongTensor)
+                    data, target = data.to(device), target.to(device)
 
-                output = model(data, value["arch"])
-                loss = loss_function(output, target)
+                    output = model(data, value["arch"])
+                    loss = loss_function(output, target)
 
-                prec1, prec5 = accuracy(output, target, topk=(1, 5))
-                n = data.size(0)
-                objs.update(loss.item(), n)
-                top1.update(prec1.item(), n)
-                top5.update(prec5.item(), n)
+                    prec1, prec5 = accuracy(output, target, topk=(1, 5))
+                    n = data.size(0)
+                    objs.update(loss.item(), n)
+                    top1.update(prec1.item(), n)
+                    top5.update(prec5.item(), n)
 
             result_dict[key] = top1.avg / 100
 
