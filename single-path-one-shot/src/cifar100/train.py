@@ -19,11 +19,14 @@ from slimmable_resnet20 import mutableResNet20
 from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
                    get_lastest_model, get_parameters, save_checkpoint)
 
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
+# torch.distributed.init_process_group(
+#     backend='nccl', init_method='tcp://localhost:23456', rank=0, world_size=1)
+
 
 def get_args():
     parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot")
-    parser.add_argument('--arch-batch', default=10,
+    parser.add_argument('--arch-batch', default=1000,
                         type=int, help="arch batch size")
     parser.add_argument(
         '--path', default="Track1_final_archs.json", help="path for json arch files")
@@ -31,7 +34,7 @@ def get_args():
     parser.add_argument('--eval-resume', type=str,
                         default='./snet_detnas.pkl', help='path for eval model')
     parser.add_argument('--batch-size', type=int,
-                        default=10240, help='batch size')
+                        default=20480, help='batch size')
     parser.add_argument('--total-iters', type=int,
                         default=15000, help='total iters')
     parser.add_argument('--learning-rate', type=float,
@@ -88,7 +91,7 @@ def main():
     train_dataset, val_dataset = get_dataset('cifar100')
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                               num_workers=12, pin_memory=True)
+                                               num_workers=16, pin_memory=True)
     # train_dataprovider = DataIterator(train_loader)
 
     val_loader = torch.utils.data.DataLoader(val_dataset,
@@ -121,6 +124,8 @@ def main():
                                                   lambda step: (1.0-step/args.total_iters) if step <= args.total_iters else 0, last_epoch=-1)
 
     model = model.to(device)
+
+    # dp_model = torch.nn.parallel.DistributedDataParallel(model)
 
     all_iters = 0
     if args.auto_continue:  # 自动进行？？
@@ -198,16 +203,18 @@ def train(model, device, args, *, val_interval, bn_process=False, all_iters=None
             for i in range(len(arch_batches)):
                 # 一个批次
 
+                # with torch.cuda.amp.autocast():
                 output = model(data, arch_batches[i])
                 loss = loss_function(output, target)
+
                 loss.backward()
 
                 for p in model.parameters():
                     if p.grad is not None and p.grad.sum() == 0:
                         p.grad = None
 
-                acc1, acc5 = accuracy(output, target, topk=(1, 5))
-                print("\rsmall batch acc1:", acc1.item() / 100, end='')
+                # acc1, acc5 = accuracy(output, target, topk=(1, 5))
+                # print("\rsmall batch acc1:", acc1.item() / 100, end='')
 
         optimizer.step()
         scheduler.step()

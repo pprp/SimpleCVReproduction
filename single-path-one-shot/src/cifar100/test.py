@@ -84,7 +84,7 @@ def main():
 
     val_loader = torch.utils.data.DataLoader(val_dataset,
                                              batch_size=200, shuffle=False,
-                                             num_workers=12, pin_memory=use_gpu)
+                                             num_workers=4, pin_memory=use_gpu)
 
     print('load data successfully')
 
@@ -161,10 +161,10 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
 
             result_dict[key] = top1.avg / 100
 
-    print('\n',"="*50, "RESULTS", "="*50)
+    print('\n',"="*10, "RESULTS", "="*10)
     for key, value in result_dict.items():
         print(key, "\t", value)
-    print("="*50, "E N D", "="*50)
+    print("="*10, "E N D", "="*10)
 
 
 if __name__ == "__main__":
