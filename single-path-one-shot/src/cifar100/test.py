@@ -17,7 +17,7 @@ from PIL import Image
 from cifar100_dataset import get_dataset
 from slimmable_resnet20 import mutableResNet20
 from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
-                   get_lastest_model, get_parameters, save_checkpoint)
+                   get_lastest_model, get_parameters, save_checkpoint, bn_calibration_init)
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -132,6 +132,8 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
     val_dataloader = args.val_dataloader
 
     model.eval()
+    model.apply(bn_calibration_init)
+
     max_val_iters = 25
     t1 = time.time()
 
@@ -161,7 +163,7 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
 
             result_dict[key] = top1.avg / 100
 
-    print('\n',"="*10, "RESULTS", "="*10)
+    print('\n', "="*10, "RESULTS", "="*10)
     for key, value in result_dict.items():
         print(key, "\t", value)
     print("="*10, "E N D", "="*10)

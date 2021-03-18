@@ -26,7 +26,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
 
 def get_args():
     parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot")
-    parser.add_argument('--arch-batch', default=1000,
+    parser.add_argument('--arch-batch', default=100,
                         type=int, help="arch batch size")
     parser.add_argument(
         '--path', default="Track1_final_archs.json", help="path for json arch files")
@@ -34,11 +34,11 @@ def get_args():
     parser.add_argument('--eval-resume', type=str,
                         default='./snet_detnas.pkl', help='path for eval model')
     parser.add_argument('--batch-size', type=int,
-                        default=20480, help='batch size')
+                        default=10240, help='batch size')
     parser.add_argument('--total-iters', type=int,
                         default=15000, help='total iters')
     parser.add_argument('--learning-rate', type=float,
-                        default=0.5, help='init learning rate')
+                        default=0.2, help='init learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
     parser.add_argument('--weight-decay', type=float,
                         default=4e-5, help='weight decay')
@@ -50,7 +50,7 @@ def get_args():
     parser.add_argument('--auto-continue', type=bool,
                         default=True, help='report frequency')
     parser.add_argument('--display-interval', type=int,
-                        default=20, help='report frequency')
+                        default=2, help='report frequency')
     parser.add_argument('--val-interval', type=int,
                         default=1000, help='report frequency')
     parser.add_argument('--save-interval', type=int,
@@ -215,6 +215,8 @@ def train(model, device, args, *, val_interval, bn_process=False, all_iters=None
 
                 # acc1, acc5 = accuracy(output, target, topk=(1, 5))
                 # print("\rsmall batch acc1:", acc1.item() / 100, end='')
+
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 20)
 
         optimizer.step()
         scheduler.step()
