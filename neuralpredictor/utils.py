@@ -105,3 +105,16 @@ class AverageMeter:
     def summary(self):
         fmtstr = '{name}: {avg' + self.fmt + '}'
         return fmtstr.format(**self.__dict__)
+
+
+
+def bn_calibration_init(m):
+    """ calculating post-statistics of batch normalization """
+    if getattr(m, 'track_running_stats', False):
+        # reset all values for post-statistics
+        m.reset_running_stats()
+        # set bn in training mode to update post-statistics
+        m.training = True
+        # if use cumulative moving average
+        if getattr(FLAGS, 'cumulative_bn_stats', False):
+            m.momentum = None

@@ -50,3 +50,6 @@ nni/data/*
 *.pth
 *.tar
 *.hdf5
+*.npz
+*.npz
+neuralpredictor/data/train.npz
