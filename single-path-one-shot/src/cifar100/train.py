@@ -15,7 +15,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 
 from cifar100_dataset import get_dataset
-from slimmable_resnet20 import mutableResNet20
+from slimmable_resnet20 import mutableResNet20, max_arc_rep
 from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
                    get_lastest_model, get_parameters, save_checkpoint)
 
@@ -24,6 +24,9 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
 
 def get_args():
     parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot")
+    parser.add_argument('--warmup', default=100, type=int,
+                        help="warmup weight of the whole channels")
+    # 为了加速训练，将所有的channel的权重都先进行训练
     parser.add_argument('--arch-batch', default=100,
                         type=int, help="arch batch size")
     parser.add_argument(
@@ -32,7 +35,7 @@ def get_args():
     parser.add_argument('--eval-resume', type=str,
                         default='./snet_detnas.pkl', help='path for eval model')
     parser.add_argument('--batch-size', type=int,
-                        default=10240, help='batch size')
+                        default=64, help='batch size')
     parser.add_argument('--total-iters', type=int,
                         default=15000, help='total iters')
     parser.add_argument('--learning-rate', type=float,
@@ -149,6 +152,12 @@ def main():
                      arch_loader=arch_loader)
         exit(0)
 
+    # warmup weights
+    if args.warmup is not None:
+        while all_iters < args.warmup:
+            all_iters = train_allchannel(model, device, args, val_interval=args.val_interval,
+                              bn_process=False, all_iters=all_iters)
+
     while all_iters < args.total_iters:
         all_iters = train(model, device, args, val_interval=args.val_interval,
                           bn_process=False, all_iters=all_iters, arch_loader=arch_loader, arch_batch=args.arch_batch)
@@ -160,6 +169,73 @@ def adjust_bn_momentum(model, iters):
     for m in model.modules():
         if isinstance(m, nn.BatchNorm2d):
             m.momentum = 1 / iters
+
+
+def train_allchannel(model, device, args, *, val_interval, bn_process=False, all_iters=None):
+    print("start warmup training...")
+
+    optimizer = args.optimizer
+    loss_function = args.loss_function
+    scheduler = args.scheduler
+    train_loader = args.train_loader
+
+    t1 = time.time()
+
+    Top1_err, Top5_err = 0.0, 0.0
+
+    model.train()
+
+    for iters in range(1, val_interval + 1):
+        if bn_process:
+            adjust_bn_momentum(model, iters)
+
+        all_iters += 1
+        d_st = time.time()
+
+        for data, target in train_loader:
+
+            target = target.type(torch.LongTensor)
+            data, target = data.to(device), target.to(device)
+            data_time = time.time() - d_st
+
+            optimizer.zero_grad()
+
+            # 一个批次
+            output = model(data, max_arc_rep)
+            loss = loss_function(output, target)
+
+            loss.backward()
+
+            for p in model.parameters():
+                if p.grad is not None and p.grad.sum() == 0:
+                    p.grad = None
+
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 20)
+
+            optimizer.step()
+            scheduler.step()
+
+        prec1, prec5 = accuracy(output, target, topk=(1, 5))
+
+        Top1_err += 1 - prec1.item() / 100
+        Top5_err += 1 - prec5.item() / 100
+
+        if True:
+            printInfo = 'TRAIN Iter {}: lr = {:.6f},\tloss = {:.6f},\t'.format(all_iters, scheduler.get_lr()[0], loss.item()) + \
+                        'Top-1 err = {:.6f},\t'.format(Top1_err / args.display_interval) + \
+                        'Top-5 err = {:.6f},\t'.format(Top5_err / args.display_interval) + \
+                        'data_time = {:.6f},\ttrain_time = {:.6f}'.format(
+                            data_time, (time.time() - t1) / args.display_interval)
+            logging.info(printInfo)
+            t1 = time.time()
+            Top1_err, Top5_err = 0.0, 0.0
+
+        if all_iters % args.save_interval == 0:
+            save_checkpoint({
+                'state_dict': model.state_dict(),
+            }, all_iters)
+
+    return all_iters
 
 
 def train(model, device, args, *, val_interval, bn_process=False, all_iters=None, arch_loader=None, arch_batch=100):
