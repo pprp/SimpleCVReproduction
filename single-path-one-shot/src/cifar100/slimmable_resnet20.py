@@ -488,8 +488,8 @@ def mutableResNet20():
 if __name__ == "__main__":
     model = mutableResNet20()
 
-    input = torch.zeros(16, 3, 32, 32)
-    output = model(input, arc_representation)
+    # input = torch.zeros(16, 3, 32, 32)
+    # output = model(input, arc_representation)
 
     # model.apply(model.modify_channel)
 

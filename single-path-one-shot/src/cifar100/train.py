@@ -20,8 +20,6 @@ from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
                    get_lastest_model, get_parameters, save_checkpoint)
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
-# torch.distributed.init_process_group(
-#     backend='nccl', init_method='tcp://localhost:23456', rank=0, world_size=1)
 
 
 def get_args():
@@ -92,13 +90,11 @@ def main():
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                                num_workers=16, pin_memory=True)
-    # train_dataprovider = DataIterator(train_loader)
 
     val_loader = torch.utils.data.DataLoader(val_dataset,
                                              batch_size=200, shuffle=False,
                                              num_workers=12, pin_memory=True)
 
-    # val_dataprovider = DataIterator(val_loader)
     print('load data successfully')
 
     model = mutableResNet20()
@@ -125,8 +121,6 @@ def main():
 
     model = model.to(device)
 
-    # dp_model = torch.nn.parallel.DistributedDataParallel(model)
-
     all_iters = 0
     if args.auto_continue:  # 自动进行？？
         lastest_model, iters = get_lastest_model()
@@ -145,8 +139,6 @@ def main():
     args.scheduler = scheduler
     args.train_loader = train_loader
     args.val_loader = val_loader
-    # args.train_dataprovider = train_dataprovider
-    # args.val_dataprovider = val_dataprovider
 
     if args.eval:
         if args.eval_resume is not None:
@@ -177,7 +169,6 @@ def train(model, device, args, *, val_interval, bn_process=False, all_iters=None
     optimizer = args.optimizer
     loss_function = args.loss_function
     scheduler = args.scheduler
-    # train_dataprovider = args.train_dataprovider
     train_loader = args.train_loader
 
     t1 = time.time()
@@ -202,8 +193,6 @@ def train(model, device, args, *, val_interval, bn_process=False, all_iters=None
 
             for i in range(len(arch_batches)):
                 # 一个批次
-
-                # with torch.cuda.amp.autocast():
                 output = model(data, arch_batches[i])
                 loss = loss_function(output, target)
 
@@ -226,7 +215,6 @@ def train(model, device, args, *, val_interval, bn_process=False, all_iters=None
         Top1_err += 1 - prec1.item() / 100
         Top5_err += 1 - prec5.item() / 100
 
-        # if all_iters % args.display_interval == 0:
         if True:
             printInfo = 'TRAIN Iter {}: lr = {:.6f},\tloss = {:.6f},\t'.format(all_iters, scheduler.get_lr()[0], loss.item()) + \
                         'Top-1 err = {:.6f},\t'.format(Top1_err / args.display_interval) + \
@@ -253,7 +241,6 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
     top5 = AvgrageMeter()
 
     loss_function = args.loss_function
-    # val_dataprovider = args.val_dataprovider
     val_loader = args.val_loader
 
     model.eval()
@@ -267,7 +254,6 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
     with torch.no_grad():
         for key, value in arch_dict.items():
             for _ in range(1, max_val_iters + 1):
-                # data, target = val_dataprovider.next()
                 for data, target in val_loader:
                     target = target.type(torch.LongTensor)
                     data, target = data.to(device), target.to(device)
