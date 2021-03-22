@@ -1,0 +1,1 @@
+python3 imagenet_arch_search.py --resume --path ABS --target_hardware flops --operations_path '../../SPOS/shrinking/shrunk_search_space.pt'

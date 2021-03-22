@@ -53,3 +53,15 @@ nni/data/*
 *.npz
 *.npz
 neuralpredictor/data/train.npz
+*.gif
+NAS/AngleNAS/DARTS/darts-master/data/penn/.keep
+NAS/AngleNAS/DARTS/darts-master/data/wikitext-2/.keep
+NAS/AngleNAS/DARTS/darts-master/data/imagenet/.keep
+NAS/nni/data/cifar-10-batches-py/data_batch_4
+*.meta
+NAS/nni/data/cifar-10-batches-py/data_batch_1
+NAS/nni/data/cifar-10-batches-py/data_batch_2
+NAS/nni/data/cifar-10-batches-py/data_batch_3
+NAS/nni/data/cifar-10-batches-py/data_batch_5
+NAS/nni/data/cifar-10-batches-py/readme.html
+NAS/nni/data/cifar-10-batches-py/test_batch

@@ -1,0 +1,1 @@
+python3 -m torch.distributed.launch --nproc_per_node=8 train_from_scratch.py --save='SPOS_ABS' --model_id='2 2 -1 0 0 -1 -1 0 5 -1 4 4 0 0 4 2 3 4 4 4 3'

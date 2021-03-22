@@ -1,0 +1,1 @@
+python3 -m torch.distributed.launch --nproc_per_node=8 train_from_scratch.py --save='Fairnas_ABS' --model_id='4 2 4 2 2 2 5 2 4 4 2 2 2 4 5 4 2 2 5'

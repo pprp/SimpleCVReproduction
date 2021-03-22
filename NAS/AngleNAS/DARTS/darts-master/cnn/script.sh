@@ -1,0 +1,1 @@
+python3 train_search.py --unrolled --save DARTS_ABS --data '../../data/cifar10/' --operations_path '../shrinking/shrunk_search_space.pt'

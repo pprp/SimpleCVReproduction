@@ -1,0 +1,1 @@
+python3 -m torch.distributed.launch --nproc_per_node=8 main.py | tee -a search_space_shrinking.log
