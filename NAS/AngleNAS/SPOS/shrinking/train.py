@@ -1,3 +1,5 @@
+from utils import *
+import sys
 import os
 import torch
 from torch import nn
@@ -7,11 +9,10 @@ import numpy as np
 from config import config
 import copy
 import functools
-print=functools.partial(print,flush=True)
+print = functools.partial(print, flush=True)
 
-import sys
 sys.path.append("../..")
-from utils import *
+
 
 def train(train_dataprovider, optimizer, scheduler, model, criterion, operations, iters, train_iters, seed, args):
     objs, top1 = AvgrageMeter(), AvgrageMeter()
@@ -33,8 +34,9 @@ def train(train_dataprovider, optimizer, scheduler, model, criterion, operations
             np.random.seed(seed)
             k = np.random.randint(len(ops))
             select_op = ops[k]
-            seed+=1
+            seed += 1
             rng.append(select_op)
+            
         logits = model(image, rng)
         loss = criterion(logits, target)
         loss.backward()
@@ -50,9 +52,10 @@ def train(train_dataprovider, optimizer, scheduler, model, criterion, operations
         prec1, _ = accuracy(logits, target, topk=(1, 5))
         objs.update(loss.data.item(), n)
         top1.update(prec1.data.item(), n)
-        
+
         if step % args.report_freq == 0 and args.local_rank == 0:
-            now = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))
-            print('{} |=> Iters={}, train:  {} / {}, loss={:.2f}, acc={:.2f}, lr={}, datatime={:.2f}, seed={}'\
-                .format(now, iters+1, step, train_iters, objs.avg, top1.avg, scheduler.get_lr()[0], float(datatime), seed))      
+            now = time.strftime('%Y-%m-%d %H:%M:%S',
+                                time.localtime(time.time()))
+            print('{} |=> Iters={}, train:  {} / {}, loss={:.2f}, acc={:.2f}, lr={}, datatime={:.2f}, seed={}'
+                  .format(now, iters+1, step, train_iters, objs.avg, top1.avg, scheduler.get_lr()[0], float(datatime), seed))
     return seed

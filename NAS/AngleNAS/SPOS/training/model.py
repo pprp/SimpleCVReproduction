@@ -2,6 +2,7 @@ import torch.nn as nn
 import math
 from torch_blocks import *
 
+
 def conv_bn(inp, oup, stride):
     return nn.Sequential(
         nn.Conv2d(inp, oup, 3, stride, 1, bias=False),
@@ -17,30 +18,32 @@ def conv_1x1_bn(inp, oup):
         nn.ReLU6(inplace=True)
     )
 
-class Select_one_OP(nn.Module):
-  def __init__(self, inp, oup, stride):
-    super(Select_one_OP, self).__init__()
-    self._ops = nn.ModuleList()
-    self.input_channel = inp
-    self.output_channel = oup
-    self.stride = stride
-    for idx, key in enumerate(config.blocks_keys):
-      op = blocks_dict[key](inp, oup, stride)
-      op.idx = idx
-      self._ops.append(op)
 
-  def forward(self, x, id):
-    # if id < 0:
-    #     return x
-    return self._ops[id](x)
+class Select_one_OP(nn.Module):
+    def __init__(self, inp, oup, stride):
+        super(Select_one_OP, self).__init__()
+        self._ops = nn.ModuleList()
+        self.input_channel = inp
+        self.output_channel = oup
+        self.stride = stride
+        for idx, key in enumerate(config.blocks_keys):
+            op = blocks_dict[key](inp, oup, stride)
+            op.idx = idx
+            self._ops.append(op)
+
+    def forward(self, x, id):
+        # if id < 0:
+        #     return x
+        return self._ops[id](x)
 
 
 class Network(nn.Module):
     def __init__(self, rngs, n_class=1000, input_size=224, width_mult=1.):
         super(Network, self).__init__()
         # setting of inverted residual blocks
-        self.interverted_residual_setting = [  #for GPU search
+        self.interverted_residual_setting = [  # for GPU search
             # t, c, n, s
+            # c-> channel, n-> block number, s-> stride
             [6, 32,  4, 2],
             [6, 56,  4, 2],
             [6, 112, 4, 2],
@@ -50,27 +53,37 @@ class Network(nn.Module):
         ]
         # building first layer
         input_channel = int(40 * width_mult)
-        self.last_channel = int(1728 * width_mult) if width_mult > 1.0 else 1728
+
+        self.last_channel = int(
+            1728 * width_mult) if width_mult > 1.0 else 1728
+
         self.conv_bn = conv_bn(3, input_channel, 2)
-        self.MBConv_ratio_1 = InvertedResidual(input_channel, int(24*width_mult), 3, 1, 1, 1)
+
+        self.MBConv_ratio_1 = InvertedResidual(
+            input_channel, int(24*width_mult), 3, 1, 1, 1)
+
         input_channel = int(24*width_mult)
+
         self.features = []
         num = 0
         # building inverted residual blocks
         for t, c, n, s in self.interverted_residual_setting:
             output_channel = int(c * width_mult)
-            for i in range(n):
-                rng = rngs[num]
+            for i in range(n):  # 重复次数
+                rng = rngs[num]  # 选取network arch encoding 对应值 比如 2 4 5 -1等
                 num += 1
-                if rng < 0:
+                if rng < 0:  # -1代表不添加op
                     continue
-                if i == 0:
-                    op = blocks_dict[blocks_keys[rng]](input_channel, output_channel, s)
+                if i == 0:  # 第一个层特殊处理,stride比较特殊
+                    op = blocks_dict[blocks_keys[rng]](
+                        input_channel, output_channel, s)
                     self.features.append(op)
                 else:
-                    op = blocks_dict[blocks_keys[rng]](input_channel, output_channel, 1)
+                    op = blocks_dict[blocks_keys[rng]](
+                        input_channel, output_channel, 1)
                     self.features.append(op)
                 input_channel = output_channel
+
         self.features = nn.Sequential(*self.features)
         # building last several layers
         self.conv_1x1_bn = conv_1x1_bn(input_channel, self.last_channel)

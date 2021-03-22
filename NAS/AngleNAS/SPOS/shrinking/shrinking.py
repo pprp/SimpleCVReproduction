@@ -83,7 +83,10 @@ def get_depth_full_rngs(ops, rngs, layer):
     return rngs
 
 def get_random_extend(num, op_flops_dict, extend_operator, vis_dict, ops):
+    # 随机扩展
+
     def get_random_cand_(extend_operator, ops):
+        # 得到随机的一个子网
         layer, extend_op = extend_operator
         rng = []
         for i, op in enumerate(ops):
@@ -122,27 +125,29 @@ def compute_scores(base_model, model, operations, extend_operators, vis_dict_sli
     candidates = []
     # Randomly sample some architectures which contain current operator
     for idx, extend_operator in enumerate(extend_operators):
-        info = vis_dict_slice[extend_operator]
-        if config.sample_num-len(info['cand_pool']) > 0:
+        info = vis_dict_slice[extend_operator] # 对应层、对应op所记录的数据结构
+        if config.sample_num-len(info['cand_pool']) > 0: # 这里采样1000个子网络进行统计
             num = config.sample_num-len(info['cand_pool'])
-            cands = get_random_extend(num, op_flops_dict, extend_operator, vis_dict, operations)
+            cands = get_random_extend(num, op_flops_dict, extend_operator, vis_dict, operations) # 取1000个候选网络
             for cand in cands:
+                # 每个候选网络的处理
                 for i, c in enumerate(cand): 
                     extend_operator_ = (i, c)
                     if extend_operator_ in vis_dict_slice:
                         info = vis_dict_slice[extend_operator_]
                         if cand not in info['cand_pool']:
-                            info['cand_pool'].append(cand)
+                            info['cand_pool'].append(cand) # 加入候选网络池
                 if cand not in candidates:
                     candidates.append(cand)
 
     # Compute angles of all candidate architecures
     for i, cand in enumerate(candidates):
         info=vis_dict[cand]
-        info['angle'] = get_angle(cand, base_model, model)
+        info['angle'] = get_angle(cand, base_model, model) # 计算对应的angle评分
         print('idx: {}, angle: {}'.format(i, info['angle']))
 
     # Caculate sum of angles for each operator
+    # 计算每个op对应的angle值，用于评价其效果
     for cand in candidates:
         cand_info = vis_dict[cand]
         for i, c in enumerate(cand): 
@@ -151,7 +156,7 @@ def compute_scores(base_model, model, operations, extend_operators, vis_dict_sli
                 slice_info = vis_dict_slice[extend_operator_]
                 if cand in slice_info['cand_pool'] and slice_info['count'] < config.sample_num:
                     slice_info['angle'] += cand_info['angle']
-                    slice_info['count'] += 1
+                    slice_info['count'] += 1 # TODO
 
     # Compute scores of all candidate operators           
     for extend_operator in extend_operators:
@@ -186,24 +191,30 @@ def drop_operators(extend_operators, vis_dict_slice, operations, iters):
 
 # Algorithm 2
 def ABS(base_model, model, operations, iters):
+    '''
+    base_model 代表初始化的权重
+    model： 代表训练的权重
+    '''
     vis_dict_slice, vis_dict = {}, {}
+
     op_flops_dict = pickle.load(open(config.flops_lookup_table, 'rb'))
     print('|=> Iters={}, shrinking: operations={}'.format(iters+1, operations))
 
     # At least one operator is preserved for each edge
     # Each operator is identified by its layer and type
     extend_operators = []
-    for layer, ops in enumerate(operations):
-        if len(ops) > 1:
-            for op in ops:
-                operator = tuple([layer, op])
+    for layer, ops in enumerate(operations): # layer: 4
+        if len(ops) > 1: # ops: [1,2,3]
+            for op in ops: # op: 2
+                operator = tuple([layer, op]) # [4, 2]
                 vis_dict_slice[operator]={}
                 info=vis_dict_slice[operator]
-                info['count'] = 0.
+                info['count'] = 0. # 计算该层4,选择了第2个op，该操作对应操作的参数
                 info['angle'] = 0.
                 info['cand_pool'] = []
                 extend_operators.append(operator)
 
+    # 计算score，随机采样大批子网，然后排序，统计op的好坏
     compute_scores(base_model, model, operations, extend_operators, vis_dict_slice, vis_dict, op_flops_dict)
     operations, drop_ops = drop_operators(extend_operators, vis_dict_slice, operations, iters)
     print('Iter={}, shrinking: drop_ops={}, operations={}'.format(iters+1, drop_ops, operations))
