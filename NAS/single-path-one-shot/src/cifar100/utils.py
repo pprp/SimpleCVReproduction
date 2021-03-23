@@ -11,19 +11,14 @@ class ArchLoader():
     load arch from json file
     '''
 
-    def __init__(self, path, batch_size):
+    def __init__(self, path):
         super(ArchLoader, self).__init__()
 
         self.arc_list = []
         self.arc_dict = {}
-        # arc_list for train
-        # arc_dict for valid
         self.get_arch_list_dict(path)
-        self.bs = batch_size
-
-    def shuffle_batch_arc(self):
-        # for train
-        return random.shuffle(self.arc_list)
+        random.shuffle(self.arc_list)
+        self.idx = 0
 
     def get_arch_list(self):
         return self.arc_list
@@ -31,8 +26,15 @@ class ArchLoader():
     def get_arch_dict(self):
         return self.arc_dict
 
-    def __item__(self):
-        return self.arc_list[,batch_size]
+    def __next__(self):
+
+        if self.idx > len(self.arc_list):
+            raise StopIteration
+        self.idx += 1
+        return self.arc_list[self.idx]
+
+    def __iter__(self):
+        return self
 
     def get_arch_list_dict(self, path):
         with open(path, "r") as f:
@@ -42,6 +44,12 @@ class ArchLoader():
 
         for _, v in self.arc_dict.items():
             self.arc_list.append(v["arch"])
+
+
+# arch_loader = ArchLoader("Track1_final_archs.json", batch_size=10)
+
+# for i in arch_loader:
+#     print(i)
 
 
 class CrossEntropyLabelSmooth(nn.Module):

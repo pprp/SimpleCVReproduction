@@ -26,16 +26,15 @@ def get_args():
     parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot")
     parser.add_argument('--warmup', default=100, type=int,
                         help="warmup weight of the whole channels")
+    parser.add_argument('--num_workers', default=4, type=int)
     # 为了加速训练，将所有的channel的权重都先进行训练
-    parser.add_argument('--arch-batch', default=100,
-                        type=int, help="arch batch size")
     parser.add_argument(
         '--path', default="Track1_final_archs.json", help="path for json arch files")
     parser.add_argument('--eval', default=False, action='store_true')
     parser.add_argument('--eval-resume', type=str,
                         default='./snet_detnas.pkl', help='path for eval model')
     parser.add_argument('--batch-size', type=int,
-                        default=64, help='batch size')
+                        default=2560, help='batch size')
     parser.add_argument('--total-iters', type=int,
                         default=15000, help='total iters')
     parser.add_argument('--learning-rate', type=float,
@@ -92,11 +91,11 @@ def main():
     train_dataset, val_dataset = get_dataset('cifar100')
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
-                                               num_workers=16, pin_memory=True)
+                                               num_workers=args.num_workers, pin_memory=True)
 
     val_loader = torch.utils.data.DataLoader(val_dataset,
                                              batch_size=200, shuffle=False,
-                                             num_workers=12, pin_memory=True)
+                                             num_workers=args.num_workers, pin_memory=True)
 
     print('load data successfully')
 
@@ -156,11 +155,11 @@ def main():
     if args.warmup is not None:
         while all_iters < args.warmup:
             all_iters = train_allchannel(model, device, args, val_interval=args.val_interval,
-                              bn_process=False, all_iters=all_iters)
+                                         bn_process=False, all_iters=all_iters)
 
     while all_iters < args.total_iters:
         all_iters = train(model, device, args, val_interval=args.val_interval,
-                          bn_process=False, all_iters=all_iters, arch_loader=arch_loader, arch_batch=args.arch_batch)
+                          bn_process=False, all_iters=all_iters, arch_loader=arch_loader)
     # all_iters = train(model, device, args, val_interval=int(1280000/args.batch_size), bn_process=True, all_iters=all_iters)
     # save_checkpoint({'state_dict': model.state_dict(),}, args.total_iters, tag='bnps-')
 
@@ -192,7 +191,7 @@ def train_allchannel(model, device, args, *, val_interval, bn_process=False, all
         all_iters += 1
         d_st = time.time()
 
-        for data, target in train_loader:
+        for ii, (data, target) in enumerate(train_loader):
 
             target = target.type(torch.LongTensor)
             data, target = data.to(device), target.to(device)
@@ -211,6 +210,10 @@ def train_allchannel(model, device, args, *, val_interval, bn_process=False, all
                     p.grad = None
 
             torch.nn.utils.clip_grad_norm_(model.parameters(), 20)
+
+            if ii % 10 == 0:
+                acc1, acc5 = accuracy(output, target, topk=(1, 5))
+                print("\rsmall batch acc1:", acc1.item() / 100, end='')
 
             optimizer.step()
             scheduler.step()
@@ -238,7 +241,7 @@ def train_allchannel(model, device, args, *, val_interval, bn_process=False, all
     return all_iters
 
 
-def train(model, device, args, *, val_interval, bn_process=False, all_iters=None, arch_loader=None, arch_batch=100):
+def train(model, device, args, *, val_interval, bn_process=False, all_iters=None, arch_loader=None):
     print("start training...")
     assert arch_loader is not None
 
@@ -262,14 +265,11 @@ def train(model, device, args, *, val_interval, bn_process=False, all_iters=None
             target = target.type(torch.LongTensor)
             data, target = data.to(device), target.to(device)
             data_time = time.time() - d_st
-
-            arch_batches = arch_loader.sample_batch_arc(arch_batch)
-
             optimizer.zero_grad()
 
-            for i in range(len(arch_batches)):
+            for arc in arch_loader:
                 # 一个批次
-                output = model(data, arch_batches[i])
+                output = model(data, arc)
                 loss = loss_function(output, target)
 
                 loss.backward()
