@@ -19,11 +19,12 @@ from slimmable_resnet20 import mutableResNet20, max_arc_rep
 from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
                    get_lastest_model, get_parameters, save_checkpoint)
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
 
 
 def get_args():
     parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot")
+    
     parser.add_argument('--warmup', default=100, type=int,
                         help="warmup weight of the whole channels")
     parser.add_argument('--num_workers', default=4, type=int)
@@ -36,7 +37,7 @@ def get_args():
     parser.add_argument('--batch-size', type=int,
                         default=2560, help='batch size')
     parser.add_argument('--total-iters', type=int,
-                        default=15000, help='total iters')
+                        default=1500, help='total iters')
     parser.add_argument('--learning-rate', type=float,
                         default=0.2, help='init learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
@@ -46,20 +47,12 @@ def get_args():
                         help='path for saving trained models')
     parser.add_argument('--label-smooth', type=float,
                         default=0.1, help='label smoothing')
-
     parser.add_argument('--auto-continue', type=bool,
                         default=True, help='report frequency')
     parser.add_argument('--display-interval', type=int,
-                        default=2, help='report frequency')
-    parser.add_argument('--val-interval', type=int,
-                        default=1000, help='report frequency')
+                        default=5, help='report frequency')
     parser.add_argument('--save-interval', type=int,
                         default=1000, help='report frequency')
-
-    parser.add_argument('--train-dir', type=str,
-                        default='data/train', help='path to training dataset')
-    parser.add_argument('--val-dir', type=str,
-                        default='data/val', help='path to validation dataset')
 
     args = parser.parse_args()
     return args
@@ -74,7 +67,7 @@ def main():
     # Log
     log_format = '[%(asctime)s] %(message)s'
     logging.basicConfig(stream=sys.stdout, level=logging.INFO,
-                        format=log_format, datefmt='%d %I:%M:%S')
+                        format=log_format, datefmt='%m-%d %I:%M:%S')
     t = time.time()
     local_time = time.localtime(t)
     if not os.path.exists('./log'):
@@ -97,11 +90,9 @@ def main():
                                              batch_size=200, shuffle=False,
                                              num_workers=args.num_workers, pin_memory=True)
 
-    print('load data successfully')
-
     model = mutableResNet20()
 
-    print('load model successfully')
+    logging.info('load model successfully')
 
     optimizer = torch.optim.SGD(get_parameters(model),
                                 lr=args.learning_rate,
@@ -131,7 +122,7 @@ def main():
             checkpoint = torch.load(
                 lastest_model, map_location=None if use_gpu else 'cpu')
             model.load_state_dict(checkpoint['state_dict'], strict=True)
-            print('load from checkpoint')
+            logging.info('load from checkpoint')
             for i in range(iters):
                 scheduler.step()
 
@@ -153,13 +144,17 @@ def main():
 
     # warmup weights
     if args.warmup is not None:
+        logging.info("begin warmup weights")
         while all_iters < args.warmup:
-            all_iters = train_allchannel(model, device, args, val_interval=args.val_interval,
-                                         bn_process=False, all_iters=all_iters)
+            all_iters = train_allchannel(
+                model, device, args, bn_process=False, all_iters=all_iters)
 
     while all_iters < args.total_iters:
-        all_iters = train(model, device, args, val_interval=args.val_interval,
-                          bn_process=False, all_iters=all_iters, arch_loader=arch_loader)
+        all_iters = train(model, device, args, bn_process=False,
+                          all_iters=all_iters, arch_loader=arch_loader)
+        logging.info("validate iter {}".format(all_iters))
+        validate(model, device, args, all_iters=all_iters,
+                 arch_loader=arch_loader)
     # all_iters = train(model, device, args, val_interval=int(1280000/args.batch_size), bn_process=True, all_iters=all_iters)
     # save_checkpoint({'state_dict': model.state_dict(),}, args.total_iters, tag='bnps-')
 
@@ -170,8 +165,8 @@ def adjust_bn_momentum(model, iters):
             m.momentum = 1 / iters
 
 
-def train_allchannel(model, device, args, *, val_interval, bn_process=False, all_iters=None):
-    print("start warmup training...")
+def train_allchannel(model, device, args, *, bn_process=False, all_iters=None):
+    logging.info("start warmup training...")
 
     optimizer = args.optimizer
     loss_function = args.loss_function
@@ -184,65 +179,65 @@ def train_allchannel(model, device, args, *, val_interval, bn_process=False, all
 
     model.train()
 
-    for iters in range(1, val_interval + 1):
-        if bn_process:
-            adjust_bn_momentum(model, iters)
+    if bn_process:
+        adjust_bn_momentum(model, iters)
 
-        all_iters += 1
-        d_st = time.time()
+    all_iters += 1
+    d_st = time.time()
 
-        for ii, (data, target) in enumerate(train_loader):
+    for ii, (data, target) in enumerate(train_loader):
 
-            target = target.type(torch.LongTensor)
-            data, target = data.to(device), target.to(device)
-            data_time = time.time() - d_st
+        target = target.type(torch.LongTensor)
+        data, target = data.to(device), target.to(device)
+        data_time = time.time() - d_st
 
-            optimizer.zero_grad()
+        optimizer.zero_grad()
 
-            # 一个批次
-            output = model(data, max_arc_rep)
-            loss = loss_function(output, target)
+        # 一个批次
+        output = model(data, max_arc_rep)
+        loss = loss_function(output, target)
 
-            loss.backward()
+        loss.backward()
 
-            for p in model.parameters():
-                if p.grad is not None and p.grad.sum() == 0:
-                    p.grad = None
+        for p in model.parameters():
+            if p.grad is not None and p.grad.sum() == 0:
+                p.grad = None
 
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 20)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 20)
 
-            if ii % 10 == 0:
-                acc1, acc5 = accuracy(output, target, topk=(1, 5))
-                print("\rsmall batch acc1:", acc1.item() / 100, end='')
+        if ii % 10 == 0:
+            acc1, acc5 = accuracy(output, target, topk=(1, 5))
+            logging.info("warmup batch acc1: {:.6f}".format(
+                acc1.item() / 100))
 
-            optimizer.step()
-            scheduler.step()
+        optimizer.step()
+        scheduler.step()
 
-        prec1, prec5 = accuracy(output, target, topk=(1, 5))
+    prec1, prec5 = accuracy(output, target, topk=(1, 5))
 
-        Top1_err += 1 - prec1.item() / 100
-        Top5_err += 1 - prec5.item() / 100
+    Top1_err += 1 - prec1.item() / 100
+    Top5_err += 1 - prec5.item() / 100
 
-        if True:
-            printInfo = 'TRAIN Iter {}: lr = {:.6f},\tloss = {:.6f},\t'.format(all_iters, scheduler.get_lr()[0], loss.item()) + \
-                        'Top-1 err = {:.6f},\t'.format(Top1_err / args.display_interval) + \
-                        'Top-5 err = {:.6f},\t'.format(Top5_err / args.display_interval) + \
-                        'data_time = {:.6f},\ttrain_time = {:.6f}'.format(
-                            data_time, (time.time() - t1) / args.display_interval)
-            logging.info(printInfo)
-            t1 = time.time()
-            Top1_err, Top5_err = 0.0, 0.0
+    if True:
+        printInfo = 'TRAIN Iter {}: lr = {:.6f},\tloss = {:.6f},\t'.format(all_iters, scheduler.get_last_lr()[0], loss.item()) + \
+                    'Top-1 err = {:.6f},\t'.format(Top1_err / args.display_interval) + \
+                    'Top-5 err = {:.6f},\t'.format(Top5_err / args.display_interval) + \
+                    'data_time = {:.6f},\ttrain_time = {:.6f}'.format(
+                        data_time, (time.time() - t1) / args.display_interval)
+        logging.info(printInfo)
+        t1 = time.time()
+        Top1_err, Top5_err = 0.0, 0.0
 
-        if all_iters % args.save_interval == 0:
-            save_checkpoint({
-                'state_dict': model.state_dict(),
-            }, all_iters)
+    if all_iters % args.save_interval == 0:
+        save_checkpoint({
+            'state_dict': model.state_dict(),
+        }, all_iters)
 
     return all_iters
 
 
-def train(model, device, args, *, val_interval, bn_process=False, all_iters=None, arch_loader=None):
-    print("start training...")
+def train(model, device, args, *, bn_process=False, all_iters=None, arch_loader=None):
+    logging.info("start architecture training...")
     assert arch_loader is not None
 
     optimizer = args.optimizer
@@ -253,58 +248,43 @@ def train(model, device, args, *, val_interval, bn_process=False, all_iters=None
     t1 = time.time()
     Top1_err, Top5_err = 0.0, 0.0
     model.train()
-    for iters in range(1, val_interval + 1):
-        if bn_process:
-            adjust_bn_momentum(model, iters)
 
-        all_iters += 1
-        d_st = time.time()
+    if bn_process:
+        adjust_bn_momentum(model, iters)
 
-        for data, target in train_loader:
+    all_iters += 1
+    d_st = time.time()
 
-            target = target.type(torch.LongTensor)
-            data, target = data.to(device), target.to(device)
-            data_time = time.time() - d_st
-            optimizer.zero_grad()
+    for data, target in train_loader:
+        target = target.type(torch.LongTensor)
+        data, target = data.to(device), target.to(device)
+        data_time = time.time() - d_st
+        optimizer.zero_grad()
 
-            for arc in arch_loader:
-                # 一个批次
-                output = model(data, arc)
-                loss = loss_function(output, target)
+        for ii, arc in enumerate(arch_loader):
+            # 全部架构
+            output = model(data, arc)
+            loss = loss_function(output, target)
 
-                loss.backward()
+            loss.backward()
 
-                for p in model.parameters():
-                    if p.grad is not None and p.grad.sum() == 0:
-                        p.grad = None
+            for p in model.parameters():
+                if p.grad is not None and p.grad.sum() == 0:
+                    p.grad = None
+            if ii % 10 == 0:
+                acc1, acc5 = accuracy(output, target, topk=(1, 5))
+                logging.info("architecture batch acc1:{:.6f}".format(
+                    acc1.item() / 100))
 
-                # acc1, acc5 = accuracy(output, target, topk=(1, 5))
-                # print("\rsmall batch acc1:", acc1.item() / 100, end='')
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 20)
 
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 20)
+    optimizer.step()
+    scheduler.step()
 
-        optimizer.step()
-        scheduler.step()
-
-        prec1, prec5 = accuracy(output, target, topk=(1, 5))
-
-        Top1_err += 1 - prec1.item() / 100
-        Top5_err += 1 - prec5.item() / 100
-
-        if True:
-            printInfo = 'TRAIN Iter {}: lr = {:.6f},\tloss = {:.6f},\t'.format(all_iters, scheduler.get_lr()[0], loss.item()) + \
-                        'Top-1 err = {:.6f},\t'.format(Top1_err / args.display_interval) + \
-                        'Top-5 err = {:.6f},\t'.format(Top5_err / args.display_interval) + \
-                        'data_time = {:.6f},\ttrain_time = {:.6f}'.format(
-                            data_time, (time.time() - t1) / args.display_interval)
-            logging.info(printInfo)
-            t1 = time.time()
-            Top1_err, Top5_err = 0.0, 0.0
-
-        if all_iters % args.save_interval == 0:
-            save_checkpoint({
-                'state_dict': model.state_dict(),
-            }, all_iters)
+    if all_iters % args.save_interval == 0:
+        save_checkpoint({
+            'state_dict': model.state_dict(),
+        }, all_iters)
 
     return all_iters
 
@@ -325,36 +305,41 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
 
     result_dict = {}
 
-    arch_dict = arch_loader.get_arch_dict()[:100]  # 为了速度暂且测评前100个
+    arch_dict = arch_loader.get_arch_dict()  # 为了速度暂且测评前100个
 
     with torch.no_grad():
-        for key, value in arch_dict.items():
-            for _ in range(1, max_val_iters + 1):
-                for data, target in val_loader:
-                    target = target.type(torch.LongTensor)
-                    data, target = data.to(device), target.to(device)
+        for ii, (key, value) in enumerate(arch_dict.items()):
+            for data, target in val_loader:
+                target = target.type(torch.LongTensor)
+                data, target = data.to(device), target.to(device)
 
-                    output = model(data, value["arch"])
-                    loss = loss_function(output, target)
+                output = model(data, value["arch"])
+                loss = loss_function(output, target)
 
-                    prec1, prec5 = accuracy(output, target, topk=(1, 5))
-                    n = data.size(0)
-                    objs.update(loss.item(), n)
-                    top1.update(prec1.item(), n)
-                    top5.update(prec5.item(), n)
+                prec1, prec5 = accuracy(output, target, topk=(1, 5))
+                n = data.size(0)
+                objs.update(loss.item(), n)
+
+                top1.update(prec1.item(), n)
+                top5.update(prec5.item(), n)
+
+            if ii % 10:
+                logging.info("acc:{:.6f} iter:{}".format(top1.avg/100, ii))
 
             result_dict[key] = top1.avg / 100
 
-    # logInfo = 'TEST Iter {}: loss = {:.6f},\t'.format(all_iters, objs.avg) + \
-    #           'Top-1 err = {:.6f},\t'.format(1 - top1.avg / 100) + \
-    #           'Top-5 err = {:.6f},\t'.format(1 - top5.avg / 100) + \
-    #           'val_time = {:.6f}'.format(time.time() - t1)
-    # logging.info(logInfo)
+    logInfo = 'TEST Iter {}: loss = {:.6f},\t'.format(all_iters, objs.avg) + \
+              'Top-1 err = {:.6f},\t'.format(1 - top1.avg / 100) + \
+              'Top-5 err = {:.6f},\t'.format(1 - top5.avg / 100) + \
+              'val_time = {:.6f}'.format(time.time() - t1)
+    logging.info(logInfo)
 
-    print("="*50, "RESULTS", "="*50)
-    for key, value in result_dict:
-        print(key, "\t", value)
-    print("="*50, "E N D", "="*50)
+    logging.info("RESULTS")
+    for ii, (key, value) in enumerate(result_dict.items()):
+        logging.info("{: ^10}  \t  {:.6f}".format(key, value))
+        if ii > 10:
+            break
+    logging.info("E N D")
 
 
 if __name__ == "__main__":

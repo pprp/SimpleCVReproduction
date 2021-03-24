@@ -17,8 +17,11 @@ class ArchLoader():
         self.arc_list = []
         self.arc_dict = {}
         self.get_arch_list_dict(path)
+
+        self.arc_list = self.arc_list[:100]
+
         random.shuffle(self.arc_list)
-        self.idx = 0
+        self.idx = -1
 
     def get_arch_list(self):
         return self.arc_list
@@ -27,10 +30,9 @@ class ArchLoader():
         return self.arc_dict
 
     def __next__(self):
-
-        if self.idx > len(self.arc_list):
-            raise StopIteration
         self.idx += 1
+        if self.idx >= len(self.arc_list):
+            raise StopIteration
         return self.arc_list[self.idx]
 
     def __iter__(self):
@@ -46,11 +48,14 @@ class ArchLoader():
             self.arc_list.append(v["arch"])
 
 
-# arch_loader = ArchLoader("Track1_final_archs.json", batch_size=10)
+# arch_loader = ArchLoader("Track1_final_archs.json")
 
-# for i in arch_loader:
-#     print(i)
+# cnt = 0
+# for i,ac in enumerate(arch_loader):
+#     print(i,ac)
+#     cnt += 1
 
+# print(cnt)
 
 class CrossEntropyLabelSmooth(nn.Module):
 
@@ -94,6 +99,7 @@ def accuracy(output, target, topk=(1,)):
 
     _, pred = output.topk(maxk, 1, True, True)
     pred = pred.t()
+
     correct = pred.eq(target.view(1, -1).expand_as(pred))
 
     res = []
