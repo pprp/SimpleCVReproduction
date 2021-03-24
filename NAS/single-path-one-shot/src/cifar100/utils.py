@@ -17,9 +17,6 @@ class ArchLoader():
         self.arc_list = []
         self.arc_dict = {}
         self.get_arch_list_dict(path)
-
-        self.arc_list = self.arc_list[:100]
-
         random.shuffle(self.arc_list)
         self.idx = -1
 
@@ -28,6 +25,13 @@ class ArchLoader():
 
     def get_arch_dict(self):
         return self.arc_dict
+
+    def get_random_batch(self, bs):
+        return random.sample(self.arc_list, bs)
+
+    def get_part_dict(self):
+        keys = list(self.arc_dict.keys())[:10]
+        return dict([(key, self.arc_dict[key]) for key in keys])
 
     def __next__(self):
         self.idx += 1
@@ -49,6 +53,12 @@ class ArchLoader():
 
 
 # arch_loader = ArchLoader("Track1_final_archs.json")
+
+# arc_dc = arch_loader.get_random_batch(1000)
+
+# for i, arc in enumerate(arc_dc):
+#     print(i, arc) 
+
 
 # cnt = 0
 # for i,ac in enumerate(arch_loader):

@@ -15,45 +15,43 @@ import torchvision.transforms as transforms
 from PIL import Image
 
 from cifar100_dataset import get_dataset
-from slimmable_resnet20 import mutableResNet20, max_arc_rep
+from slimmable_resnet20 import max_arc_rep, mutableResNet20
 from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
                    get_lastest_model, get_parameters, save_checkpoint)
 
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
 
 
 def get_args():
     parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot")
-    
-    parser.add_argument('--warmup', default=100, type=int,
+    parser.add_argument('--warmup', default=200, type=int,
                         help="warmup weight of the whole channels")
-    parser.add_argument('--num_workers', default=4, type=int)
-    # 为了加速训练，将所有的channel的权重都先进行训练
-    parser.add_argument(
-        '--path', default="Track1_final_archs.json", help="path for json arch files")
-    parser.add_argument('--eval', default=False, action='store_true')
-    parser.add_argument('--eval-resume', type=str,
-                        default='./snet_detnas.pkl', help='path for eval model')
+    parser.add_argument('--total-iters', default=1500, type=int)
+
+    parser.add_argument('--num_workers', default=12, type=int)
+    parser.add_argument('--path', default="Track1_final_archs.json", help="path for json arch files")
     parser.add_argument('--batch-size', type=int,
-                        default=2560, help='batch size')
-    parser.add_argument('--total-iters', type=int,
-                        default=1500, help='total iters')
+                        default=20480, help='batch size')
     parser.add_argument('--learning-rate', type=float,
                         default=0.2, help='init learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
     parser.add_argument('--weight-decay', type=float,
                         default=4e-5, help='weight decay')
-    parser.add_argument('--save', type=str, default='./models',
-                        help='path for saving trained models')
     parser.add_argument('--label-smooth', type=float,
                         default=0.1, help='label smoothing')
-    parser.add_argument('--auto-continue', type=bool,
-                        default=True, help='report frequency')
-    parser.add_argument('--display-interval', type=int,
-                        default=5, help='report frequency')
-    parser.add_argument('--save-interval', type=int,
-                        default=1000, help='report frequency')
 
+    parser.add_argument('--save', type=str, default='./models',
+                        help='path for saving trained models')
+    parser.add_argument('--display-interval', type=int,
+                        default=100, help='report frequency')
+    parser.add_argument('--save-interval', type=int,
+                        default=100, help='report frequency')
+    parser.add_argument('--eval', default=False, action='store_true')
+    parser.add_argument('--eval-resume', type=str,
+                        default='./snet_detnas.pkl', help='path for eval model')
+    parser.add_argument('--auto-continue', type=bool,
+                        default=False, help='report frequency')
     args = parser.parse_args()
     return args
 
@@ -73,7 +71,7 @@ def main():
     if not os.path.exists('./log'):
         os.mkdir('./log')
     fh = logging.FileHandler(os.path.join(
-        'log/train-{}{:02}{}'.format(local_time.tm_year % 2000, local_time.tm_mon, t)))
+        'log/train-{}-{:02}-{:.3f}'.format(local_time.tm_year % 2000, local_time.tm_mon, t)))
     fh.setFormatter(logging.Formatter(log_format))
     logging.getLogger().addHandler(fh)
 
@@ -112,9 +110,13 @@ def main():
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer,
                                                   lambda step: (1.0-step/args.total_iters) if step <= args.total_iters else 0, last_epoch=-1)
 
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+    #     optimizer, T_max=200)
+
     model = model.to(device)
 
     all_iters = 0
+
     if args.auto_continue:  # 自动进行？？
         lastest_model, iters = get_lastest_model()
         if lastest_model is not None:
@@ -146,15 +148,18 @@ def main():
     if args.warmup is not None:
         logging.info("begin warmup weights")
         while all_iters < args.warmup:
-            all_iters = train_allchannel(
-                model, device, args, bn_process=False, all_iters=all_iters)
+            all_iters = train_supernet(model, device, args, bn_process=False, all_iters=all_iters)
+
+    validate(model, device, args, all_iters=all_iters, arch_loader=arch_loader)
 
     while all_iters < args.total_iters:
-        all_iters = train(model, device, args, bn_process=False,
+        all_iters = train_subnet(model, device, args, bn_process=False,
                           all_iters=all_iters, arch_loader=arch_loader)
         logging.info("validate iter {}".format(all_iters))
-        validate(model, device, args, all_iters=all_iters,
-                 arch_loader=arch_loader)
+
+    validate(model, device, args, all_iters=all_iters,
+             arch_loader=arch_loader)
+
     # all_iters = train(model, device, args, val_interval=int(1280000/args.batch_size), bn_process=True, all_iters=all_iters)
     # save_checkpoint({'state_dict': model.state_dict(),}, args.total_iters, tag='bnps-')
 
@@ -165,7 +170,7 @@ def adjust_bn_momentum(model, iters):
             m.momentum = 1 / iters
 
 
-def train_allchannel(model, device, args, *, bn_process=False, all_iters=None):
+def train_supernet(model, device, args, *, bn_process=True, all_iters=None):
     logging.info("start warmup training...")
 
     optimizer = args.optimizer
@@ -180,7 +185,7 @@ def train_allchannel(model, device, args, *, bn_process=False, all_iters=None):
     model.train()
 
     if bn_process:
-        adjust_bn_momentum(model, iters)
+        adjust_bn_momentum(model, all_iters)
 
     all_iters += 1
     d_st = time.time()
@@ -219,11 +224,12 @@ def train_allchannel(model, device, args, *, bn_process=False, all_iters=None):
     Top5_err += 1 - prec5.item() / 100
 
     if True:
-        printInfo = 'TRAIN Iter {}: lr = {:.6f},\tloss = {:.6f},\t'.format(all_iters, scheduler.get_last_lr()[0], loss.item()) + \
+        printInfo = 'TRAIN Iter {}: lr = {:.6f},\tloss = {:.6f},\t'.format(all_iters, scheduler.get_lr()[0], loss.item()) + \
                     'Top-1 err = {:.6f},\t'.format(Top1_err / args.display_interval) + \
                     'Top-5 err = {:.6f},\t'.format(Top5_err / args.display_interval) + \
                     'data_time = {:.6f},\ttrain_time = {:.6f}'.format(
                         data_time, (time.time() - t1) / args.display_interval)
+
         logging.info(printInfo)
         t1 = time.time()
         Top1_err, Top5_err = 0.0, 0.0
@@ -236,7 +242,7 @@ def train_allchannel(model, device, args, *, bn_process=False, all_iters=None):
     return all_iters
 
 
-def train(model, device, args, *, bn_process=False, all_iters=None, arch_loader=None):
+def train_subnet(model, device, args, *, bn_process=True, all_iters=None, arch_loader=None):
     logging.info("start architecture training...")
     assert arch_loader is not None
 
@@ -250,7 +256,7 @@ def train(model, device, args, *, bn_process=False, all_iters=None, arch_loader=
     model.train()
 
     if bn_process:
-        adjust_bn_momentum(model, iters)
+        adjust_bn_momentum(model, all_iters)
 
     all_iters += 1
     d_st = time.time()
@@ -261,7 +267,9 @@ def train(model, device, args, *, bn_process=False, all_iters=None, arch_loader=
         data_time = time.time() - d_st
         optimizer.zero_grad()
 
-        for ii, arc in enumerate(arch_loader):
+        random_arc_list = arch_loader.get_random_batch(2500)
+
+        for ii, arc in enumerate(random_arc_list):
             # 全部架构
             output = model(data, arc)
             loss = loss_function(output, target)
@@ -271,10 +279,10 @@ def train(model, device, args, *, bn_process=False, all_iters=None, arch_loader=
             for p in model.parameters():
                 if p.grad is not None and p.grad.sum() == 0:
                     p.grad = None
-            if ii % 10 == 0:
+            if ii % 100 == 0:
                 acc1, acc5 = accuracy(output, target, topk=(1, 5))
-                logging.info("architecture batch acc1:{:.6f}".format(
-                    acc1.item() / 100))
+                logging.info(
+                    "training architecture - arch: {} batch acc1:{:.6f}".format(ii, acc1.item() / 100))
 
     torch.nn.utils.clip_grad_norm_(model.parameters(), 20)
 
@@ -305,7 +313,7 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
 
     result_dict = {}
 
-    arch_dict = arch_loader.get_arch_dict()  # 为了速度暂且测评前100个
+    arch_dict = arch_loader.get_part_dict()  
 
     with torch.no_grad():
         for ii, (key, value) in enumerate(arch_dict.items()):
@@ -323,8 +331,9 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
                 top1.update(prec1.item(), n)
                 top5.update(prec5.item(), n)
 
-            if ii % 10:
-                logging.info("acc:{:.6f} iter:{}".format(top1.avg/100, ii))
+            if ii % 100:
+                logging.info(
+                    "validate acc:{:.6f} iter:{}".format(top1.avg/100, ii))
 
             result_dict[key] = top1.avg / 100
 
