@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import torch.backends.cudnn as cudnn
+from sam import SAM
 
 import torchvision
 import torchvision.transforms as transforms
@@ -97,7 +98,7 @@ def prepare(args):
 
     # Model
     print('==> Building model..')
-    net = CXH_SE_SWISH()#CXH_Squeeze_Excitation() #CXH()
+    net = CXH()#CXH_Squeeze_Excitation() #CXH()
 
     if device == 'cuda':
         net = torch.nn.DataParallel(net)
@@ -105,8 +106,12 @@ def prepare(args):
 
     criterion = nn.CrossEntropyLoss()
     # criterion = CrossEntropyLabelSmooth(10)
-    optimizer = optim.SGD(net.parameters(), lr=0.1,
-                          momentum=0.9, weight_decay=5e-4)
+    # optimizer = optim.SGD(net.parameters(), lr=0.1,
+    #                       momentum=0.9, weight_decay=5e-4)
+
+
+    optimizer = SAM(net.parameters(), torch.optim.SGD, lr=0.1,momentum=0.9)
+
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
         optimizer, 1, 2)
 
@@ -131,6 +136,7 @@ def train(epoch, args):
         inputs, targets = inputs.to(device), targets.to(device)
         # inputs, targets_a, targets_b, lam = mixup_data(inputs, targets,args.alpha)
         # inputs, targets_a, targets_b = map(Variable, (inputs,targets_a, targets_b))
+        
         outputs = net(inputs)
         loss = criterion(outputs, targets)
         # loss = mixup_criterion(criterion, outputs, targets_a, targets_b, lam)
@@ -143,7 +149,15 @@ def train(epoch, args):
 
         optimizer.zero_grad()
         loss.backward()
-        optimizer.step()
+        # optimizer.step()
+        optimizer.first_step(zero_grad=True)
+        
+
+        loss = criterion(net(inputs),targets)
+        loss.backward()
+        optimizer.second_step()
+
+
         scheduler.step(epoch + batch_idx / iters)
 
         acc = 100.*correct/total
