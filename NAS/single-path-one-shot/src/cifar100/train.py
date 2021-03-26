@@ -208,7 +208,7 @@ def train_supernet(model, device, args, *, bn_process=True, all_iters=None):
             if p.grad is not None and p.grad.sum() == 0:
                 p.grad = None
 
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 20)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 5)
 
         if ii % 10 == 0:
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
@@ -284,7 +284,7 @@ def train_subnet(model, device, args, *, bn_process=True, all_iters=None, arch_l
                 logging.info(
                     "training architecture - arch: {} batch acc1:{:.6f}".format(ii, acc1.item() / 100))
 
-    torch.nn.utils.clip_grad_norm_(model.parameters(), 20)
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 5)
 
     optimizer.step()
     scheduler.step()
