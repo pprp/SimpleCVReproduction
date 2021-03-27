@@ -34,7 +34,7 @@ def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, cri
 
         # Fair Sampling
         rngs = []
-        for i in range(len(operations)):
+        for i in range(len(operations)): # 21个layer
             seed += 1
             random.seed(seed)
             rngs.append(random.sample(operations[i], len(operations[i])))

@@ -74,8 +74,8 @@ def prepare(args):
         CIFAR10Policy(),
         transforms.ToTensor(),
         transforms.Normalize((0.4914, 0.4822, 0.4465),
-                             (0.2023, 0.1994, 0.2010))
-        # Cutout(n_holes=args.n_holes, length=args.length)
+                             (0.2023, 0.1994, 0.2010)),
+        Cutout(n_holes=args.n_holes, length=args.length)
     ])
 
     transform_test = transforms.Compose([

@@ -62,8 +62,7 @@ if args.local_rank == 0:
 
 time.sleep(1)
 log_format = '%(asctime)s %(message)s'
-logging.basicConfig(stream=sys.stdout, level=logging.INFO,
-                    format=log_format, datefmt='%m/%d %I:%M:%S %p')
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,format=log_format, datefmt='%m/%d %I:%M:%S %p')
 
 fh = logging.FileHandler(os.path.join(args.save, 'log.txt'))
 fh.setFormatter(logging.Formatter(log_format))
@@ -82,7 +81,7 @@ def main():
     if not torch.cuda.is_available():
         logging.info('no gpu device available')
         sys.exit(1)
-
+        
     num_gpus = torch.cuda.device_count()
     np.random.seed(args.seed)
     args.gpu = args.local_rank % num_gpus

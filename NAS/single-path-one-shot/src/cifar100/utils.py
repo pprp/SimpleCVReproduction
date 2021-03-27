@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import random
 import json
+import numpy as np
 
 
 class ArchLoader():
@@ -19,6 +20,12 @@ class ArchLoader():
         self.get_arch_list_dict(path)
         random.shuffle(self.arc_list)
         self.idx = -1
+
+        self.level_config = {
+            "level1": [4, 8, 12, 16],
+            "level2": [4, 8, 12, 16, 20, 24, 28, 32],
+            "level3": [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64]
+        }
 
     def get_arch_list(self):
         return self.arc_list
@@ -51,13 +58,38 @@ class ArchLoader():
         for _, v in self.arc_dict.items():
             self.arc_list.append(v["arch"])
 
+    def generate_fair_batch(self):
+        rngs = []
+        seed = 0
+        # level1
+        for i in range(0, 7):
+            seed += 1
+            random.seed(seed)
+            rngs.append(random.sample(self.level_config['level1'],
+                                       len(self.level_config['level1']))*4)
+        # level2
+        for i in range(7, 13):
+            seed += 1
+            random.seed(seed)
+            rngs.append(random.sample(self.level_config['level2'],
+                                       len(self.level_config['level2']))*2)
 
-# arch_loader = ArchLoader("Track1_final_archs.json")
+        # level3
+        for i in range(13, 20):
+            seed += 1
+            random.seed(seed)
+            rngs.append(random.sample(self.level_config['level3'],
+                                        len(self.level_config['level3'])))
+        return np.transpose(rngs)
 
+arch_loader = ArchLoader("Track1_final_archs.json")
+
+
+print(arch_loader.generate_fair_batch())
 # arc_dc = arch_loader.get_random_batch(1000)
 
 # for i, arc in enumerate(arc_dc):
-#     print(i, arc) 
+#     print(i, arc)
 
 
 # cnt = 0
