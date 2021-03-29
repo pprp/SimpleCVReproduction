@@ -8,7 +8,8 @@ from prettytable import PrettyTable
 
 arc_representation = "4-12-4-4-16-8-4-12-32-24-16-8-8-24-60-12-64-64-52-60"
 max_arc_rep = "16-16-16-16-16-16-16-32-32-32-32-32-32-64-64-64-64-64-64-64"
-                    # 1 2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20
+# 1 2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20
+
 
 def get_configs():
     '''
@@ -256,26 +257,30 @@ class MutableBlock(nn.Module):
             layers.append(
                 SwitchableBatchNorm2d(self.mc[idx+1])
             )
-            layers.append(nn.ReLU())
+            if i == 0:
+                layers.append(nn.ReLU())
 
         self.body = nn.Sequential(*layers)
+        self.shortcut = nn.Sequential()
 
-        self.shortcut = nn.Sequential(
-            SlimmableConv2d(
-                in_channels_list=self.mc[idx_list[0]],
-                out_channels_list=self.mc[idx_list[1]+1],
-                kernel_size=1,
-                stride=stride,
-                bias=False),
-            SwitchableBatchNorm2d(self.mc[idx_list[1]+1])
-        )
+        if self.mc[idx_list[0]] != self.mc[idx_list[1]+1]:
+            self.shortcut = nn.Sequential(
+                SlimmableConv2d(
+                    in_channels_list=self.mc[idx_list[0]],
+                    out_channels_list=self.mc[idx_list[1]+1],
+                    kernel_size=1,
+                    stride=stride,
+                    padding=0,
+                    bias=False),
+                SwitchableBatchNorm2d(self.mc[idx_list[1]+1])
+            )
 
-        self.post_relu = nn.ReLU()
+        self.relu = nn.ReLU()
 
     def forward(self, x):
         res = self.body(x)
         res += self.shortcut(x)
-        return self.post_relu(res)
+        return self.relu(res)
 
 
 class LambdaLayer(nn.Module):
@@ -327,10 +332,14 @@ class MutableModel(nn.Module):
         self.layer2 = self._make_layer(MutableBlock, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(MutableBlock, num_blocks[2], stride=2)
 
-        self.mutable_linear = SlimmableLinear(
-            self.mc[self.idx-1], self.mc[self.idx])
-        self.last_linear = SlimmableLinear(
-            self.mc[self.idx], [num_classes for _ in range(len(self.mc[self.idx]))])
+        # self.mutable_linear = SlimmableLinear(
+        #     self.mc[self.idx-1], self.mc[self.idx])
+        # self.last_linear = SlimmableLinear(
+        #     self.mc[self.idx], [num_classes for _ in range(len(self.mc[self.idx]))])
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1,1))
+        self.classifier = SlimmableLinear(
+            self.mc[self.idx-1], [num_classes for _ in range(len(self.mc[self.idx-1]))])
 
         self._initialize_weights()
 
@@ -348,17 +357,12 @@ class MutableModel(nn.Module):
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
-                if m.bias is not None:
-                    m.bias.data.zero_()
+                init.kaiming_normal_(m.weight)
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1.0)
                 m.bias.data.zero_()
             elif isinstance(m, nn.Linear):
-                n = m.weight.size(0)  # fan-out
-                init_range = 1.0 / math.sqrt(n)
-                m.weight.data.uniform_(-init_range, init_range)
+                init.kaiming_normal_(m.weight)
                 m.bias.data.zero_()
 
     def forward(self, x, arc):
@@ -375,12 +379,10 @@ class MutableModel(nn.Module):
         # print(x.shape)
         x = self.layer3(x)
         # print(x.shape)
-        x = F.avg_pool2d(x, x.size()[3])
+        x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         # print(x.shape)
-        x = self.mutable_linear(x)
-        # print(x.shape)
-        x = self.last_linear(x)
+        x = self.classifier(x)
         # print(x.shape)
         return x
 
