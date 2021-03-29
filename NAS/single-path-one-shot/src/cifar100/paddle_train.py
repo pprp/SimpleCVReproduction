@@ -7,42 +7,47 @@ from paddle.vision.transforms import (BrightnessTransform, ContrastTransform,
 from paddle_resnet20 import ResNet20
 import paddle 
 
-channel_list = []
-for i in range(1, 21):
-    if 0 < i <= 7:
-        channel_list.append(random.choice([4, 8, 12, 16]))
-    elif 7 < i <= 13:
-        channel_list.append(random.choice([4, 8, 12, 16, 20, 24, 28, 32]))
-    elif 13 < i <= 19:
-        channel_list.append(random.choice(
-            [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64]))
-    else:
-        channel_list.append(random.choice(
-            [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64]))
+for i in range(50000):
+    channel_list = []
+    for i in range(1, 21):
+        if 0 < i <= 7:
+            channel_list.append(random.choice([4, 8, 12, 16]))
+        elif 7 < i <= 13:
+            channel_list.append(random.choice([4, 8, 12, 16, 20, 24, 28, 32]))
+        elif 13 < i <= 19:
+            channel_list.append(random.choice(
+                [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64]))
+        else:
+            channel_list.append(random.choice(
+                [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64]))
 
-resnet20 = ResNet20(100, channel_list)
+    resnet20 = ResNet20(100, channel_list)
 
-model = paddle.Model(resnet20)
+    model = paddle.Model(resnet20)
 
-model.prepare(paddle.optimizer.Adam(parameters=model.parameters()),
-              paddle.nn.CrossEntropyLoss(),
-              paddle.metric.Accuracy())
+    model.prepare(paddle.optimizer.Adam(parameters=model.parameters()),
+                paddle.nn.CrossEntropyLoss(),
+                paddle.metric.Accuracy())
 
-data_file = './data/cifar-100-python.tar.gz'
+    data_file = './data/cifar-100-python.tar.gz'
 
-transforms = paddle.vision.transforms.Compose([
-    RandomHorizontalFlip(),
-    RandomResizedCrop((32, 32)),
-    SaturationTransform(0.2),
-    BrightnessTransform(0.2),
-    ContrastTransform(0.2),
-    HueTransform(0.2), 
-    ToTensor()
-])
+    transforms = paddle.vision.transforms.Compose([
+        RandomHorizontalFlip(),
+        RandomResizedCrop((32, 32)),
+        SaturationTransform(0.2),
+        BrightnessTransform(0.2),
+        ContrastTransform(0.2),
+        HueTransform(0.2), 
+        ToTensor()
+    ])
 
-train_dataset = paddle.vision.datasets.Cifar100(
-    data_file, mode='train', transform=transforms)
-test_dataset = paddle.vision.datasets.Cifar100(
-    data_file, mode='test', transform=ToTensor())
+    train_dataset = paddle.vision.datasets.Cifar100(
+        data_file, mode='train', transform=transforms)
+    test_dataset = paddle.vision.datasets.Cifar100(
+        data_file, mode='test', transform=ToTensor())
 
-model.fit(train_dataset, test_dataset, epochs=100, batch_size=4, verbose=1)
+    model.fit(train_dataset, test_dataset, epochs=2, batch_size=8, verbose=1,num_workers=2)
+    result = model.evaluate(test_dataset, batch_size=1, log_freq=10, verbose=2, num_workers=2, callbacks=None)
+
+    print(result)
+    
