@@ -142,7 +142,6 @@ class ResNet(nn.Layer):
 
         self.avgpool = nn.AdaptiveAvgPool2D((1, 1))
   
-        print('='*10, self.len_list[-2], "+"*10, self.len_list)
         self.fc = nn.Linear(self.len_list[-2], num_classes)
 
         for m in self.sublayers():

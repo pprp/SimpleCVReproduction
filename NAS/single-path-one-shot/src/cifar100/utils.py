@@ -85,7 +85,7 @@ class ArchLoader():
 arch_loader = ArchLoader("Track1_final_archs.json")
 
 
-print(arch_loader.generate_fair_batch())
+# print(arch_loader.generate_fair_batch())
 # arc_dc = arch_loader.get_random_batch(1000)
 
 # for i, arc in enumerate(arc_dc):

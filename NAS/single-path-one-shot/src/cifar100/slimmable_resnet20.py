@@ -279,6 +279,9 @@ class MutableBlock(nn.Module):
 
     def forward(self, x):
         res = self.body(x)
+
+        print(x.shape, res.shape, self.shortcut(x).shape)
+
         res += self.shortcut(x)
         return self.relu(res)
 
@@ -337,7 +340,7 @@ class MutableModel(nn.Module):
         # self.last_linear = SlimmableLinear(
         #     self.mc[self.idx], [num_classes for _ in range(len(self.mc[self.idx]))])
 
-        self.avgpool = nn.AdaptiveAvgPool2d((1,1))
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.classifier = SlimmableLinear(
             self.mc[self.idx-1], [num_classes for _ in range(len(self.mc[self.idx-1]))])
 
@@ -372,13 +375,13 @@ class MutableModel(nn.Module):
         # 第一个layer
         x = F.relu(self.first_bn(self.first_conv(x)))
         # 三个层级
-        # print(x.shape)
+        print(x.shape)
         x = self.layer1(x)
-        # print(x.shape)
+        print(x.shape)
         x = self.layer2(x)
-        # print(x.shape)
+        print(x.shape)
         x = self.layer3(x)
-        # print(x.shape)
+        print(x.shape)
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         # print(x.shape)
