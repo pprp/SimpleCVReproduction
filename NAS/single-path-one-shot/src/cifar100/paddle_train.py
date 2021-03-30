@@ -49,7 +49,7 @@ for ii in range(300):
         data_file, mode='test', transform=ToTensor())
     model.fit(train_dataset, test_dataset, epochs=100, batch_size=64, verbose=0)
 
-    result = model.evaluate(test_dataset, batch_size=256)
+    result = model.evaluate(test_dataset, batch_size=64)
     print(ii, '\t', channel_list, '\t', result['acc'])
 
     json_result["arch%d" % ii] = {

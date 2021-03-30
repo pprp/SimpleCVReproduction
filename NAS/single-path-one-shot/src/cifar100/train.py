@@ -30,7 +30,8 @@ def get_args():
     parser.add_argument('--total-iters', default=350, type=int)
 
     parser.add_argument('--num_workers', default=12, type=int)
-    parser.add_argument('--path', default="Track1_final_archs.json", help="path for json arch files")
+    parser.add_argument(
+        '--path', default="Track1_final_archs.json", help="path for json arch files")
     parser.add_argument('--batch-size', type=int,
                         default=2048, help='batch size')
     parser.add_argument('--learning-rate', type=float,
@@ -145,16 +146,16 @@ def main():
         exit(0)
 
     # warmup weights
-    if args.warmup is not None:
-        logging.info("begin warmup weights")
-        while all_iters < args.warmup:
-            all_iters = train_supernet(model, device, args, bn_process=False, all_iters=all_iters)
+    # if args.warmup is not None:
+    #     logging.info("begin warmup weights")
+    #     while all_iters < args.warmup:
+    #         all_iters = train_supernet(model, device, args, bn_process=False, all_iters=all_iters)
 
     validate(model, device, args, all_iters=all_iters, arch_loader=arch_loader)
 
     while all_iters < args.total_iters:
         all_iters = train_subnet(model, device, args, bn_process=False,
-                          all_iters=all_iters, arch_loader=arch_loader)
+                                 all_iters=all_iters, arch_loader=arch_loader)
         logging.info("validate iter {}".format(all_iters))
 
     validate(model, device, args, all_iters=all_iters,
@@ -313,7 +314,7 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
 
     result_dict = {}
 
-    arch_dict = arch_loader.get_part_dict()  
+    arch_dict = arch_loader.get_part_dict()
 
     with torch.no_grad():
         for ii, (key, value) in enumerate(arch_dict.items()):

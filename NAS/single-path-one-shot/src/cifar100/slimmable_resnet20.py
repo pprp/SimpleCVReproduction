@@ -6,7 +6,8 @@ import torch.nn.functional as F
 import torch.nn.init as init
 from prettytable import PrettyTable
 
-arc_representation = "4-12-4-4-16-8-4-12-32-24-16-8-8-24-60-12-64-64-52-60"
+arc_representation = "16-8-16-16-8-12-12-20-12-4-12-32-32-24-48-8-52-16-12-36"
+#"4-12-4-4-16-8-4-12-32-24-16-8-8-24-60-12-64-64-52-60"
 max_arc_rep = "16-16-16-16-16-16-16-32-32-32-32-32-32-64-64-64-64-64-64-64"
 # 1 2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20
 
@@ -261,28 +262,30 @@ class MutableBlock(nn.Module):
                 layers.append(nn.ReLU())
 
         self.body = nn.Sequential(*layers)
-        self.shortcut = nn.Sequential()
+        self.shortcut1 = nn.Sequential()
 
-        if self.mc[idx_list[0]] != self.mc[idx_list[1]+1]:
-            self.shortcut = nn.Sequential(
-                SlimmableConv2d(
-                    in_channels_list=self.mc[idx_list[0]],
-                    out_channels_list=self.mc[idx_list[1]+1],
-                    kernel_size=1,
-                    stride=stride,
-                    padding=0,
-                    bias=False),
-                SwitchableBatchNorm2d(self.mc[idx_list[1]+1])
-            )
+        self.shortcut2 = nn.Sequential(
+            SlimmableConv2d(
+                in_channels_list=self.mc[idx_list[0]],
+                out_channels_list=self.mc[idx_list[1]+1],
+                kernel_size=1,
+                stride=stride,
+                padding=0,
+                bias=False),
+            SwitchableBatchNorm2d(self.mc[idx_list[1]+1])
+        )
 
         self.relu = nn.ReLU()
 
     def forward(self, x):
         res = self.body(x)
 
-        print(x.shape, res.shape, self.shortcut(x).shape)
+        # print(res.shape, x.shape)
 
-        res += self.shortcut(x)
+        if res.shape[1] != x.shape[1] or res.shape[2] != x.shape[2]:
+            res += self.shortcut2(x)
+        else:
+            res += self.shortcut1(x)
         return self.relu(res)
 
 
@@ -375,13 +378,13 @@ class MutableModel(nn.Module):
         # 第一个layer
         x = F.relu(self.first_bn(self.first_conv(x)))
         # 三个层级
-        print(x.shape)
+        # print(x.shape)
         x = self.layer1(x)
-        print(x.shape)
+        # print(x.shape)
         x = self.layer2(x)
-        print(x.shape)
+        # print(x.shape)
         x = self.layer3(x)
-        print(x.shape)
+        # print(x.shape)
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         # print(x.shape)
@@ -494,8 +497,8 @@ def mutableResNet20():
 if __name__ == "__main__":
     model = mutableResNet20()
 
-    # input = torch.zeros(16, 3, 32, 32)
-    # output = model(input, arc_representation)
+    input = torch.zeros(16, 3, 32, 32)
+    output = model(input, arc_representation)
 
     # model.apply(model.modify_channel)
 
