@@ -49,7 +49,8 @@ def get_dataset(cls, cutout_length=0):
         transforms.RandomHorizontalFlip(),
         transforms.RandomResizedCrop((32,32)),
         transforms.ColorJitter(0.2,0.2,0.2,0.2),
-        normalize
+        transforms.ToTensor(),
+        transforms.Normalize(MEAN, STD)
     ])
     valid_transform = transforms.Compose(normalize)
 

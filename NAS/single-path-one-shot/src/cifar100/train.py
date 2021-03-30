@@ -19,6 +19,8 @@ from slimmable_resnet20 import max_arc_rep, mutableResNet20
 from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
                    get_lastest_model, get_parameters, save_checkpoint)
 
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
+
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
 
@@ -27,7 +29,7 @@ def get_args():
     parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot")
     parser.add_argument('--warmup', default=200, type=int,
                         help="warmup weight of the whole channels")
-    parser.add_argument('--total-iters', default=350, type=int)
+    parser.add_argument('--total-iters', default=1500, type=int)
 
     parser.add_argument('--num_workers', default=12, type=int)
     parser.add_argument(
@@ -35,7 +37,7 @@ def get_args():
     parser.add_argument('--batch-size', type=int,
                         default=2048, help='batch size')
     parser.add_argument('--learning-rate', type=float,
-                        default=0.2, help='init learning rate')
+                        default=0.5, help='init learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
     parser.add_argument('--weight-decay', type=float,
                         default=4e-5, help='weight decay')
@@ -44,8 +46,6 @@ def get_args():
 
     parser.add_argument('--save', type=str, default='./models',
                         help='path for saving trained models')
-    parser.add_argument('--display-interval', type=int,
-                        default=100, help='report frequency')
     parser.add_argument('--save-interval', type=int,
                         default=100, help='report frequency')
     parser.add_argument('--eval', default=False, action='store_true')
@@ -108,8 +108,10 @@ def main():
         loss_function = criterion_smooth
         device = torch.device("cpu")
 
-    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer,
-                                                  lambda step: (1.0-step/args.total_iters) if step <= args.total_iters else 0, last_epoch=-1)
+    # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer,
+    #                                               lambda step: (1.0-step/args.total_iters) if step <= args.total_iters else 0, last_epoch=-1)
+
+    scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=5)
 
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
     #     optimizer, T_max=200)
@@ -149,7 +151,8 @@ def main():
     if args.warmup is not None:
         logging.info("begin warmup weights")
         while all_iters < args.warmup:
-            all_iters = train_supernet(model, device, args, bn_process=False, all_iters=all_iters)
+            all_iters = train_supernet(
+                model, device, args, bn_process=False, all_iters=all_iters)
 
     validate(model, device, args, all_iters=all_iters, arch_loader=arch_loader)
 
@@ -181,7 +184,7 @@ def train_supernet(model, device, args, *, bn_process=True, all_iters=None):
 
     t1 = time.time()
 
-    Top1_err, Top5_err = 0.0, 0.0
+    Top1_acc, Top5_acc = 0.0, 0.0
 
     model.train()
 
@@ -213,27 +216,28 @@ def train_supernet(model, device, args, *, bn_process=True, all_iters=None):
 
         if ii % 10 == 0:
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
-            logging.info("warmup batch acc1: {:.6f}".format(
-                acc1.item() / 100))
+            logging.info("warmup batch acc1: {:.6f} lr: {:.6f}".format(
+                acc1.item() / 100, scheduler.get_last_lr()[0]))
 
         optimizer.step()
-        scheduler.step()
+    
+    scheduler.step()
 
     prec1, prec5 = accuracy(output, target, topk=(1, 5))
 
-    Top1_err += 1 - prec1.item() / 100
-    Top5_err += 1 - prec5.item() / 100
+    Top1_acc = prec1.item() / 100
+    Top5_acc = prec5.item() / 100
 
     if True:
-        printInfo = 'TRAIN Iter {}: lr = {:.6f},\tloss = {:.6f},\t'.format(all_iters, scheduler.get_lr()[0], loss.item()) + \
-                    'Top-1 err = {:.6f},\t'.format(Top1_err / args.display_interval) + \
-                    'Top-5 err = {:.6f},\t'.format(Top5_err / args.display_interval) + \
+        printInfo = 'TRAIN Iter {}: lr = {:.6f},\tloss = {:.6f},\t'.format(all_iters, scheduler.get_last_lr()[0], loss.item()) + \
+                    'Top-1 acc = {:.6f},\t'.format(Top1_acc) + \
+                    'Top-5 acc = {:.6f},\t'.format(Top5_acc) + \
                     'data_time = {:.6f},\ttrain_time = {:.6f}'.format(
-                        data_time, (time.time() - t1) / args.display_interval)
+                        data_time, (time.time() - t1))
 
         logging.info(printInfo)
         t1 = time.time()
-        Top1_err, Top5_err = 0.0, 0.0
+        Top1_acc, Top5_acc = 0.0, 0.0
 
     if all_iters % args.save_interval == 0:
         save_checkpoint({

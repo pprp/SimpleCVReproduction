@@ -82,7 +82,7 @@ class ArchLoader():
                                         len(self.level_config['level3'])))
         return np.transpose(rngs)
 
-arch_loader = ArchLoader("Track1_final_archs.json")
+# arch_loader = ArchLoader("Track1_final_archs.json")
 
 
 # print(arch_loader.generate_fair_batch())
