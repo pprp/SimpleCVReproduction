@@ -40,8 +40,10 @@ for ii in range(300):
         RandomHorizontalFlip(),
         RandomResizedCrop((32, 32)),
         SaturationTransform(0.2),
-        BrightnessTransform(0.2), ContrastTransform(0.2),
-        HueTransform(0.2), ToTensor()
+        BrightnessTransform(0.2), 
+        ContrastTransform(0.2),
+        HueTransform(0.2),
+        ToTensor()
     ])
     train_dataset = paddle.vision.datasets.Cifar100(
         data_file, mode='train', transform=transforms)

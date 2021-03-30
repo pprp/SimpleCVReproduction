@@ -29,50 +29,13 @@ class Cutout(object):
 
         return img
 
-
-class data_prefetcher():
-    def __init__(self, loader):
-        self.loader = iter(loader)
-        self.stream = torch.cuda.Stream()
-        self.mean = torch.tensor([0.485 * 255, 0.456 * 255, 0.406 * 255]).cuda().view(1,3,1,1)
-        self.std = torch.tensor([0.229 * 255, 0.224 * 255, 0.225 * 255]).cuda().view(1,3,1,1)
-        # With Amp, it isn't necessary to manually convert data to half.
-        # if args.fp16:
-        #     self.mean = self.mean.half()
-        #     self.std = self.std.half()
-        self.preload()
-
-    def preload(self):
-        try:
-            self.next_input, self.next_target = next(self.loader)
-        except StopIteration:
-            self.next_input = None
-            self.next_target = None
-            return
-        with torch.cuda.stream(self.stream):
-            self.next_input = self.next_input.cuda(non_blocking=True)
-            self.next_target = self.next_target.cuda(non_blocking=True)
-            # With Amp, it isn't necessary to manually convert data to half.
-            # if args.fp16:
-            #     self.next_input = self.next_input.half()
-            # else:
-            self.next_input = self.next_input.float()
-            self.next_input = self.next_input.sub_(self.mean).div_(self.std)
-            
-    def next(self):
-        torch.cuda.current_stream().wait_stream(self.stream)
-        input = self.next_input
-        target = self.next_target
-        self.preload()
-        return input, target
-
-
 def get_dataset(cls, cutout_length=0):
     MEAN = [0.5070751592371323, 0.48654887331495095, 0.4409178433670343]
     STD = [0.2673342858792401, 0.2564384629170883, 0.27615047132568404]
     transf = [
         transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip()
+        transforms.RandomHorizontalFlip(),
+
     ]
     normalize = [
         transforms.ToTensor(),
@@ -82,7 +45,12 @@ def get_dataset(cls, cutout_length=0):
     if cutout_length > 0:
         cutout.append(Cutout(cutout_length))
 
-    train_transform = transforms.Compose(transf + normalize + cutout)
+    train_transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomResizedCrop((32,32)),
+        transforms.ColorJitter(0.2,0.2,0.2,0.2),
+        normalize
+    ])
     valid_transform = transforms.Compose(normalize)
 
     if cls == "cifar100":

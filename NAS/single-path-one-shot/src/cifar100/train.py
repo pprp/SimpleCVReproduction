@@ -146,10 +146,10 @@ def main():
         exit(0)
 
     # warmup weights
-    # if args.warmup is not None:
-    #     logging.info("begin warmup weights")
-    #     while all_iters < args.warmup:
-    #         all_iters = train_supernet(model, device, args, bn_process=False, all_iters=all_iters)
+    if args.warmup is not None:
+        logging.info("begin warmup weights")
+        while all_iters < args.warmup:
+            all_iters = train_supernet(model, device, args, bn_process=False, all_iters=all_iters)
 
     validate(model, device, args, all_iters=all_iters, arch_loader=arch_loader)
 
