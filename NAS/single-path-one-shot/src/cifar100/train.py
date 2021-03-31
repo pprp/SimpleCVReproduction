@@ -37,7 +37,7 @@ def get_args():
     parser.add_argument('--batch-size', type=int,
                         default=2048, help='batch size')
     parser.add_argument('--learning-rate', type=float,
-                        default=0.5, help='init learning rate')
+                        default=0.4, help='init learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
     parser.add_argument('--weight-decay', type=float,
                         default=4e-5, help='weight decay')
@@ -220,7 +220,7 @@ def train_supernet(model, device, args, *, bn_process=True, all_iters=None):
                 acc1.item() / 100, scheduler.get_last_lr()[0]))
 
         optimizer.step()
-    
+
     scheduler.step()
 
     prec1, prec5 = accuracy(output, target, topk=(1, 5))
@@ -287,7 +287,7 @@ def train_subnet(model, device, args, *, bn_process=True, all_iters=None, arch_l
             if ii % 100 == 0:
                 acc1, acc5 = accuracy(output, target, topk=(1, 5))
                 logging.info(
-                    "training architecture - arch: {} batch acc1:{:.6f}".format(ii, acc1.item() / 100))
+                    "training arch: {:05d} \t acc1:{:.4f} acc5:{:.4f}".format(ii, acc1.item(), acc5.item()))
 
     torch.nn.utils.clip_grad_norm_(model.parameters(), 5)
 

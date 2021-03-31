@@ -10,6 +10,7 @@ import torchvision.transforms as transforms
 
 import os
 import argparse
+import math
 
 # from models import *
 from resnet20 import resnet20
@@ -18,9 +19,13 @@ from utils import progress_bar
 # model_cfg = "12-8-12-4-16-16-12-28-28-28-32-4-24-48-20-16-12-64-4-4"
 model_cfg = "12-12-12-12-16-16-16-28-28-28-32-32-32-48-48-48-48-64-64-64"
 
+bs = 1024
+lr = 0.1 * math.sqrt(bs/128)
+
+print("==> LR: {:.6f} BS: {}".format(lr, bs))
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR100 Training')
-parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
+# parser.add_argument('--lr', default=0.5, type=float, help='learning rate')
 parser.add_argument('--resume', '-r', action='store_true',
                     help='resume from checkpoint')
 args = parser.parse_args()
@@ -46,12 +51,12 @@ transform_test = transforms.Compose([
 trainset = torchvision.datasets.CIFAR100(
     root='./data', train=True, download=True, transform=transform_train)
 trainloader = torch.utils.data.DataLoader(
-    trainset, batch_size=1024, shuffle=True, num_workers=4)
+    trainset, batch_size=bs, shuffle=True, num_workers=4)
 
 testset = torchvision.datasets.CIFAR100(
     root='./data', train=False, download=True, transform=transform_test)
 testloader = torch.utils.data.DataLoader(
-    testset, batch_size=100, shuffle=False, num_workers=2)
+    testset, batch_size=bs, shuffle=False, num_workers=2)
 
 # classes = ('plane', 'car', 'bird', 'cat', 'deer',
 #            'dog', 'frog', 'horse', 'ship', 'truck')
@@ -75,9 +80,9 @@ if args.resume:
     start_epoch = checkpoint['epoch']
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(), lr=args.lr,
+optimizer = optim.SGD(net.parameters(), lr=lr,
                       momentum=0.9, weight_decay=5e-4)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
 
 
 # Training
