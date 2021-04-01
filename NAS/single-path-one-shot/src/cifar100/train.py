@@ -21,8 +21,12 @@ from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
 
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
+from torch.utils.tensorboard import SummaryWriter
+
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
+
+writer = SummaryWriter("./runs")
 
 
 def get_args():
@@ -219,6 +223,12 @@ def train_supernet(model, device, args, *, bn_process=True, all_iters=None):
             logging.info("warmup batch acc1: {:.6f} lr: {:.6f}".format(
                 acc1.item() / 100, scheduler.get_last_lr()[0]))
 
+            writer.add_scalar("WTrain/Loss", loss.item(),
+                              all_iters * len(train_loader)+ii)
+            writer.add_scalar("WTrain/acc1", acc1.item(),
+                              all_iters * len(train_loader)+ii)
+            writer.add_scalar("WTrain/acc5", acc5.item(),
+                              all_iters * len(train_loader)+ii)
         optimizer.step()
 
     scheduler.step()
@@ -287,7 +297,14 @@ def train_subnet(model, device, args, *, bn_process=True, all_iters=None, arch_l
             if ii % 100 == 0:
                 acc1, acc5 = accuracy(output, target, topk=(1, 5))
                 logging.info(
-                    "training arch: {:05d} \t acc1:{:.4f} acc5:{:.4f}".format(ii, acc1.item(), acc5.item()))
+                    "epoch: {} \t train arch: {:05d} \t acc1:{:.4f} acc5:{:.4f}".format(all_iters, ii, acc1.item(), acc5.item()))
+
+                writer.add_scalar("Train/Loss", loss.item(),
+                                  all_iters * len(train_loader)+ii)
+                writer.add_scalar("Train/acc1", acc1.item(),
+                                  all_iters * len(train_loader)+ii)
+                writer.add_scalar("Train/acc5", acc5.item(),
+                                  all_iters * len(train_loader)+ii)
 
     torch.nn.utils.clip_grad_norm_(model.parameters(), 5)
 
@@ -340,11 +357,18 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
                 logging.info(
                     "validate acc:{:.6f} iter:{}".format(top1.avg/100, ii))
 
+                writer.add_scalar("Val/Loss", loss.item(),
+                                  all_iters * len(val_loader)+ii)
+                writer.add_scalar("Val/acc1", acc1.item(),
+                                  all_iters * len(val_loader)+ii)
+                writer.add_scalar("Val/acc5", acc5.item(),
+                                  all_iters * len(val_loader)+ii)
+
             result_dict[key] = top1.avg / 100
 
     logInfo = 'TEST Iter {}: loss = {:.6f},\t'.format(all_iters, objs.avg) + \
-              'Top-1 err = {:.6f},\t'.format(1 - top1.avg / 100) + \
-              'Top-5 err = {:.6f},\t'.format(1 - top5.avg / 100) + \
+              'Top-1 err = {:.6f},\t'.format(1 - top1.avg) + \
+              'Top-5 err = {:.6f},\t'.format(1 - top5.avg) + \
               'val_time = {:.6f}'.format(time.time() - t1)
     logging.info(logInfo)
 

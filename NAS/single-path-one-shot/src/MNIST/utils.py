@@ -7,6 +7,10 @@ import json
 import numpy as np
 
 
+def get_num_correct(preds, labels):
+    return preds.argmax(dim=1).eq(labels).sum().item()
+
+
 class ArchLoader():
     '''
     load arch from json file
@@ -40,6 +44,14 @@ class ArchLoader():
         keys = list(self.arc_dict.keys())[:10]
         return dict([(key, self.arc_dict[key]) for key in keys])
 
+    def convert_list_arc_str(self, arc_list):
+        arc_str = ""
+        arc_list = [str(item)+"-" for item in arc_list]
+        for item in arc_list:
+            arc_str += item
+
+        return arc_str[:-1]
+
     def __next__(self):
         self.idx += 1
         if self.idx >= len(self.arc_list):
@@ -66,20 +78,20 @@ class ArchLoader():
             seed += 1
             random.seed(seed)
             rngs.append(random.sample(self.level_config['level1'],
-                                       len(self.level_config['level1']))*4)
+                                      len(self.level_config['level1']))*4)
         # level2
         for i in range(7, 13):
             seed += 1
             random.seed(seed)
             rngs.append(random.sample(self.level_config['level2'],
-                                       len(self.level_config['level2']))*2)
+                                      len(self.level_config['level2']))*2)
 
         # level3
         for i in range(13, 20):
             seed += 1
             random.seed(seed)
             rngs.append(random.sample(self.level_config['level3'],
-                                        len(self.level_config['level3'])))
+                                      len(self.level_config['level3'])))
         return np.transpose(rngs)
 
 # arch_loader = ArchLoader("Track1_final_archs.json")
@@ -147,7 +159,6 @@ def accuracy(output, target, topk=(1,)):
     res = []
     for k in topk:
         correct_k = correct[:k].reshape(-1).float().sum(0)
-        # print("correct k:", correct_k, 'az:', correct_k.mul(100.0 / batch_size))
         res.append(correct_k.mul_(100.0 / batch_size))
     return res
 

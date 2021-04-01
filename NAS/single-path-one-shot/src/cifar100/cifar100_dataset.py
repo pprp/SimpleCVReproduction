@@ -62,3 +62,9 @@ def get_dataset(cls, cutout_length=0):
     else:
         raise NotImplementedError
     return dataset_train, dataset_valid
+
+dataset_train, dataset_valid = get_dataset("cifar100")
+
+train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=4, shuffle=True, num_workers=2)
+
+print(len(dataset_train), len(train_loader))

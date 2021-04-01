@@ -58,6 +58,14 @@ class ArchLoader():
         for _, v in self.arc_dict.items():
             self.arc_list.append(v["arch"])
 
+    def convert_list_arc_str(self, arc_list):
+        arc_str = ""
+        arc_list = [str(item)+"-" for item in arc_list]
+        for item in arc_list:
+            arc_str += item
+
+        return arc_str[:-1]
+
     def generate_fair_batch(self):
         rngs = []
         seed = 0
@@ -66,20 +74,20 @@ class ArchLoader():
             seed += 1
             random.seed(seed)
             rngs.append(random.sample(self.level_config['level1'],
-                                       len(self.level_config['level1']))*4)
+                                      len(self.level_config['level1']))*4)
         # level2
         for i in range(7, 13):
             seed += 1
             random.seed(seed)
             rngs.append(random.sample(self.level_config['level2'],
-                                       len(self.level_config['level2']))*2)
+                                      len(self.level_config['level2']))*2)
 
         # level3
         for i in range(13, 20):
             seed += 1
             random.seed(seed)
             rngs.append(random.sample(self.level_config['level3'],
-                                        len(self.level_config['level3'])))
+                                      len(self.level_config['level3'])))
         return np.transpose(rngs)
 
 # arch_loader = ArchLoader("Track1_final_archs.json")
@@ -87,6 +95,11 @@ class ArchLoader():
 
 # print(arch_loader.generate_fair_batch())
 # arc_dc = arch_loader.get_random_batch(1000)
+
+# fb = arch_loader.generate_fair_batch()
+
+# for arc_list in fb:
+#     arch_loader.convert_list_arc_str(arc_list)
 
 # for i, arc in enumerate(arc_dc):
 #     print(i, arc)
