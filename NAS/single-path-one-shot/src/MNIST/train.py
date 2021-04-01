@@ -13,9 +13,10 @@ import torch
 import torch.nn as nn
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
+
 from PIL import Image
 
-from slimmable_resnet20 import max_arc_rep, mutableResNet20
+from slimmable_resnet20 import max_arc_rep, mutableResNet20, SwitchableBatchNorm2d
 from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
                    get_lastest_model, get_parameters, save_checkpoint, get_num_correct)
 
@@ -23,7 +24,7 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
 from torch.utils.tensorboard import SummaryWriter
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
 
 writer = SummaryWriter("./runs/%s-%05d" %
                        (time.strftime("%m-%d", time.localtime()), random.randint(0, 100)))
@@ -124,9 +125,7 @@ def main():
 
     # scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer,
     #                                               lambda step: (1.0-step/args.total_iters) if step <= args.total_iters else 0, last_epoch=-1)
-
     scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=5)
-
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
     #     optimizer, T_max=200)
 
@@ -134,16 +133,16 @@ def main():
 
     all_iters = 0
 
-    if args.auto_continue:  # 自动进行？？
-        lastest_model, iters = get_lastest_model()
-        if lastest_model is not None:
-            all_iters = iters
-            checkpoint = torch.load(
-                lastest_model, map_location=None if use_gpu else 'cpu')
-            model.load_state_dict(checkpoint['state_dict'], strict=True)
-            logging.info('load from checkpoint')
-            for i in range(iters):
-                scheduler.step()
+    # if args.auto_continue:  # 自动进行？？
+    #     lastest_model, iters = get_lastest_model()
+    #     if lastest_model is not None:
+    #         all_iters = iters
+    #         checkpoint = torch.load(
+    #             lastest_model, map_location=None if use_gpu else 'cpu')
+    #         model.load_state_dict(checkpoint['state_dict'], strict=True)
+    #         logging.info('load from checkpoint')
+    #         for i in range(iters):
+    #             scheduler.step()
 
     # 参数设置
     args.optimizer = optimizer
@@ -176,6 +175,10 @@ def main():
                                  all_iters=all_iters, arch_loader=arch_loader)
         logging.info("validate iter {}".format(all_iters))
 
+        if all_iters % 9 == 0:
+            validate(model, device, args, all_iters=all_iters,
+                     arch_loader=arch_loader)
+
     validate(model, device, args, all_iters=all_iters,
              arch_loader=arch_loader)
 
@@ -184,6 +187,8 @@ def adjust_bn_momentum(model, iters):
     for m in model.modules():
         if isinstance(m, nn.BatchNorm2d):
             m.momentum = 1 / iters
+        elif isinstance(m, SwitchableBatchNorm2d):
+            m.momentum = 1 / iters 
 
 
 def train_supernet(model, device, args, *, bn_process=False, all_iters=None):
@@ -229,7 +234,7 @@ def train_supernet(model, device, args, *, bn_process=False, all_iters=None):
 
         torch.nn.utils.clip_grad_norm_(model.parameters(), 5)
 
-        if ii % 10 == 0:
+        if ii % 2 == 0:
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
             logging.info("warmup batch acc1: {:.6f} lr: {:.6f}".format(
                 acc1.item(), scheduler.get_last_lr()[0]))
@@ -301,11 +306,12 @@ def train_subnet(model, device, args, *, bn_process=False, all_iters=None, arch_
         data_time = time.time() - d_st
         optimizer.zero_grad()
 
-        fair_arc_list = arch_loader.generate_fair_batch()
+        # fair_arc_list = arch_loader.generate_fair_batch()
+        fair_arc_list = arch_loader.get_random_batch(25)
 
         for ii, arc in enumerate(fair_arc_list):
             # 全部架构
-            output = model(data, arch_loader.convert_list_arc_str(arc))
+            output = model(data, arc)
             loss = loss_function(output, target)
 
             loss.backward()
@@ -316,7 +322,7 @@ def train_subnet(model, device, args, *, bn_process=False, all_iters=None, arch_
 
             total_correct += get_num_correct(output, target)
 
-            if ii % 7 == 0:
+            if ii % 15 == 0:
                 acc1, acc5 = accuracy(output, target, topk=(1, 5))
                 logging.info(
                     "epoch: {:4d} \t acc1:{:.4f} \t acc5:{:.4f} \t loss:{:.4f}".format(all_iters, acc1.item(), acc5.item(), loss.item()))
@@ -330,7 +336,7 @@ def train_subnet(model, device, args, *, bn_process=False, all_iters=None, arch_
 
     # 16 when using Fair sampling strategy
     writer.add_scalar("Accuracy", total_correct /
-                        (len(train_loader) * args.batch_size * 16), all_iters)
+                      (len(train_loader) * args.batch_size * 25), all_iters)
     writer.add_histogram("first_conv.weight",
                          model.module.first_conv.weight, all_iters)
 
