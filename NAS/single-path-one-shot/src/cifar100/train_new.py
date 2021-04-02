@@ -25,7 +25,7 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
 from torch.utils.tensorboard import SummaryWriter
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 writer = SummaryWriter("./runs/%s-%05d" %
                        (time.strftime("%m-%d", time.localtime()), random.randint(0, 100)))
@@ -297,7 +297,8 @@ def train_subnet(model, device, args, *, bn_process=False, all_iters=None, arch_
         data_time = time.time() - d_st
         optimizer.zero_grad()
 
-        fair_arc_list = arch_loader.generate_fair_batch()
+        # fair_arc_list = arch_loader.generate_fair_batch()
+        fair_arc_list = arch_loader.generate_niu_fair_batch()
         # fair_arc_list = arch_loader.get_random_batch(25)
 
         for ii, arc in enumerate(fair_arc_list):
