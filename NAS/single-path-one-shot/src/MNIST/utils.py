@@ -94,10 +94,41 @@ class ArchLoader():
                                       len(self.level_config['level3'])))
         return np.transpose(rngs)
 
-# arch_loader = ArchLoader("Track1_final_archs.json")
+    def generate_niu_fair_batch(self):
+        rngs = []
+        seed = 0
+        # level1
+        for i in range(0, 7):
+            seed += 1
+            random.seed(seed)
+            tmp_rngs = []
+            for _ in range(4):
+                tmp_rngs.extend(random.sample(self.level_config['level1'],
+                                              len(self.level_config['level1'])))
+            rngs.append(tmp_rngs)
+        # level2
+        for i in range(7, 13):
+            seed += 1
+            random.seed(seed)
+            tmp_rngs = []
+            for _ in range(2):
+                tmp_rngs.extend(random.sample(self.level_config['level2'],
+                                          len(self.level_config['level2'])))
+            rngs.append(tmp_rngs)
+
+        # level3
+        for i in range(13, 20):
+            seed += 1
+            random.seed(seed)
+            rngs.append(random.sample(self.level_config['level3'],
+                                      len(self.level_config['level3'])))
+        return np.transpose(rngs)
 
 
-# print(arch_loader.generate_fair_batch())
+arch_loader = ArchLoader("Track1_final_archs.json")
+
+
+print(arch_loader.generate_niu_fair_batch())
 # arc_dc = arch_loader.get_random_batch(1000)
 
 # for i, arc in enumerate(arc_dc):

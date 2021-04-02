@@ -77,7 +77,7 @@ def main():
     if not os.path.exists('./log'):
         os.mkdir('./log')
     fh = logging.FileHandler(os.path.join(
-        'log/train-{}-{:02}-{:.3f}'.format(local_time.tm_year % 2000, local_time.tm_mon, t)))
+        'log/train-{}-{:02}-{:02}-{:.3f}'.format(local_time.tm_year % 2000, local_time.tm_mon, local_time.tm_mday, t)))
     fh.setFormatter(logging.Formatter(log_format))
     logging.getLogger().addHandler(fh)
 
@@ -188,7 +188,7 @@ def adjust_bn_momentum(model, iters):
         if isinstance(m, nn.BatchNorm2d):
             m.momentum = 1 / iters
         elif isinstance(m, SwitchableBatchNorm2d):
-            m.momentum = 1 / iters 
+            m.momentum = 1 / iters
 
 
 def train_supernet(model, device, args, *, bn_process=False, all_iters=None):

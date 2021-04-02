@@ -41,9 +41,9 @@ def get_args():
     parser.add_argument(
         '--path', default="Track1_final_archs.json", help="path for json arch files")
     parser.add_argument('--batch-size', type=int,
-                        default=2048, help='batch size')
+                        default=4096, help='batch size')
     parser.add_argument('--learning-rate', type=float,
-                        default=0.4, help='init learning rate')
+                        default=0.5656, help='init learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
     parser.add_argument('--weight-decay', type=float,
                         default=4e-5, help='weight decay')
@@ -78,7 +78,7 @@ def main():
     if not os.path.exists('./log'):
         os.mkdir('./log')
     fh = logging.FileHandler(os.path.join(
-        'log/train-{}-{:02}-{:.3f}'.format(local_time.tm_year % 2000, local_time.tm_mon, t)))
+        'log/train-{}-{:02}-{:02}-{:.3f}'.format(local_time.tm_year % 2000, local_time.tm_mon, local_time.tm_mday,t)))
     fh.setFormatter(logging.Formatter(log_format))
     logging.getLogger().addHandler(fh)
 
