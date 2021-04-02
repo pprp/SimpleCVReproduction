@@ -2,8 +2,10 @@ import math
 import paddle
 import paddle.nn as nn
 import numpy as np
+import random
+from paddle import callbacks
 
-__all__ = ['ResNet20']
+__all__ = ['ResNet20', 'ResNet56', 'ResNet110', 'ResNet164']
 
 ##########   Original_Module   ##########
 
@@ -68,6 +70,48 @@ class BasicBolock(nn.Layer):
         residual = x
         x = self.relu(self.conv1(x))
         out = self.conv2(x)
+        if self.downsampling:
+            residual = self.downsample(residual)
+        out += residual
+        out = self.relu(out)
+        return out
+
+
+class Bottleneck(nn.Layer):
+    def __init__(self, len_list, stride=1, downsampling=False):
+        super(Bottleneck, self).__init__()
+        self.downsampling = downsampling
+        self.len_list = len_list
+        global IND
+
+        self.conv1 = self.Conv(
+            self.len_list[IND-1], self.len_list[IND], kernel_size=1, stride=1, padding=0)
+        self.conv2 = self.Conv(
+            self.len_list[IND], self.len_list[IND+1], kernel_size=3, stride=stride, padding=1)
+        self.conv3 = self.Conv(
+            self.len_list[IND+1], self.len_list[IND+2], kernel_size=1, stride=1, padding=0)
+
+        if self.downsampling or (self.len_list[IND-1] != self.len_list[IND+2]):
+            self.downsample = nn.Sequential(
+                nn.Conv2D(in_channels=self.len_list[IND-1], out_channels=self.len_list[IND+2],
+                          kernel_size=1, stride=stride, padding=0, bias_attr=False),
+                nn.BatchNorm2D(self.len_list[IND+2]))
+            self.downsampling = True
+
+        self.relu = nn.ReLU()
+        IND += 3
+
+    def Conv(self, in_places, places, kernel_size, stride, padding):
+        return nn.Sequential(
+            nn.Conv2D(in_channels=in_places, out_channels=places,
+                      kernel_size=kernel_size, stride=stride, padding=padding, bias_attr=False),
+            nn.BatchNorm2D(places))
+
+    def forward(self, x):
+        residual = x
+        x = self.relu(self.conv1(x))
+        x = self.relu(self.conv2(x))
+        out = self.conv3(x)
         if self.downsampling:
             residual = self.downsample(residual)
         out += residual
@@ -141,7 +185,6 @@ class ResNet(nn.Layer):
             self.len_list, block=blocks[2], block_type=self.block, stride=2)
 
         self.avgpool = nn.AdaptiveAvgPool2D((1, 1))
-  
         self.fc = nn.Linear(self.len_list[-2], num_classes)
 
         for m in self.sublayers():
@@ -174,8 +217,85 @@ class ResNet(nn.Layer):
         return x
 
 
-##########   ResNet Model   ##########
-# default block type --- BasicBolock for ResNet20;
-
+##########   Different ResNet Model   ##########
+# default block type --- BasicBolock for ResNet20/56/110;
+# depper block type--- Bottleneck for ResNet164
 def ResNet20(CLASS, len_list=None):
     return ResNet([3, 3, 3], len_list=len_list, num_classes=CLASS, module_type=BasicBolock)
+
+
+def ResNet56(CLASS, len_list=None):
+    return ResNet([9, 9, 9], len_list=len_list, num_classes=CLASS, module_type=BasicBolock)
+
+
+def ResNet110(CLASS, len_list=None):
+    return ResNet([18, 18, 18], len_list=len_list, num_classes=CLASS, module_type=BasicBolock)
+
+
+def ResNet164(CLASS, len_list=None):
+    return ResNet([18, 18, 18], len_list=len_list, num_classes=CLASS, module_type=Bottleneck)
+
+
+class ToArray(object):
+    def __call__(self, img):
+        img = np.array(img)
+        img = np.transpose(img, [2, 0, 1])
+        img = img / 255.
+        return img.astype('float32')
+
+
+class RandomApply(object):
+    def __init__(self, transform, p=0.5):
+        super().__init__()
+        self.p = p
+        self.transform = transform
+
+    def __call__(self, img):
+        if self.p < random.random():
+            return img
+        img = self.transform(img)
+        return img
+
+
+class LRSchedulerM(callbacks.LRScheduler):
+    def __init__(self, by_step=False, by_epoch=True, warm_up=True):
+        super().__init__(by_step, by_epoch)
+        assert by_step ^ warm_up
+        self.warm_up = warm_up
+
+    def on_epoch_end(self, epoch, logs=None):
+        if self.by_epoch and not self.warm_up:
+            if self.model._optimizer and hasattr(
+                self.model._optimizer, '_learning_rate') and isinstance(
+                    self.model._optimizer._learning_rate, paddle.optimizer.lr.LRScheduler):
+                self.model._optimizer._learning_rate.step()
+
+    def on_train_batch_end(self, step, logs=None):
+        if self.by_step or self.warm_up:
+            if self.model._optimizer and hasattr(
+                self.model._optimizer, '_learning_rate') and isinstance(
+                    self.model._optimizer._learning_rate, paddle.optimizer.lr.LRScheduler):
+                self.model._optimizer._learning_rate.step()
+            if self.model._optimizer._learning_rate.last_epoch >= self.model._optimizer._learning_rate.warmup_steps:
+                self.warm_up = False
+
+
+def _on_train_batch_end(self, step, logs=None):
+    logs = logs or {}
+    logs['lr'] = self.model._optimizer.get_lr()
+    self.train_step += 1
+    if self._is_write():
+        self._updates(logs, 'train')
+
+
+def _on_train_begin(self, logs=None):
+    self.epochs = self.params['epochs']
+    assert self.epochs
+    self.train_metrics = self.params['metrics'] + ['lr']
+    assert self.train_metrics
+    self._is_fit = True
+    self.train_step = 0
+
+
+callbacks.VisualDL.on_train_batch_end = _on_train_batch_end
+callbacks.VisualDL.on_train_begin = _on_train_begin

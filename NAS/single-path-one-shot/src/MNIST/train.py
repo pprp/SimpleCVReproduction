@@ -307,7 +307,8 @@ def train_subnet(model, device, args, *, bn_process=False, all_iters=None, arch_
         optimizer.zero_grad()
 
         # fair_arc_list = arch_loader.generate_fair_batch()
-        fair_arc_list = arch_loader.get_random_batch(25)
+        # fair_arc_list = arch_loader.get_random_batch(25)
+        fair_arc_list = arch_loader.generate_niu_fair_batch()
 
         for ii, arc in enumerate(fair_arc_list):
             # 全部架构
@@ -322,7 +323,7 @@ def train_subnet(model, device, args, *, bn_process=False, all_iters=None, arch_
 
             total_correct += get_num_correct(output, target)
 
-            if ii % 15 == 0:
+            if ii % 7 == 0:
                 acc1, acc5 = accuracy(output, target, topk=(1, 5))
                 logging.info(
                     "epoch: {:4d} \t acc1:{:.4f} \t acc5:{:.4f} \t loss:{:.4f}".format(all_iters, acc1.item(), acc5.item(), loss.item()))
@@ -336,7 +337,7 @@ def train_subnet(model, device, args, *, bn_process=False, all_iters=None, arch_
 
     # 16 when using Fair sampling strategy
     writer.add_scalar("Accuracy", total_correct /
-                      (len(train_loader) * args.batch_size * 25), all_iters)
+                      (len(train_loader) * args.batch_size * 16), all_iters)
     writer.add_histogram("first_conv.weight",
                          model.module.first_conv.weight, all_iters)
 

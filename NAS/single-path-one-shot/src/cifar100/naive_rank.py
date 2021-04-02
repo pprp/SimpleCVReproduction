@@ -1,5 +1,5 @@
 from test_json import get_arch_list
-
+import json 
 
 '''
 直接根据参数量进行排序
@@ -17,10 +17,23 @@ def sort_by_value(d):
 
 dict_arch_param = {}
 
+result_dict = {}
+
 for key, value in arch_d.items():
     sum_s = sum([int(i) for i in value['arch'].split("-")])
-    # print(key, value['arch'], sum_s)
+    acc = sum_s / 752
+    print(key, sum_s, '\t', acc)
     dict_arch_param[key] = sum_s
 
+    tmp_dict = {}
+    tmp_dict['acc'] = acc 
+    tmp_dict['arch'] = value['arch']
 
-print(sort_by_value(dict_arch_param))
+    result_dict[key] = tmp_dict
+
+print(result_dict)
+
+# print(sort_by_value(dict_arch_param))
+
+with open("naive_result.json",'w') as f:
+    json.dump(result_dict, f)
