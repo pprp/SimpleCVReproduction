@@ -48,8 +48,8 @@ def get_args():
     parser.add_argument('--label-smooth', type=float,
                         default=0.1, help='label smoothing')
 
-    parser.add_argument('--save', type=str, default='./models',
-                        help='path for saving trained models')
+    parser.add_argument('--save', type=str, default='./weights',
+                        help='path for saving trained weights')
     parser.add_argument('--save-interval', type=int,
                         default=100, help='report frequency')
     parser.add_argument('--eval', default=False, action='store_true')
@@ -90,7 +90,7 @@ def main():
                                                num_workers=args.num_workers, pin_memory=True)
 
     val_loader = torch.utils.data.DataLoader(val_dataset,
-                                             batch_size=200, shuffle=False,
+                                             batch_size=args.batch_size, shuffle=False,
                                              num_workers=args.num_workers, pin_memory=True)
 
     model = mutableResNet20()

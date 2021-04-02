@@ -6,8 +6,10 @@ import random
 import json
 import numpy as np
 
+
 def get_num_correct(preds, labels):
     return preds.argmax(dim=1).eq(labels).sum().item()
+
 
 class ArchLoader():
     '''
@@ -167,26 +169,27 @@ def accuracy(output, target, topk=(1,)):
 
 
 def save_checkpoint(state, iters, tag=''):
-    if not os.path.exists("./models"):
-        os.makedirs("./models")
+    if not os.path.exists("./weights"):
+        os.makedirs("./weights")
     filename = os.path.join(
-        "./models/{}checkpoint-{:06}.pth.tar".format(tag, iters))
+        "./weights/{}checkpoint-{:05}.pth.tar".format(tag, iters))
+
     torch.save(state, filename)
-    # latestfilename = os.path.join(
-    #     "./models/{}checkpoint-latest.pth.tar".format(tag))
-    # torch.save(state, latestfilename)
+    latestfilename = os.path.join(
+        "./weights/{}checkpoint-latest.pth.tar".format(tag))
+    torch.save(state, latestfilename)
 
 
 def get_lastest_model():
-    if not os.path.exists('./models'):
-        os.mkdir('./models')
-    model_list = os.listdir('./models/')
+    if not os.path.exists('./weights'):
+        os.mkdir('./weights')
+    model_list = os.listdir('./weights/')
     if model_list == []:
         return None, 0
     model_list.sort()
     lastest_model = model_list[-1]
     iters = re.findall(r'\d+', lastest_model)
-    return './models/' + lastest_model, int(iters[0])
+    return './weights/' + lastest_model, int(iters[0])
 
 
 def get_parameters(model):

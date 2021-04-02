@@ -25,7 +25,7 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
 from torch.utils.tensorboard import SummaryWriter
 
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 writer = SummaryWriter("./runs/%s-%05d" %
                        (time.strftime("%m-%d", time.localtime()), random.randint(0, 100)))
@@ -33,7 +33,7 @@ writer = SummaryWriter("./runs/%s-%05d" %
 
 def get_args():
     parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot")
-    parser.add_argument('--warmup', default=100, type=int,
+    parser.add_argument('--warmup', default=0, type=int,
                         help="warmup weight of the whole channels")
     parser.add_argument('--total-iters', default=3000, type=int)
 
@@ -41,17 +41,17 @@ def get_args():
     parser.add_argument(
         '--path', default="Track1_final_archs.json", help="path for json arch files")
     parser.add_argument('--batch-size', type=int,
-                        default=1280, help='batch size')
+                        default=2048, help='batch size')
     parser.add_argument('--learning-rate', type=float,
-                        default=0.0447, help='init learning rate')
+                        default=0.4, help='init learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
     parser.add_argument('--weight-decay', type=float,
                         default=4e-5, help='weight decay')
     parser.add_argument('--label-smooth', type=float,
                         default=0.1, help='label smoothing')
 
-    parser.add_argument('--save', type=str, default='./models',
-                        help='path for saving trained models')
+    parser.add_argument('--save', type=str, default='./weights',
+                        help='path for saving trained weights')
     parser.add_argument('--save-interval', type=int,
                         default=100, help='report frequency')
     parser.add_argument('--eval', default=False, action='store_true')

@@ -34,8 +34,8 @@ def get_args():
     parser.add_argument('--batch-size', type=int,
                         default=10240, help='batch size')
 
-    parser.add_argument('--save', type=str, default='./models',
-                        help='path for saving trained models')
+    parser.add_argument('--save', type=str, default='./weights',
+                        help='path for saving trained weights')
     parser.add_argument('--label-smooth', type=float,
                         default=0.1, help='label smoothing')
 
