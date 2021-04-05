@@ -1,0 +1,27 @@
+authorName: default
+experimentName: example_mobilenet_like
+trialConcurrency: 4
+maxExecDuration: 900h
+maxTrialNum: 200
+#choice: local, remote, pai
+trainingServicePlatform: local
+searchSpacePath: search_space.json
+#choice: true, false
+useAnnotation: false
+
+tuner:
+  codeDir: .
+  classFileName: my_tuner.py
+  className: MyTuner
+  classArgs:
+    #choice: maximize, minimize
+    gen1_path: /home/wzm/test/CVPR21_WS/save/gen1.pth
+trial:
+  command: python3 individual_train.py
+  codeDir: .
+  gpuNum: 2
+#added by myself
+
+localConfig:
+  maxTrialNumPerGpu:  4
+  useActiveGpu: True

@@ -29,7 +29,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 writer = SummaryWriter("./runs/%s-%05d" %
                        (time.strftime("%m-%d", time.localtime()), random.randint(0, 100)))
-
+# batch size 128 - lr: 0.1 
 
 def get_args():
     parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot")
