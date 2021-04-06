@@ -25,7 +25,7 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
 from torch.utils.tensorboard import SummaryWriter
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 writer = SummaryWriter("./runs/%s-%05d" %
                        (time.strftime("%m-%d", time.localtime()), random.randint(0, 100)))
@@ -43,7 +43,7 @@ def get_args():
     parser.add_argument('--batch-size', type=int,
                         default=4096, help='batch size')
     parser.add_argument('--learning-rate', type=float,
-                        default=0.5656, help='init learning rate')
+                        default=0.1885, help='init learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
     parser.add_argument('--weight-decay', type=float,
                         default=4e-5, help='weight decay')
@@ -124,16 +124,16 @@ def main():
 
     all_iters = 0
 
-    # if args.auto_continue:  # 自动进行？？
-    #     lastest_model, iters = get_lastest_model()
-    #     if lastest_model is not None:
-    #         all_iters = iters
-    #         checkpoint = torch.load(
-    #             lastest_model, map_location=None if use_gpu else 'cpu')
-    #         model.load_state_dict(checkpoint['state_dict'], strict=True)
-    #         logging.info('load from checkpoint')
-    #         for i in range(iters):
-    #             scheduler.step()
+    if args.auto_continue:  # 自动进行？？
+        lastest_model, iters = get_lastest_model()
+        if lastest_model is not None:
+            all_iters = iters
+            checkpoint = torch.load(
+                lastest_model, map_location=None if use_gpu else 'cpu')
+            model.load_state_dict(checkpoint['state_dict'], strict=True)
+            logging.info('load from checkpoint')
+            for i in range(iters):
+                scheduler.step()
 
     # 参数设置
     args.optimizer = optimizer

@@ -145,8 +145,10 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
         for key, value in arch_dict.items():  # 每一个网络
             max_val_iters -= 1
             print('\r ', key, ' iter:', max_val_iters, end='')
+            
             if max_val_iters == 0:
                 break
+
             for data, target in val_dataloader:  # 过一遍数据集
                 target = target.type(torch.LongTensor)
                 data, target = data.to(device), target.to(device)
@@ -161,7 +163,11 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
                 top1.update(prec1.item(), n)
                 top5.update(prec5.item(), n)
 
-            result_dict[key] = top1.avg / 100
+            tmp_dict = {}
+            tmp_dict['arch'] = value['arch']
+            tmp_dict['acc'] = top1.avg 
+            
+            result_dict[key] = tmp_dict
 
     print('\n', "="*10, "RESULTS", "="*10)
     for key, value in result_dict.items():
