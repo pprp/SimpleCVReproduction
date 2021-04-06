@@ -35,9 +35,9 @@ def get_args():
     parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot")
     parser.add_argument('--warmup', default=0, type=int,
                         help="warmup weight of the whole channels")
-    parser.add_argument('--total-iters', default=3000, type=int)
+    parser.add_argument('--total-iters', default=9000, type=int)
 
-    parser.add_argument('--num_workers', default=4, type=int)
+    parser.add_argument('--num_workers', default=12, type=int)
     parser.add_argument(
         '--path', default="Track1_final_archs.json", help="path for json arch files")
     parser.add_argument('--batch-size', type=int,

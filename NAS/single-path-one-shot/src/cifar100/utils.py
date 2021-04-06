@@ -216,7 +216,7 @@ def get_lastest_model():
     if model_list == []:
         return None, 0
     model_list.sort()
-    lastest_model = model_list[-1]
+    lastest_model = model_list[-2]
     iters = re.findall(r'\d+', lastest_model)
     return './weights/' + lastest_model, int(iters[0])
 
