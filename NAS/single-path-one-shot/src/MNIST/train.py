@@ -1,8 +1,9 @@
 import argparse
+import copy
 import json
-import random
 import logging
 import os
+import random
 import sys
 import time
 
@@ -13,16 +14,16 @@ import torch
 import torch.nn as nn
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
-
 from PIL import Image
-
-from slimmable_resnet20 import max_arc_rep, mutableResNet20, SwitchableBatchNorm2d
-from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
-                   get_lastest_model, get_parameters, save_checkpoint, get_num_correct)
-
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
-
 from torch.utils.tensorboard import SummaryWriter
+
+from angle import generate_angle
+from slimmable_resnet20 import (SwitchableBatchNorm2d, max_arc_rep,
+                                mutableResNet20)
+from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
+                   get_lastest_model, get_num_correct, get_parameters,
+                   save_checkpoint)
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
 
@@ -34,9 +35,9 @@ def get_args():
     parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot")
     parser.add_argument('--warmup', default=0, type=int,
                         help="warmup weight of the whole channels")
-    parser.add_argument('--total-iters', default=300, type=int)
+    parser.add_argument('--total-iters', default=1000, type=int)
 
-    parser.add_argument('--num_workers', default=2, type=int)
+    parser.add_argument('--num_workers', default=4, type=int)
     parser.add_argument(
         '--path', default="Track1_final_archs.json", help="path for json arch files")
     parser.add_argument('--batch-size', type=int,
@@ -105,6 +106,7 @@ def main():
         batch_size=args.batch_size, shuffle=False, **kwargs)
 
     model = mutableResNet20(num_classes=10)
+    base_model = copy.deepcopy(model)
 
     logging.info('load model successfully')
 
@@ -119,6 +121,7 @@ def main():
         model = nn.DataParallel(model)
         loss_function = criterion_smooth.cuda()
         device = torch.device("cuda")
+        base_model.cuda()
     else:
         loss_function = criterion_smooth
         device = torch.device("cpu")
@@ -133,16 +136,16 @@ def main():
 
     all_iters = 0
 
-    # if args.auto_continue:  # 自动进行？？
-    #     lastest_model, iters = get_lastest_model()
-    #     if lastest_model is not None:
-    #         all_iters = iters
-    #         checkpoint = torch.load(
-    #             lastest_model, map_location=None if use_gpu else 'cpu')
-    #         model.load_state_dict(checkpoint['state_dict'], strict=True)
-    #         logging.info('load from checkpoint')
-    #         for i in range(iters):
-    #             scheduler.step()
+    if args.auto_continue:
+        lastest_model, iters = get_lastest_model()
+        if lastest_model is not None:
+            all_iters = iters
+            checkpoint = torch.load(
+                lastest_model, map_location=None if use_gpu else 'cpu')
+            model.load_state_dict(checkpoint['state_dict'], strict=True)
+            logging.info('load from checkpoint')
+            for i in range(iters):
+                scheduler.step()
 
     # 参数设置
     args.optimizer = optimizer
@@ -171,7 +174,7 @@ def main():
                  arch_loader=arch_loader)
 
     while all_iters < args.total_iters:
-        all_iters = train_subnet(model, device, args, bn_process=False,
+        all_iters = train_subnet(model, base_model, device, args, bn_process=False,
                                  all_iters=all_iters, arch_loader=arch_loader)
         logging.info("validate iter {}".format(all_iters))
 
@@ -279,7 +282,7 @@ def train_supernet(model, device, args, *, bn_process=False, all_iters=None):
     return all_iters
 
 
-def train_subnet(model, device, args, *, bn_process=False, all_iters=None, arch_loader=None):
+def train_subnet(model, base_model, device, args, *, bn_process=False, all_iters=None, arch_loader=None):
     logging.info("start architecture training...")
     assert arch_loader is not None
 
@@ -312,7 +315,7 @@ def train_subnet(model, device, args, *, bn_process=False, all_iters=None, arch_
 
         for ii, arc in enumerate(fair_arc_list):
             # 全部架构
-            output = model(data, arc)
+            output = model(data, arch_loader.convert_list_arc_str(arc))
             loss = loss_function(output, target)
 
             loss.backward()
@@ -325,8 +328,9 @@ def train_subnet(model, device, args, *, bn_process=False, all_iters=None, arch_
 
             if ii % 7 == 0:
                 acc1, acc5 = accuracy(output, target, topk=(1, 5))
+                angle = generate_angle(base_model, model.module, arch_loader.convert_list_arc_str(arc))
                 logging.info(
-                    "epoch: {:4d} \t acc1:{:.4f} \t acc5:{:.4f} \t loss:{:.4f}".format(all_iters, acc1.item(), acc5.item(), loss.item()))
+                    "epoch: {:4d} \t acc1:{:.4f} \t acc5:{:.4f} \t loss:{:.4f} \t angle:{:.3f}".format(all_iters, acc1.item(), acc5.item(), loss.item(), angle.item()))
 
                 writer.add_scalar("Train/Loss", loss.item(),
                                   all_iters * len(train_loader) * args.batch_size+ii)
@@ -334,6 +338,8 @@ def train_subnet(model, device, args, *, bn_process=False, all_iters=None, arch_
                                   all_iters * len(train_loader) * args.batch_size+ii)
                 writer.add_scalar("Train/acc5", acc5.item(),
                                   all_iters * len(train_loader) * args.batch_size+ii)
+                writer.add_scalar("Angle", angle.item(
+                ), all_iters * len(train_loader) * args.batch_size+ii)
 
     # 16 when using Fair sampling strategy
     writer.add_scalar("Accuracy", total_correct /

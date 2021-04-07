@@ -488,7 +488,7 @@ class MutableModel(nn.Module):
         # print(self.tb)
 
 
-def mutableResNet20(num_classes):
+def mutableResNet20(num_classes=100):
     return MutableModel(arc_representation,
                         MutableBlock,
                         [3, 3, 3], num_classes=num_classes)
@@ -497,7 +497,7 @@ def mutableResNet20(num_classes):
 if __name__ == "__main__":
     model = mutableResNet20()
 
-    input = torch.zeros(16, 3, 32, 32)
+    input = torch.zeros(16, 1, 32, 32)
     output = model(input, arc_representation)
 
     # model.apply(model.modify_channel)
@@ -505,5 +505,5 @@ if __name__ == "__main__":
     # for i in model.children():
     #     print(i)
 
-    # print(model)
+    # print(vars(model))
     # print(output.shape)

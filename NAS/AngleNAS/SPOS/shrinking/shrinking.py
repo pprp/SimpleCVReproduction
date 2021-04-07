@@ -123,6 +123,7 @@ def get_random_extend(num, op_flops_dict, extend_operator, vis_dict, ops):
 
 def compute_scores(base_model, model, operations, extend_operators, vis_dict_slice, vis_dict, op_flops_dict):
     candidates = []
+    
     # Randomly sample some architectures which contain current operator
     for idx, extend_operator in enumerate(extend_operators):
         info = vis_dict_slice[extend_operator] # 对应层、对应op所记录的数据结构
@@ -164,8 +165,9 @@ def compute_scores(base_model, model, operations, extend_operators, vis_dict_sli
             vis_dict_slice[extend_operator]['angle'] = vis_dict_slice[extend_operator]['angle'] * 1. / vis_dict_slice[extend_operator]['count']
 
 def drop_operators(extend_operators, vis_dict_slice, operations, iters):
-    # Each operator is ranked according to its score
+    # Each operator is ranked according to its score 
     extend_operators.sort(key=lambda x:vis_dict_slice[x]['angle'], reverse=False)
+
     for idx, cand in enumerate(extend_operators):
         info = vis_dict_slice[cand]
         print('Iter={}, shrinking: top {} cand={}, angle={}, count={}'.format(iters+1, idx+1, cand, info['angle'], info['count']))
