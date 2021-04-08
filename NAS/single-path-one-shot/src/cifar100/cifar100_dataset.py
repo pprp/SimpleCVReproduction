@@ -56,15 +56,15 @@ def get_dataset(cls, cutout_length=0):
 
     if cls == "cifar100":
         dataset_train = CIFAR100(
-            root="./data", train=True, download=True, transform=train_transform)
+            root="/home/stack/dpj/cifar100/data", train=True, download=True, transform=train_transform)
         dataset_valid = CIFAR100(
-            root="./data", train=False, download=True, transform=valid_transform)
+            root="/home/stack/dpj/cifar100/data", train=False, download=True, transform=valid_transform)
     else:
         raise NotImplementedError
     return dataset_train, dataset_valid
 
-dataset_train, dataset_valid = get_dataset("cifar100")
+# dataset_train, dataset_valid = get_dataset("cifar100")
 
-train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=4, shuffle=True, num_workers=2)
+# train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=4, shuffle=True, num_workers=2)
 
-print(len(dataset_train), len(train_loader))
+# print(len(dataset_train), len(train_loader))

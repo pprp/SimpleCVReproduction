@@ -24,15 +24,13 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 def get_args():
     parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot")
-    parser.add_argument('--arch-batch', default=200,
-                        type=int, help="arch batch size")
     parser.add_argument(
         '--path', default="Track1_final_archs.json", help="path for json arch files")
     parser.add_argument('--eval', default=False, action='store_true')
     parser.add_argument('--eval-resume', type=str,
                         default='./snet_detnas.pkl', help='path for eval model')
     parser.add_argument('--batch-size', type=int,
-                        default=10240, help='batch size')
+                        default=163840, help='batch size')
 
     parser.add_argument('--save', type=str, default='./weights',
                         help='path for saving trained weights')
@@ -41,12 +39,6 @@ def get_args():
 
     parser.add_argument('--auto-continue', type=bool,
                         default=True, help='report frequency')
-    parser.add_argument('--display-interval', type=int,
-                        default=20, help='report frequency')
-    parser.add_argument('--val-interval', type=int,
-                        default=10000, help='report frequency')
-    parser.add_argument('--save-interval', type=int,
-                        default=10000, help='report frequency')
 
     parser.add_argument('--train-dir', type=str,
                         default='data/train', help='path to training dataset')
@@ -84,7 +76,7 @@ def main():
 
     val_loader = torch.utils.data.DataLoader(val_dataset,
                                              batch_size=200, shuffle=False,
-                                             num_workers=4, pin_memory=use_gpu)
+                                             num_workers=3, pin_memory=use_gpu)
 
     print('load data successfully')
 
@@ -134,45 +126,63 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
     model.eval()
     model.apply(bn_calibration_init)
 
-    max_val_iters = 25
+    max_val_iters = 0
     t1 = time.time()
 
     result_dict = {}
 
     arch_dict = arch_loader.get_arch_dict()
 
+    base_model = mutableResNet20().cuda()
+
     with torch.no_grad():
         for key, value in arch_dict.items():  # 每一个网络
-            max_val_iters -= 1
+            max_val_iters += 1
             print('\r ', key, ' iter:', max_val_iters, end='')
-            
-            if max_val_iters == 0:
-                break
 
             for data, target in val_dataloader:  # 过一遍数据集
                 target = target.type(torch.LongTensor)
                 data, target = data.to(device), target.to(device)
 
                 output = model(data, value["arch"])
-                loss = loss_function(output, target)
 
                 prec1, prec5 = accuracy(output, target, topk=(1, 5))
+
                 n = data.size(0)
 
-                objs.update(loss.item(), n)
                 top1.update(prec1.item(), n)
                 top5.update(prec5.item(), n)
 
+            print("\t acc1: ", top1.avg)
             tmp_dict = {}
             tmp_dict['arch'] = value['arch']
-            tmp_dict['acc'] = top1.avg 
-            
+            tmp_dict['acc'] = top1.avg
+
             result_dict[key] = tmp_dict
 
-    print('\n', "="*10, "RESULTS", "="*10)
-    for key, value in result_dict.items():
-        print(key, "\t", value)
-    print("="*10, "E N D", "="*10)
+    with open("acc_result.json", "w") as f:
+        json.dump(result_dict, f)
+
+    # angle_result_dict = {}
+
+    # with torch.no_grad():
+    #     for key, value in arch_dict.items():
+    #         angle = generate_angle(base_model, model.module, value["arch"])
+    #         tmp_dict = {}
+    #         tmp_dict['arch'] = value['arch']
+    #         tmp_dict['acc'] = angle.item()
+
+    #         print("angle: ", angle.item())
+
+    #         angle_result_dict[key] = tmp_dict
+
+    # print('\n', "="*10, "RESULTS", "="*10)
+    # for key, value in result_dict.items():
+    #     print(key, "\t", value)
+    # print("="*10, "E N D", "="*10)
+
+    # with open("angle_result.json", "w") as f:
+    #     json.dump(angle_result_dict, f)
 
 
 if __name__ == "__main__":

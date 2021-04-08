@@ -29,7 +29,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 writer = SummaryWriter("./runs/%s-%05d" %
                        (time.strftime("%m-%d", time.localtime()), random.randint(0, 100)))
-# batch size 128 - lr: 0.1 
+# batch size 128 - lr: 0.1
+
 
 def get_args():
     parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot")
@@ -37,13 +38,13 @@ def get_args():
                         help="warmup weight of the whole channels")
     parser.add_argument('--total-iters', default=9000, type=int)
 
-    parser.add_argument('--num_workers', default=12, type=int)
+    parser.add_argument('--num_workers', default=6, type=int)
     parser.add_argument(
         '--path', default="Track1_final_archs.json", help="path for json arch files")
     parser.add_argument('--batch-size', type=int,
                         default=4096, help='batch size')
     parser.add_argument('--learning-rate', type=float,
-                        default=0.1885, help='init learning rate')
+                        default=0.1885, help='init learning rate')  # math.sqrt(4096/128)*0.1/3
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
     parser.add_argument('--weight-decay', type=float,
                         default=4e-5, help='weight decay')
@@ -78,7 +79,7 @@ def main():
     if not os.path.exists('./log'):
         os.mkdir('./log')
     fh = logging.FileHandler(os.path.join(
-        'log/train-{}-{:02}-{:02}-{:.3f}'.format(local_time.tm_year % 2000, local_time.tm_mon, local_time.tm_mday,t)))
+        'log/train-{}-{:02}-{:02}-{:.3f}'.format(local_time.tm_year % 2000, local_time.tm_mon, local_time.tm_mday, t)))
     fh.setFormatter(logging.Formatter(log_format))
     logging.getLogger().addHandler(fh)
 
@@ -162,16 +163,15 @@ def main():
                  arch_loader=arch_loader)
 
     while all_iters < args.total_iters:
+        logging.info("="*50)
         all_iters = train_subnet(model, device, args, bn_process=False,
                                  all_iters=all_iters, arch_loader=arch_loader)
-        logging.info("validate iter {}".format(all_iters))
 
-        if all_iters % 9 == 0:
+        if all_iters % 200 == 0:
+            logging.info("validate iter {}".format(all_iters))
+
             validate(model, device, args, all_iters=all_iters,
                      arch_loader=arch_loader)
-
-    validate(model, device, args, all_iters=all_iters,
-             arch_loader=arch_loader)
 
 
 def adjust_bn_momentum(model, iters):
@@ -179,7 +179,7 @@ def adjust_bn_momentum(model, iters):
         if isinstance(m, nn.BatchNorm2d):
             m.momentum = 1 / iters
         elif isinstance(m, SwitchableBatchNorm2d):
-            m.momentum = 1 / iters 
+            m.momentum = 1 / iters
 
 
 def train_supernet(model, device, args, *, bn_process=False, all_iters=None):
@@ -225,7 +225,7 @@ def train_supernet(model, device, args, *, bn_process=False, all_iters=None):
 
         torch.nn.utils.clip_grad_norm_(model.parameters(), 5)
 
-        if ii % 2 == 0:
+        if ii % 6 == 0:  # 50,000 / bs(4096)=12
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
             logging.info("warmup batch acc1: {:.6f} lr: {:.6f}".format(
                 acc1.item(), scheduler.get_last_lr()[0]))
@@ -239,7 +239,7 @@ def train_supernet(model, device, args, *, bn_process=False, all_iters=None):
 
         optimizer.step()
 
-    writer.add_scalar("Accuracy", total_correct /
+    writer.add_scalar("Accuracy", total_correct / 
                       (len(train_loader)*args.batch_size), all_iters)
 
     writer.add_histogram("first_conv.weight",
@@ -359,7 +359,6 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
     val_loader = args.val_loader
 
     model.eval()
-    max_val_iters = 250
     t1 = time.time()
 
     result_dict = {}
@@ -382,7 +381,7 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
                 top1.update(acc1.item(), n)
                 top5.update(acc5.item(), n)
 
-            if ii % 100:
+            if ii % 5:
                 logging.info(
                     "validate acc:{:.6f} iter:{}".format(top1.avg/100, ii))
                 writer.add_scalar("Val/Loss", loss.item(),

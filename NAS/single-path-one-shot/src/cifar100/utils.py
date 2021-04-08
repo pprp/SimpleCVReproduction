@@ -113,7 +113,7 @@ class ArchLoader():
             tmp_rngs = []
             for _ in range(2):
                 tmp_rngs.extend(random.sample(self.level_config['level2'],
-                                          len(self.level_config['level2'])))
+                                              len(self.level_config['level2'])))
             rngs.append(tmp_rngs)
 
         # level3
@@ -240,11 +240,15 @@ def get_parameters(model):
 
 def bn_calibration_init(m):
     """ calculating post-statistics of batch normalization """
+
+    cumulative_bn_stats = True
+
     if getattr(m, 'track_running_stats', False):
         # reset all values for post-statistics
         m.reset_running_stats()
         # set bn in training mode to update post-statistics
         m.training = True
         # if use cumulative moving average
-        if getattr(FLAGS, 'cumulative_bn_stats', False):
+        # if getattr(FLAGS, 'cumulative_bn_stats', False):
+        if cumulative_bn_stats:
             m.momentum = None
