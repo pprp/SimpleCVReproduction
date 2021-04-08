@@ -108,6 +108,8 @@ def main():
     model = mutableResNet20(num_classes=10)
     base_model = copy.deepcopy(model)
 
+    
+
     logging.info('load model successfully')
 
     optimizer = torch.optim.SGD(get_parameters(model),

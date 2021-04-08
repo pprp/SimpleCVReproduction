@@ -30,8 +30,8 @@ class Cutout(object):
         return img
 
 def get_dataset(cls, cutout_length=0):
-    MEAN = [0.5070751592371323, 0.48654887331495095, 0.4409178433670343]
-    STD = [0.2673342858792401, 0.2564384629170883, 0.27615047132568404]
+    MEAN = [0.5071, 0.4865, 0.4409]
+    STD = [0.1942, 0.1918, 0.1958]
     transf = [
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),

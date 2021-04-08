@@ -488,7 +488,7 @@ class MutableModel(nn.Module):
         # print(self.tb)
 
 
-def mutableResNet20(num_classes=100):
+def mutableResNet20(num_classes=10):
     return MutableModel(arc_representation,
                         MutableBlock,
                         [3, 3, 3], num_classes=num_classes)

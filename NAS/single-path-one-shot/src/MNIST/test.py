@@ -14,7 +14,9 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from PIL import Image
 
-from cifar100_dataset import get_dataset
+from angle import generate_angle
+
+# from cifar100_dataset import get_dataset
 from slimmable_resnet20 import mutableResNet20
 from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
                    get_lastest_model, get_parameters, save_checkpoint, bn_calibration_init)
@@ -80,15 +82,17 @@ def main():
     if torch.cuda.is_available():
         use_gpu = True
 
-    _, val_dataset = get_dataset('cifar100')
-
-    val_loader = torch.utils.data.DataLoader(val_dataset,
-                                             batch_size=200, shuffle=False,
-                                             num_workers=4, pin_memory=use_gpu)
+    val_loader = torch.utils.data.DataLoader(
+        datasets.MNIST(root="./data", train=False, transform=transforms.Compose([
+            transforms.Resize(32),
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])),
+        batch_size=args.batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
     print('load data successfully')
 
-    model = mutableResNet20()
+    model = mutableResNet20(10)
 
     criterion_smooth = CrossEntropyLabelSmooth(1000, 0.1)
 
@@ -132,47 +136,65 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
     val_dataloader = args.val_dataloader
 
     model.eval()
-    model.apply(bn_calibration_init)
+    # model.apply(bn_calibration_init)
 
-    max_val_iters = 25
+    max_val_iters = 0
     t1 = time.time()
 
     result_dict = {}
 
     arch_dict = arch_loader.get_arch_dict()
 
+    base_model = mutableResNet20(10).cuda() 
+
     with torch.no_grad():
         for key, value in arch_dict.items():  # 每一个网络
-            max_val_iters -= 1
-            print('\r ', key, ' iter:', max_val_iters, end='')
-            
-            if max_val_iters == 0:
-                break
+            max_val_iters += 1
+            # print('\r ', key, ' iter:', max_val_iters, end='')
 
             for data, target in val_dataloader:  # 过一遍数据集
                 target = target.type(torch.LongTensor)
                 data, target = data.to(device), target.to(device)
 
                 output = model(data, value["arch"])
-                loss = loss_function(output, target)
 
                 prec1, prec5 = accuracy(output, target, topk=(1, 5))
-                n = data.size(0)
 
-                objs.update(loss.item(), n)
+                print("acc1: ", prec1.item())
+                n = data.size(0)               
+
                 top1.update(prec1.item(), n)
                 top5.update(prec5.item(), n)
 
             tmp_dict = {}
             tmp_dict['arch'] = value['arch']
-            tmp_dict['acc'] = top1.avg 
-            
-            result_dict[key] = tmp_dict
+            tmp_dict['acc'] = top1.avg
 
-    print('\n', "="*10, "RESULTS", "="*10)
-    for key, value in result_dict.items():
-        print(key, "\t", value)
-    print("="*10, "E N D", "="*10)
+            result_dict[key] = tmp_dict
+    
+    with open("acc_result.json","w") as f:
+        json.dump(result_dict, f)
+
+    # angle_result_dict = {}
+
+    # with torch.no_grad():
+    #     for key, value in arch_dict.items():
+    #         angle = generate_angle(base_model, model.module, value["arch"])
+    #         tmp_dict = {}
+    #         tmp_dict['arch'] = value['arch']
+    #         tmp_dict['acc'] = angle.item()
+
+    #         print("angle: ", angle.item())
+
+    #         angle_result_dict[key] = tmp_dict
+
+    # print('\n', "="*10, "RESULTS", "="*10)
+    # for key, value in result_dict.items():
+    #     print(key, "\t", value)
+    # print("="*10, "E N D", "="*10)
+
+    # with open("angle_result.json", "w") as f:
+    #     json.dump(angle_result_dict, f)
 
 
 if __name__ == "__main__":
