@@ -19,7 +19,7 @@ from slimmable_resnet20 import mutableResNet20
 from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
                    get_lastest_model, get_parameters, save_checkpoint, bn_calibration_init)
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
 
 
 def get_args():

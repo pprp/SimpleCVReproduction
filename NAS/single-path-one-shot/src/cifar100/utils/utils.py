@@ -11,6 +11,19 @@ def get_num_correct(preds, labels):
     return preds.argmax(dim=1).eq(labels).sum().item()
 
 
+class DataIterator(object):
+
+    def __init__(self, dataloader):
+        self.dataloader = dataloader
+        self.iterator = enumerate(self.dataloader)
+
+    def next(self):
+        try:
+            _, data = next(self.iterator)
+        except Exception:
+            self.iterator = enumerate(self.dataloader)
+            _, data = next(self.iterator)
+        return data[0], data[1]
 class ArchLoader():
     '''
     load arch from json file
@@ -123,27 +136,7 @@ class ArchLoader():
             rngs.append(random.sample(self.level_config['level3'],
                                       len(self.level_config['level3'])))
         return np.transpose(rngs)
-# arch_loader = ArchLoader("Track1_final_archs.json")
 
-
-# print(arch_loader.generate_fair_batch())
-# arc_dc = arch_loader.get_random_batch(1000)
-
-# fb = arch_loader.generate_fair_batch()
-
-# for arc_list in fb:
-#     arch_loader.convert_list_arc_str(arc_list)
-
-# for i, arc in enumerate(arc_dc):
-#     print(i, arc)
-
-
-# cnt = 0
-# for i,ac in enumerate(arch_loader):
-#     print(i,ac)
-#     cnt += 1
-
-# print(cnt)
 
 class CrossEntropyLabelSmooth(nn.Module):
 
