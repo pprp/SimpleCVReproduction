@@ -107,7 +107,7 @@ for ii in range(300):
     resnet20 = ResNet20(100, channel_list)
     model = paddle.Model(resnet20)
 
-    MAX_EPOCH = 300
+    MAX_EPOCH = 1
     LR = 0.1
     WEIGHT_DECAY = 5e-4
     MOMENTUM = 0.9
@@ -150,13 +150,15 @@ for ii in range(300):
         verbose=1,
         callbacks=callbacks,
     )
-    result = model.evaluate(test_set, batch_size=64)
-    print(ii, '\t', channel_list, '\t', result['acc'])
+    result = model.evaluate(test_set, batch_size=64, verbose=0)
+    print(ii, '\t', channel_list, '\t', result['acc_top1'])
 
     json_result["arch%d" % ii] = {
         "arc": channel_list,
-        "acc": result["acc"]
+        "acc": result["acc_top1"]
     }
+
+    print(result)
 
     json.dump(json_result, f)
 
