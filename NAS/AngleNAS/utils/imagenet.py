@@ -176,7 +176,7 @@ def get_train_dataloader(train_dir, batch_size, local_rank=None, total_iters=Non
         ])
     )
 
-    if not shuffle:
+    if not shuffle: # TODO 
         datasampler = Random_Batch_Sampler(
             train_dataset, batch_size=batch_size,
             total_iters=total_iters, rank=local_rank)
