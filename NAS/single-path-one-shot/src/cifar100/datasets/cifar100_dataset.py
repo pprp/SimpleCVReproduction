@@ -105,3 +105,4 @@ def get_val_loader(batch_size, num_workers):
         dataset_val, batch_size=batch_size, shuffle=False,
         num_workers=num_workers, pin_memory=True
     )
+    return val_loader

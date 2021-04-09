@@ -24,6 +24,7 @@ class DataIterator(object):
             self.iterator = enumerate(self.dataloader)
             _, data = next(self.iterator)
         return data[0], data[1]
+        
 class ArchLoader():
     '''
     load arch from json file
