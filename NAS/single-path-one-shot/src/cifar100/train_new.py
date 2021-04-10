@@ -16,9 +16,9 @@ import torchvision.transforms as transforms
 
 from PIL import Image
 
-from cifar100_dataset import get_dataset
-from slimmable_resnet20 import max_arc_rep, mutableResNet20, SwitchableBatchNorm2d
-from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
+from datasets.cifar100_dataset import get_dataset
+from model.slimmable_resnet20 import max_arc_rep, mutableResNet20, SwitchableBatchNorm2d
+from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
                    get_lastest_model, get_parameters, save_checkpoint, get_num_correct)
 
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
@@ -40,7 +40,7 @@ def get_args():
 
     parser.add_argument('--num_workers', default=3, type=int)
     parser.add_argument(
-        '--path', default="Track1_final_archs.json", help="path for json arch files")
+        '--path', default="data/Track1_final_archs.json", help="path for json arch files")
     parser.add_argument('--batch-size', type=int,
                         default=16384, help='batch size')
     parser.add_argument('--learning-rate', type=float,
