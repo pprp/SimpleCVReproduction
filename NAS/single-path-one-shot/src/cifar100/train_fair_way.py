@@ -16,12 +16,13 @@ import torch.optim as optim
 from torch import nn
 from torch.autograd import Variable
 from torch.optim import lr_scheduler
+from torch.utils.tensorboard import SummaryWriter
 
-from models.slimmable_resnet20 import mutableResNet20
 from datasets.cifar100_dataset import get_train_loader, get_val_loader
-
+from model.slimmable_resnet20 import mutableResNet20
 from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
-                         bn_calibration_init, DataIterator, save_checkpoint, ArchLoader, accuracy)
+                         DataIterator, accuracy, bn_calibration_init,
+                         reduce_tensor, save_checkpoint)
 
 print = functools.partial(print, flush=True)
 
@@ -31,11 +32,11 @@ CIFAR100_TEST_SET_SIZE = 10000
 parser = argparse.ArgumentParser("ImageNet")
 parser.add_argument('--local_rank', type=int, default=None,
                     help='local rank for distributed training')
-parser.add_argument('--batch_size', type=int, default=10240, help='batch size')
+parser.add_argument('--batch_size', type=int, default=16384, help='batch size')
 parser.add_argument('--learning_rate', type=float,
                     default=0.894, help='init learning rate')
 parser.add_argument('--num_workers', type=int,
-                    default=3, help='num of workers')
+                    default=6, help='num of workers')
 
 # hyper parameter
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
@@ -43,9 +44,9 @@ parser.add_argument('--weight_decay', type=float,
                     default=4e-5, help='weight decay')
 
 parser.add_argument('--report_freq', type=float,
-                    default=3, help='report frequency')
+                    default=100, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
-parser.add_argument('--epochs', type=int, default=100,
+parser.add_argument('--epochs', type=int, default=300,
                     help='num of training epochs')
 parser.add_argument('--total_iters', type=int,
                     default=300000, help='total iters')
@@ -60,7 +61,10 @@ parser.add_argument('--label_smooth', type=float,
 args = parser.parse_args()
 
 per_epoch_iters = CIFAR100_TRAINING_SET_SIZE // args.batch_size
-val_iters = CIFAR100_TEST_SET_SIZE // args.batch_size
+val_iters = CIFAR100_TEST_SET_SIZE // 200
+
+writer = SummaryWriter("./runs/%s-%05d" %
+                       (time.strftime("%m-%d", time.localtime()), random.randint(0, 100)))
 
 
 def main():
@@ -116,7 +120,7 @@ def main():
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
 
-    args.total_iters = args.epochs * per_epoch_iters // 16  # 16 代表是每个子网的个数
+    args.total_iters = args.epochs * per_epoch_iters  # // 16  # 16 代表是每个子网的个数
 
     scheduler = torch.optim.lr_scheduler.LambdaLR(
         optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
@@ -133,12 +137,7 @@ def main():
     train(train_dataprovider, val_dataprovider, optimizer, scheduler,
           model, archloader, criterion_smooth, args, val_iters, args.seed)
 
-    # if args.local_rank == 0:
-    #     now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
-    #     save_checkpoint({
-    #         'topk': topk,
-    #         'state_dict': model.state_dict(),
-    #     }, config.checkpoint_cache)
+
 
 
 def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, archloader, criterion, args, val_iters, seed):
@@ -149,7 +148,7 @@ def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, arc
 
     for step in range(args.total_iters):
         model.train()
-        t0 = time.time()
+        t0 = time.time()  
         image, target = train_dataprovider.next()
         datatime = time.time() - t0
         n = image.size(0)
@@ -170,6 +169,7 @@ def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, arc
         for ii, arc in enumerate(fair_arc_list):
             logits = model(image, archloader.convert_list_arc_str(arc))
             loss = criterion(logits, target)
+            loss_reduce = reduce_tensor(loss, 0, args.world_size)
             loss.backward()
 
         # for rng in rngs:
@@ -182,7 +182,7 @@ def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, arc
         scheduler.step()
 
         prec1, _ = accuracy(logits, target, topk=(1, 5))
-        objs.update(loss.data.item(), n)
+        objs.update(loss_reduce.data.item(), n)
         top1.update(prec1.data.item(), n)
 
         if step % args.report_freq == 0 and args.local_rank == 0:
@@ -191,17 +191,26 @@ def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, arc
             print('{} |=> train: {} / {}, lr={}, loss={:.2f}, acc={:.2f}, datatime={:.2f}, seed={}'
                   .format(now, step, args.total_iters, scheduler.get_lr()[0], objs.avg, top1.avg, float(datatime), seed))
 
-    if args.local_rank == 0:
-        now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
-        print('{} |=> Test rng = {}'.format(now, fair_arc_list[0]))
-        infer(val_dataprovider, model.module,
-              criterion, fair_arc_list, val_iters, archloader)
+        if args.local_rank == 0 and step % 5 == 0:
+            writer.add_scalar("Train/loss", objs.avg, step)
+            writer.add_scalar("Train/acc1", top1.avg, step)
+
+        if args.local_rank == 0 and step % args.report_freq == 0:
+            top1_val, objs_val = infer(val_dataprovider, model.module, criterion,
+                               fair_arc_list, val_iters, archloader)
+            writer.add_scalar("Val/loss", objs_val, step)
+            writer.add_scalar("Val/acc1", top1_val, step)
+        
+            save_checkpoint({'state_dict': model.state_dict(),}, step)
 
 
 def infer(val_dataprovider, model, criterion, fair_arc_list, val_iters, archloader):
     objs = AvgrageMeter()
     top1 = AvgrageMeter()
     model.eval()
+    now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+    print('{} |=> Test rng = {}'.format(now, fair_arc_list[0]))
+
     with torch.no_grad():
         for step in range(val_iters):
             t0 = time.time()
@@ -218,9 +227,10 @@ def infer(val_dataprovider, model, criterion, fair_arc_list, val_iters, archload
             objs.update(loss.data.item(), n)
             top1.update(prec1.data.item(), n)
 
-            now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
-            print('{} |=> valid: step={}, loss={:.2f}, acc={:.2f}, datatime={:.2f}'.format(
-                now, step, objs.avg, top1.avg, datatime))
+        now = time.strftime('%Y-%m-%d %H:%M:%S',
+                            time.localtime(time.time()))
+        print('{} |=> valid: step={}, loss={:.2f}, acc={:.2f}, datatime={:.2f}'.format(
+            now, step, objs.avg, top1.avg, datatime))
 
     return top1.avg, objs.avg
 

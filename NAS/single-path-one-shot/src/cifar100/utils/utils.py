@@ -9,7 +9,12 @@ import numpy as np
 
 def get_num_correct(preds, labels):
     return preds.argmax(dim=1).eq(labels).sum().item()
-
+    
+def reduce_tensor(tensor, device=0, world_size=1):
+    tensor = tensor.clone()
+    torch.distributed.reduce(tensor, device)
+    tensor.div_(world_size)
+    return tensor
 
 class DataIterator(object):
 
@@ -24,7 +29,7 @@ class DataIterator(object):
             self.iterator = enumerate(self.dataloader)
             _, data = next(self.iterator)
         return data[0], data[1]
-        
+
 class ArchLoader():
     '''
     load arch from json file

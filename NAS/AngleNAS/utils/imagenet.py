@@ -167,12 +167,14 @@ def get_train_dataloader(train_dir, batch_size, local_rank=None, total_iters=Non
     ])
     eigval = np.array([0.2175, 0.0188, 0.0045])
 
+    print('='*100)
+
     train_dataset = datasets.ImageFolder(train_dir,
         transforms.Compose([
             RandomResizedCrop(target_size=224, scale=(0.08, 1.0)),
             LighteningJitter(eigen_vecs=eigvec[::-1,:], eigen_values=eigval, max_eigen_jitter=0.1),
             transforms.RandomHorizontalFlip(0.5),
-            ToBGRTensor(),
+            ToBGRTensor()
         ])
     )
 

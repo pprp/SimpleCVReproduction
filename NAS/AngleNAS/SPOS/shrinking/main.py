@@ -49,7 +49,7 @@ parser.add_argument('--grad_clip', type=float,
 parser.add_argument('--label_smooth', type=float,
                     default=0.1, help='label smoothing')
 parser.add_argument('--train_dir', type=str,
-                    default='../../data/train', help='path to training dataset')
+                    default='/media/niu/niu_g/data/imagenet/train', help='path to training dataset')
 parser.add_argument('--operations_path', type=str,
                     default='./shrunk_search_space.pt', help='shrunk search space')
 args = parser.parse_args()

@@ -8,24 +8,29 @@ import nvidia.dali.types as types
 import torch.utils.data
 from nvidia.dali.pipeline import Pipeline
 from nvidia.dali.plugin.pytorch import DALIClassificationIterator
+import multiprocessing as mp
 
+mp.set_start_method('spawn')
 
 class HybridTrainPipe(Pipeline):
     def __init__(self, batch_size, num_threads, device_id, data_dir, crop, seed=12, local_rank=0, world_size=1,
                  spos_pre=False):
-        super(HybridTrainPipe, self).__init__(batch_size, num_threads, device_id, seed=seed + device_id)
+        super(HybridTrainPipe, self).__init__(batch_size,
+                                              num_threads, device_id, seed=seed + device_id)
         color_space_type = types.BGR if spos_pre else types.RGB
-        self.input = ops.FileReader(file_root=data_dir, shard_id=local_rank, num_shards=world_size, random_shuffle=True)
-        self.decode = ops.ImageDecoder(device="mixed", output_type=color_space_type)
+        self.input = ops.FileReader(
+            file_root=data_dir, shard_id=local_rank, num_shards=world_size, random_shuffle=True)
+        self.decode = ops.ImageDecoder(
+            device="mixed", output_type=color_space_type)
         self.res = ops.RandomResizedCrop(device="gpu", size=crop,
                                          interp_type=types.INTERP_LINEAR if spos_pre else types.INTERP_TRIANGULAR)
         self.twist = ops.ColorTwist(device="gpu")
         self.jitter_rng = ops.Uniform(range=[0.6, 1.4])
         self.cmnp = ops.CropMirrorNormalize(device="gpu",
-                                            output_dtype=types.FLOAT,
+                                            dtype=types.FLOAT,
                                             output_layout=types.NCHW,
-                                            image_type=color_space_type,
-                                            mean=0. if spos_pre else [0.485 * 255, 0.456 * 255, 0.406 * 255],
+                                            mean=0. if spos_pre else [
+                                                0.485 * 255, 0.456 * 255, 0.406 * 255],
                                             std=1. if spos_pre else [0.229 * 255, 0.224 * 255, 0.225 * 255])
         self.coin = ops.CoinFlip(probability=0.5)
 
@@ -43,19 +48,21 @@ class HybridTrainPipe(Pipeline):
 class HybridValPipe(Pipeline):
     def __init__(self, batch_size, num_threads, device_id, data_dir, crop, size, seed=12, local_rank=0, world_size=1,
                  spos_pre=False, shuffle=False):
-        super(HybridValPipe, self).__init__(batch_size, num_threads, device_id, seed=seed + device_id)
+        super(HybridValPipe, self).__init__(batch_size,
+                                            num_threads, device_id, seed=seed + device_id)
         color_space_type = types.BGR if spos_pre else types.RGB
         self.input = ops.FileReader(file_root=data_dir, shard_id=local_rank, num_shards=world_size,
                                     random_shuffle=shuffle)
-        self.decode = ops.ImageDecoder(device="mixed", output_type=color_space_type)
+        self.decode = ops.ImageDecoder(
+            device="mixed", output_type=color_space_type)
         self.res = ops.Resize(device="gpu", resize_shorter=size,
                               interp_type=types.INTERP_LINEAR if spos_pre else types.INTERP_TRIANGULAR)
         self.cmnp = ops.CropMirrorNormalize(device="gpu",
-                                            output_dtype=types.FLOAT,
+                                            dtype=types.FLOAT,
                                             output_layout=types.NCHW,
                                             crop=(crop, crop),
-                                            image_type=color_space_type,
-                                            mean=0. if spos_pre else [0.485 * 255, 0.456 * 255, 0.406 * 255],
+                                            mean=0. if spos_pre else [
+                                                0.485 * 255, 0.456 * 255, 0.406 * 255],
                                             std=1. if spos_pre else [0.229 * 255, 0.224 * 255, 0.225 * 255])
 
     def define_graph(self):
@@ -93,6 +100,7 @@ def get_imagenet_iter_dali(split, image_dir, batch_size, num_threads, crop=224, 
                                    crop=crop, world_size=world_size, local_rank=local_rank,
                                    spos_pre=spos_preprocessing)
     elif split == "val":
+        mp.set_start_method('spawn')
         pipeline = HybridValPipe(batch_size=batch_size, num_threads=num_threads, device_id=device_id,
                                  data_dir=os.path.join(image_dir, "val"), seed=seed,
                                  crop=crop, size=val_size, world_size=world_size, local_rank=local_rank,
