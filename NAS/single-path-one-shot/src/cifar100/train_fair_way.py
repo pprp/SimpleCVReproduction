@@ -46,7 +46,7 @@ parser.add_argument('--weight_decay', type=float,
 parser.add_argument('--report_freq', type=float,
                     default=100, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
-parser.add_argument('--epochs', type=int, default=300,
+parser.add_argument('--epochs', type=int, default=30000,
                     help='num of training epochs')
 parser.add_argument('--total_iters', type=int,
                     default=300000, help='total iters')
@@ -63,15 +63,14 @@ args = parser.parse_args()
 per_epoch_iters = CIFAR100_TRAINING_SET_SIZE // args.batch_size
 val_iters = CIFAR100_TEST_SET_SIZE // 200
 
-writer = SummaryWriter("./runs/%s-%05d" %
-                       (time.strftime("%m-%d", time.localtime()), random.randint(0, 100)))
-
 
 def main():
+    
     if not torch.cuda.is_available():
         print('no gpu device available')
         sys.exit(1)
 
+    writer = None
     num_gpus = torch.cuda.device_count()
     np.random.seed(args.seed)
     args.gpu = args.local_rank % num_gpus
@@ -124,6 +123,10 @@ def main():
 
     scheduler = torch.optim.lr_scheduler.LambdaLR(
         optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
+    
+    if args.local_rank == 0:
+        writer = SummaryWriter("./runs/%s-%05d" %
+                       (time.strftime("%m-%d", time.localtime()), random.randint(0, 100)))
 
     # Prepare data
     train_loader = get_train_loader(
@@ -135,12 +138,12 @@ def main():
     archloader = ArchLoader("data/Track1_final_archs.json")
 
     train(train_dataprovider, val_dataprovider, optimizer, scheduler,
-          model, archloader, criterion_smooth, args, val_iters, args.seed)
+          model, archloader, criterion_smooth, args, val_iters, args.seed, writer)
 
 
 
 
-def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, archloader, criterion, args, val_iters, seed):
+def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, archloader, criterion, args, val_iters, seed, writer=None):
     objs, top1 = AvgrageMeter(), AvgrageMeter()
 
     for p in model.parameters():
@@ -157,13 +160,6 @@ def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, arc
         target = Variable(target, requires_grad=False).cuda(args.gpu)
 
         # Fair Sampling
-        # rngs = []
-        # for i in range(len(operations)):  # 21个layer
-        #     seed += 1
-        #     random.seed(seed)
-        #     rngs.append(random.sample(operations[i], len(operations[i])))
-        # rngs = np.transpose(rngs)
-
         fair_arc_list = archloader.generate_niu_fair_batch()
 
         for ii, arc in enumerate(fair_arc_list):
@@ -171,11 +167,6 @@ def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, arc
             loss = criterion(logits, target)
             loss_reduce = reduce_tensor(loss, 0, args.world_size)
             loss.backward()
-
-        # for rng in rngs:
-        #     logits = model(image, rng)
-        #     loss = criterion(logits, target)
-        #     loss.backward()
 
         nn.utils.clip_grad_value_(model.parameters(), args.grad_clip)
         optimizer.step()
@@ -191,15 +182,17 @@ def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, arc
             print('{} |=> train: {} / {}, lr={}, loss={:.2f}, acc={:.2f}, datatime={:.2f}, seed={}'
                   .format(now, step, args.total_iters, scheduler.get_lr()[0], objs.avg, top1.avg, float(datatime), seed))
 
-        if args.local_rank == 0 and step % 5 == 0:
+        if args.local_rank == 0 and step % 5 == 0 and writer is not None:
             writer.add_scalar("Train/loss", objs.avg, step)
             writer.add_scalar("Train/acc1", top1.avg, step)
 
         if args.local_rank == 0 and step % args.report_freq == 0:
             top1_val, objs_val = infer(val_dataprovider, model.module, criterion,
                                fair_arc_list, val_iters, archloader)
-            writer.add_scalar("Val/loss", objs_val, step)
-            writer.add_scalar("Val/acc1", top1_val, step)
+            
+            if writer is not None:
+                writer.add_scalar("Val/loss", objs_val, step)
+                writer.add_scalar("Val/acc1", top1_val, step)
         
             save_checkpoint({'state_dict': model.state_dict(),}, step)
 
