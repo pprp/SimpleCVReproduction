@@ -30,6 +30,7 @@ CIFAR100_TRAINING_SET_SIZE = 50000
 CIFAR100_TEST_SET_SIZE = 10000
 
 parser = argparse.ArgumentParser("ImageNet")
+parser.add_argument('--proxy', type=float, default=0.5, help='smaller dataset ')
 parser.add_argument('--local_rank', type=int, default=None,
                     help='local rank for distributed training')
 parser.add_argument('--batch_size', type=int, default=16384, help='batch size')
@@ -123,6 +124,8 @@ def main():
 
     scheduler = torch.optim.lr_scheduler.LambdaLR(
         optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
+
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=5)
     
     if args.local_rank == 0:
         writer = SummaryWriter("./runs/%s-%05d" %
@@ -130,16 +133,18 @@ def main():
 
     # Prepare data
     train_loader = get_train_loader(
-        args.batch_size, args.local_rank, args.num_workers, args.total_iters)
+        args.batch_size, args.local_rank, args.num_workers, args.total_iters, args.proxy)
     train_dataprovider = DataIterator(train_loader)
-    val_loader = get_val_loader(args.batch_size, args.num_workers)
+    val_loader = get_val_loader(args.batch_size, args.num_workers, args.proxy)
     val_dataprovider = DataIterator(val_loader)
 
     archloader = ArchLoader("data/Track1_final_archs.json")
 
-    train(train_dataprovider, val_dataprovider, optimizer, scheduler,
+    # niu 实验 将验证集替换为训练集， 加速
+    train(train_dataprovider, train_dataprovider, optimizer, scheduler,
           model, archloader, criterion_smooth, args, val_iters, args.seed, writer)
-
+    # train(train_dataprovider, val_dataprovider, optimizer, scheduler,
+    #       model, archloader, criterion_smooth, args, val_iters, args.seed, writer)
 
 
 

@@ -26,6 +26,7 @@ parser.add_argument('--phase', type=int, default=1, choices=[1, 2])
 parser.add_argument('--resume', action='store_true')
 
 args = parser.parse_args()
+
 if args.task == 'kernel':
     args.path = 'exp/normal2kernel'
     args.dynamic_batch_size = 1

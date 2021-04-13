@@ -34,6 +34,7 @@ class FLOPsTable:
 		layer.eval()
 		rm_bn_from_net(layer)
 		network = layer.to(self.device)
+		
 		torch.cuda.synchronize()
 		for i in range(warmup_steps):
 			network(inputs)

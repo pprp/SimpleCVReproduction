@@ -7,6 +7,7 @@ from torchvision import transforms
 from torchvision.datasets import CIFAR100
 import random
 from torch.utils.data import Sampler
+import torch.distributed as dist
 
 
 class Cutout(object):
@@ -62,6 +63,37 @@ def get_dataset(cls, cutout_length=0):
     return dataset_train, dataset_valid
 
 
+def get_train_dataset(cutout_length=0):
+    MEAN = [0.5071, 0.4865, 0.4409]
+    STD = [0.1942, 0.1918, 0.1958]
+
+    train_transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomResizedCrop((32, 32)),
+        transforms.ColorJitter(0.2, 0.2, 0.2, 0.2),
+        transforms.ToTensor(),
+        transforms.Normalize(MEAN, STD)
+    ])
+
+    dataset_train = CIFAR100(
+        root="/home/stack/dpj/cifar100/data", train=True, download=True, transform=train_transform)
+
+    return dataset_train
+
+
+def get_val_dataset(cutout_length=0):
+    MEAN = [0.5071, 0.4865, 0.4409]
+    STD = [0.1942, 0.1918, 0.1958]
+    valid_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(MEAN, STD)
+    ])
+
+    dataset_valid = CIFAR100(
+        root="./data", train=False, download=True, transform=valid_transform)
+    return dataset_valid
+
+
 class Random_Batch_Sampler(Sampler):
 
     def __init__(self, dataset, batch_size, total_iters, rank=None):
@@ -88,8 +120,15 @@ class Random_Batch_Sampler(Sampler):
         return self.total_iters
 
 
-def get_train_loader(batch_size, local_rank, num_workers, total_iters):
-    dataset_train, _ = get_dataset('cifar100')
+def get_train_loader(batch_size, local_rank, num_workers, total_iters, proxy):
+    dataset_train = get_train_dataset()
+
+    if proxy is not None:
+        # 选择其中一部分 0.5
+        choice = int(len(dataset_train.data)*proxy)
+        np.random.shuffle(dataset_train.data)
+        dataset_train.data = dataset_train.data[:choice]
+
     datasampler = Random_Batch_Sampler(
         dataset_train, batch_size=batch_size, total_iters=total_iters, rank=local_rank
     )
@@ -99,10 +138,26 @@ def get_train_loader(batch_size, local_rank, num_workers, total_iters):
     return train_loader
 
 
-def get_val_loader(batch_size, num_workers):
-    _, dataset_val = get_dataset('cifar100')
+def get_val_loader(batch_size, num_workers, proxy):
+    dataset_val = get_val_dataset()
+
+    if proxy is not None:
+        choice = int(len(dataset_val.data)*proxy)
+        np.random.shuffle(dataset_val.data)
+        dataset_val.data = dataset_val.data[:choice]
+
     val_loader = torch.utils.data.DataLoader(
         dataset_val, batch_size=batch_size, shuffle=False,
         num_workers=num_workers, pin_memory=True
     )
     return val_loader
+
+
+if __name__ == "__main__":
+    dataset_train = get_val_dataset()
+
+    dataset_train.data = dataset_train.data[:8000]
+
+    print(len(dataset_train.data))
+
+    print(len(dataset_train))
