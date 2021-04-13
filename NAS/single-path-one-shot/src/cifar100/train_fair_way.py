@@ -62,8 +62,13 @@ parser.add_argument('--label_smooth', type=float,
                     default=0.1, help='label smoothing')
 args = parser.parse_args()
 
+if args.proxy > 0:
+    CIFAR100_TRAINING_SET_SIZE = int(CIFAR100_TRAINING_SET_SIZE * args.proxy)
+    CIFAR100_TEST_SET_SIZE = int(CIFAR100_TEST_SET_SIZE * args.proxy)
+
+
 per_epoch_iters = CIFAR100_TRAINING_SET_SIZE // args.batch_size
-val_iters = CIFAR100_TEST_SET_SIZE // 500
+val_iters = CIFAR100_TEST_SET_SIZE // 2000
 
 
 def main():
@@ -101,27 +106,28 @@ def main():
     model = torch.nn.parallel.DistributedDataParallel(
         model, device_ids=[args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
 
-    # all_parameters = model.parameters()
-    # weight_parameters = []
-    # for pname, p in model.named_parameters():
-    #     if p.ndimension() == 4 or 'classifier.0.weight' in pname or 'classifier.0.bias' in pname:
-    #         weight_parameters.append(p)
-    # weight_parameters_id = list(map(id, weight_parameters))
-    # other_parameters = list(
-    #     filter(lambda p: id(p) not in weight_parameters_id, all_parameters))
-    # optimizer = torch.optim.SGD(
-    #     [{'params': other_parameters},
-    #      {'params': weight_parameters, 'weight_decay': args.weight_decay}],
-    #     args.learning_rate,
-    #     momentum=args.momentum,
-    # )
+    all_parameters = model.parameters()
+    weight_parameters = []
+    for pname, p in model.named_parameters():
+        if p.ndimension() == 4 or 'classifier.0.weight' in pname or 'classifier.0.bias' in pname:
+            weight_parameters.append(p)
+    weight_parameters_id = list(map(id, weight_parameters))
+    other_parameters = list(
+        filter(lambda p: id(p) not in weight_parameters_id, all_parameters))
+    optimizer = torch.optim.SGD(
+        [{'params': other_parameters},
+         {'params': weight_parameters, 'weight_decay': args.weight_decay}],
+        args.learning_rate,
+        momentum=args.momentum,
+    )
 
-    optimizer = torch.optim.SGD(model.parameters(),
-                                lr=args.learning_rate,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
+    # optimizer = torch.optim.SGD(model.parameters(),
+    #                             lr=args.learning_rate,
+    #                             momentum=args.momentum,
+    #                             weight_decay=args.weight_decay)
 
-    args.total_iters = args.epochs * per_epoch_iters  # // 16  # 16 代表是每个子网的个数
+    # // 16  # 16 代表是每个子网的个数
+    args.total_iters = args.epochs * per_epoch_iters
 
     scheduler = torch.optim.lr_scheduler.LambdaLR(
         optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
@@ -136,8 +142,9 @@ def main():
     train_loader = get_train_loader(
         args.batch_size, args.local_rank, args.num_workers, args.total_iters, args.proxy)
     train_dataprovider = DataIterator(train_loader)
-    val_loader = get_val_loader(args.batch_size, args.num_workers, args.proxy)
-    val_dataprovider = DataIterator(val_loader)
+    # 原来跟train batch size一样，现在修改小一点 ， 同时修改val_iters
+    # val_loader = get_val_loader(2000, args.num_workers, args.proxy)
+    # val_dataprovider = DataIterator(val_loader)
 
     archloader = ArchLoader("data/Track1_final_archs.json")
 
@@ -217,14 +224,21 @@ def infer(val_dataprovider, model, criterion, fair_arc_list, val_iters, archload
             image = Variable(image, requires_grad=False).cuda()
             target = Variable(target, requires_grad=False).cuda()
 
-            for arc in fair_arc_list:
-                logits = model(image, archloader.convert_list_arc_str(arc))
-                loss = criterion(logits, target)
-                prec1, _ = accuracy(logits, target, topk=(1, 5))
-                n = image.size(0)
-                objs.update(loss.data.item(), n)
-                top1.update(prec1.data.item(), n)
+            logits = model(
+                image, archloader.convert_list_arc_str(fair_arc_list[-1]))
+            loss = criterion(logits, target)
+            prec1, _ = accuracy(logits, target, topk=(1, 5))
+            n = image.size(0)
+            objs.update(loss.data.item(), n)
+            top1.update(prec1.data.item(), n)
 
+            # for arc in fair_arc_list:
+            #     logits = model(image, archloader.convert_list_arc_str(arc))
+            #     loss = criterion(logits, target)
+            #     prec1, _ = accuracy(logits, target, topk=(1, 5))
+            #     n = image.size(0)
+            #     objs.update(loss.data.item(), n)
+            #     top1.update(prec1.data.item(), n)
         now = time.strftime('%Y-%m-%d %H:%M:%S',
                             time.localtime(time.time()))
         print('{} |=> valid: step={}, loss={:.2f}, acc={:.2f}, datatime={:.2f}'.format(

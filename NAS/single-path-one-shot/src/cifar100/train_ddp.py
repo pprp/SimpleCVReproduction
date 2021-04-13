@@ -130,7 +130,7 @@ def main():
         # model = nn.DataParallel(model)
         model = model.cuda(args.gpu)
         model = nn.parallel.DistributedDataParallel(
-            model, device_ids=[args.local_rank], output_device=args.local_rank,find_unused_parameters=True)
+            model, device_ids=[args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
         loss_function = criterion_smooth.cuda()
     else:
         loss_function = criterion_smooth
