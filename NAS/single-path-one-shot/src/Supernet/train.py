@@ -223,6 +223,7 @@ def train(model, device, args, *, val_interval, bn_process=False, all_iters=None
     model.train()
     for iters in range(1, val_interval + 1):
         scheduler.step()
+        
         if bn_process:
             adjust_bn_momentum(model, iters)
 

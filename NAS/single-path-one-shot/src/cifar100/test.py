@@ -15,9 +15,9 @@ import torchvision.transforms as transforms
 from PIL import Image
 
 from cifar100_dataset import get_dataset
-from slimmable_resnet20 import mutableResNet20
-from utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
-                   get_lastest_model, get_parameters, save_checkpoint, bn_calibration_init)
+from model.slimmable_resnet20 import mutableResNet20
+from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
+                         get_lastest_model, get_parameters, save_checkpoint, bn_calibration_init)
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
 
@@ -107,6 +107,20 @@ def main():
     # 参数设置
     args.loss_function = loss_function
     args.val_dataloader = val_loader
+
+    print('clear bn statics....')
+    model.apply(bn_calibration_init)
+
+    print('train bn with training set (BN sanitize) ....')
+    model.train()
+
+    for step in tqdm.tqdm(range(10)):
+        # print('train step: {} total: {}'.format(step,max_train_iters))
+        data, target = train_dataprovider.next()
+        target = target.type(torch.LongTensor)
+        data, target = data.to(device), target.to(device)
+        output = model(data, cand)
+        del data, target, output
 
     print("start to validate model")
 
