@@ -153,11 +153,11 @@ def get_val_loader(batch_size, num_workers, proxy):
     return val_loader
 
 
-if __name__ == "__main__":
-    dataset_train = get_val_dataset()
+# if __name__ == "__main__":
+#     dataset_train = get_val_dataset()
 
-    dataset_train.data = dataset_train.data[:8000]
+#     dataset_train.data = dataset_train.data[:8000]
 
-    print(len(dataset_train.data))
+#     print(len(dataset_train.data))
 
-    print(len(dataset_train))
+#     print(len(dataset_train))

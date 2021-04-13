@@ -30,7 +30,8 @@ CIFAR100_TRAINING_SET_SIZE = 50000
 CIFAR100_TEST_SET_SIZE = 10000
 
 parser = argparse.ArgumentParser("ImageNet")
-parser.add_argument('--proxy', type=float, default=0.5, help='smaller dataset ')
+parser.add_argument('--proxy', type=float, default=0.5,
+                    help='smaller dataset ')
 parser.add_argument('--local_rank', type=int, default=None,
                     help='local rank for distributed training')
 parser.add_argument('--batch_size', type=int, default=16384, help='batch size')
@@ -62,11 +63,11 @@ parser.add_argument('--label_smooth', type=float,
 args = parser.parse_args()
 
 per_epoch_iters = CIFAR100_TRAINING_SET_SIZE // args.batch_size
-val_iters = CIFAR100_TEST_SET_SIZE // 200
+val_iters = CIFAR100_TEST_SET_SIZE // 500
 
 
 def main():
-    
+
     if not torch.cuda.is_available():
         print('no gpu device available')
         sys.exit(1)
@@ -126,10 +127,10 @@ def main():
         optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
 
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=5)
-    
+
     if args.local_rank == 0:
         writer = SummaryWriter("./runs/%s-%05d" %
-                       (time.strftime("%m-%d", time.localtime()), random.randint(0, 100)))
+                               (time.strftime("%m-%d", time.localtime()), random.randint(0, 100)))
 
     # Prepare data
     train_loader = get_train_loader(
@@ -147,7 +148,6 @@ def main():
     #       model, archloader, criterion_smooth, args, val_iters, args.seed, writer)
 
 
-
 def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, archloader, criterion, args, val_iters, seed, writer=None):
     objs, top1 = AvgrageMeter(), AvgrageMeter()
 
@@ -156,7 +156,7 @@ def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, arc
 
     for step in range(args.total_iters):
         model.train()
-        t0 = time.time()  
+        t0 = time.time()
         image, target = train_dataprovider.next()
         datatime = time.time() - t0
         n = image.size(0)
@@ -193,13 +193,13 @@ def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, arc
 
         if args.local_rank == 0 and step % args.report_freq == 0:
             top1_val, objs_val = infer(val_dataprovider, model.module, criterion,
-                               fair_arc_list, val_iters, archloader)
-            
+                                       fair_arc_list, val_iters, archloader)
+
             if writer is not None:
                 writer.add_scalar("Val/loss", objs_val, step)
                 writer.add_scalar("Val/acc1", top1_val, step)
-        
-            save_checkpoint({'state_dict': model.state_dict(),}, step)
+
+            save_checkpoint({'state_dict': model.state_dict(), }, step)
 
 
 def infer(val_dataprovider, model, criterion, fair_arc_list, val_iters, archloader):
@@ -216,14 +216,14 @@ def infer(val_dataprovider, model, criterion, fair_arc_list, val_iters, archload
             datatime = time.time() - t0
             image = Variable(image, requires_grad=False).cuda()
             target = Variable(target, requires_grad=False).cuda()
-            logits = model(
-                image, archloader.convert_list_arc_str(fair_arc_list[0]))
-            loss = criterion(logits, target)
 
-            prec1, _ = accuracy(logits, target, topk=(1, 5))
-            n = image.size(0)
-            objs.update(loss.data.item(), n)
-            top1.update(prec1.data.item(), n)
+            for arc in fair_arc_list:
+                logits = model(image, archloader.convert_list_arc_str(arc))
+                loss = criterion(logits, target)
+                prec1, _ = accuracy(logits, target, topk=(1, 5))
+                n = image.size(0)
+                objs.update(loss.data.item(), n)
+                top1.update(prec1.data.item(), n)
 
         now = time.strftime('%Y-%m-%d %H:%M:%S',
                             time.localtime(time.time()))
