@@ -7,7 +7,7 @@ import random
 import shutil
 import sys
 import time
-
+from tqdm import tqdm
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
@@ -22,7 +22,7 @@ from datasets.cifar100_dataset import get_train_loader, get_val_loader
 from model.slimmable_resnet20 import mutableResNet20
 from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
                          DataIterator, accuracy, bn_calibration_init,
-                         reduce_tensor, save_checkpoint)
+                         reduce_tensor, save_checkpoint, retrain_bn)
 
 print = functools.partial(print, flush=True)
 
@@ -174,7 +174,7 @@ def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, arc
         # Fair Sampling
         fair_arc_list = archloader.generate_niu_fair_batch()
 
-        for ii, arc in enumerate(fair_arc_list):
+        for arc in fair_arc_list:
             logits = model(image, archloader.convert_list_arc_str(arc))
             loss = criterion(logits, target)
             loss_reduce = reduce_tensor(loss, 0, args.world_size)
@@ -199,7 +199,9 @@ def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, arc
             writer.add_scalar("Train/acc1", top1.avg, step)
 
         if args.local_rank == 0 and step % args.report_freq == 0:
-            top1_val, objs_val = infer(val_dataprovider, model.module, criterion,
+            # model
+
+            top1_val, objs_val = infer(train_dataprovider, val_dataprovider, model.module, criterion,
                                        fair_arc_list, val_iters, archloader)
 
             if writer is not None:
@@ -209,12 +211,16 @@ def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, arc
             save_checkpoint({'state_dict': model.state_dict(), }, step)
 
 
-def infer(val_dataprovider, model, criterion, fair_arc_list, val_iters, archloader):
+def infer(train_dataprovider, val_dataprovider, model, criterion, fair_arc_list, val_iters, archloader):
     objs = AvgrageMeter()
     top1 = AvgrageMeter()
     model.eval()
     now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
-    print('{} |=> Test rng = {}'.format(now, fair_arc_list[0]))
+    print('{} |=> Test rng = {}'.format(now, fair_arc_list[-1]))  # 只测试最后一个模型
+
+    # BN calibration
+    retrain_bn(model, 10, train_dataprovider,
+               archloader, fair_arc_list[-1], device=0)
 
     with torch.no_grad():
         for step in range(val_iters):

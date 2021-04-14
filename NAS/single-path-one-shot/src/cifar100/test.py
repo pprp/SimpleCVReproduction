@@ -13,11 +13,12 @@ import torch.nn as nn
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from PIL import Image
+from tqdm import tqdm
 
 from cifar100_dataset import get_dataset
 from model.slimmable_resnet20 import mutableResNet20
 from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
-                         get_lastest_model, get_parameters, save_checkpoint, bn_calibration_init)
+                         get_lastest_model, get_parameters, save_checkpoint, bn_calibration_init, retrain_bn)
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
 
@@ -108,19 +109,19 @@ def main():
     args.loss_function = loss_function
     args.val_dataloader = val_loader
 
-    print('clear bn statics....')
-    model.apply(bn_calibration_init)
+    # print('clear bn statics....')
+    # model.apply(bn_calibration_init)
 
-    print('train bn with training set (BN sanitize) ....')
-    model.train()
+    # print('train bn with training set (BN sanitize) ....')
+    # model.train()
 
-    for step in tqdm.tqdm(range(10)):
-        # print('train step: {} total: {}'.format(step,max_train_iters))
-        data, target = train_dataprovider.next()
-        target = target.type(torch.LongTensor)
-        data, target = data.to(device), target.to(device)
-        output = model(data, cand)
-        del data, target, output
+    # for step in tqdm(range(10)):
+    #     # print('train step: {} total: {}'.format(step,max_train_iters))
+    #     data, target = iter(val_loader).next()
+    #     target = target.type(torch.LongTensor)
+    #     data, target = data.to(device), target.to(device)
+    #     output = model(data, cand)
+    #     del data, target, output
 
     print("start to validate model")
 
@@ -153,6 +154,8 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
         for key, value in arch_dict.items():  # 每一个网络
             max_val_iters += 1
             print('\r ', key, ' iter:', max_val_iters, end='')
+            retrain_bn(model, max_iters=10, dataprovider=iter(
+                val_dataloader), device=0, cand=value["arch"])
 
             for data, target in val_dataloader:  # 过一遍数据集
                 target = target.type(torch.LongTensor)

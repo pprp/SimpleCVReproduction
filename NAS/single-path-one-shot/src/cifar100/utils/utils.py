@@ -5,16 +5,19 @@ import torch.nn as nn
 import random
 import json
 import numpy as np
+from tqdm import tqdm
 
 
 def get_num_correct(preds, labels):
     return preds.argmax(dim=1).eq(labels).sum().item()
-    
+
+
 def reduce_tensor(tensor, device=0, world_size=1):
     tensor = tensor.clone()
     torch.distributed.reduce(tensor, device)
     tensor.div_(world_size)
     return tensor
+
 
 class DataIterator(object):
 
@@ -29,6 +32,7 @@ class DataIterator(object):
             self.iterator = enumerate(self.dataloader)
             _, data = next(self.iterator)
         return data[0], data[1]
+
 
 class ArchLoader():
     '''
@@ -251,3 +255,23 @@ def bn_calibration_init(m):
         # if getattr(FLAGS, 'cumulative_bn_stats', False):
         if cumulative_bn_stats:
             m.momentum = None
+
+
+def retrain_bn(model, max_iters, dataprovider,archloader, cand, device=0):
+    # from singlepathoneshot Search/tester.py
+    with torch.no_grad():
+        print("Clear BN statistics...")
+        for m in model.modules():
+            if isinstance(m, nn.BatchNorm2d):
+                m.running_mean = torch.zeros_like(m.running_mean)
+                m.running_var = torch.ones_like(m.running_var)
+        # bn_calibration_init(model)
+
+        print("Train BN with training set (BN sanitize)...")
+        model.train()
+
+        for _ in tqdm(range(max_iters)):
+            inputs, targets = dataprovider.next()
+            inputs, targets = inputs.to(device), targets.to(device)
+            outputs = model(inputs, archloader.convert_list_arc_str(cand))
+            del inputs, targets, outputs
