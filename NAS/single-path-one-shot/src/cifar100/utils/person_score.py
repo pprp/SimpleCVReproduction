@@ -1,4 +1,5 @@
 import math
+import scipy.stats
 
 
 def pearson(vector1, vector2):
@@ -17,3 +18,8 @@ def pearson(vector1, vector2):
     if den == 0:
         return 0.0
     return num/den
+
+
+def kendalltau(vector1, vector2):
+    tau, p_value = scipy.stats.kendalltau(vector1, vector2)
+    return tau
