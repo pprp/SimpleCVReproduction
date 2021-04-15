@@ -88,9 +88,9 @@ class ArchLoader():
 
         return arc_str[:-1]
 
-    def generate_niu_fair_batch(self):
+    def generate_niu_fair_batch(self,seed):
         rngs = []
-        seed = 0
+        seed = seed
         # level1
         for i in range(0, 7):
             seed += 1
@@ -118,6 +118,10 @@ class ArchLoader():
                                       len(self.level_config['level3'])))
         return np.transpose(rngs)
 
+arch_loader = ArchLoader("data/Track1_final_archs.json")
+
+for i in range(10):
+    print(arch_loader.generate_niu_fair_batch(i)[:-1])
 
 class CrossEntropyLabelSmooth(nn.Module):
 
@@ -172,14 +176,14 @@ def accuracy(output, target, topk=(1,)):
 
 
 def save_checkpoint(state, iters, exp, tag=''):
-    if not os.path.exists("./weights/exp"):
-        os.makedirs("./weights/exp")
+    if not os.path.exists("./weights/{}".format(exp)):
+        os.makedirs("./weights/{}".format(exp))
     filename = os.path.join(
-        "./weights/exp/{}checkpoint-{:05}.pth.tar".format(tag, iters))
+        "./weights/{}/{}checkpoint-{:05}.pth.tar".format(exp, tag, iters))
 
     torch.save(state, filename)
     latestfilename = os.path.join(
-        "./weights/exp/{}checkpoint-latest.pth.tar".format(tag))
+        "./weights/{}/{}checkpoint-latest.pth.tar".format(exp, tag))
     torch.save(state, latestfilename)
 
 
