@@ -215,14 +215,14 @@ def train_subnet(model, args, *, bn_process=False, all_iters=None, arch_loader=N
 
     total_correct = 0
 
-    for data, target in train_loader:
+    for step, (data, target) in enumerate(train_loader):
         target = target.type(torch.LongTensor)
         data, target = data.cuda(args.gpu), target.cuda(args.gpu)
         data_time = time.time() - d_st
         optimizer.zero_grad()
 
         # fair_arc_list = arch_loader.generate_fair_batch()
-        fair_arc_list = arch_loader.generate_niu_fair_batch()
+        fair_arc_list = arch_loader.generate_niu_fair_batch(step)
         # fair_arc_list = arch_loader.get_random_batch(25)
 
         for ii, arc in enumerate(fair_arc_list):
