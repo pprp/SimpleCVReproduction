@@ -37,7 +37,7 @@ parser.add_argument('--local_rank', type=int, default=None,
                     help='local rank for distributed training')
 parser.add_argument('--batch_size', type=int, default=16384, help='batch size')
 parser.add_argument('--learning_rate', type=float,
-                    default=0.894, help='init learning rate')
+                    default=0.653, help='init learning rate')  # sqrt(16384/3/128)*0.1
 parser.add_argument('--num_workers', type=int,
                     default=6, help='num of workers')
 
@@ -136,7 +136,8 @@ def main():
     # scheduler = torch.optim.lr_scheduler.LambdaLR(
     #     optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
 
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=5)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        optimizer, T_0=5)
 
     if args.local_rank == 0:
         writer = SummaryWriter("./runs/%s-%05d" %
@@ -147,7 +148,8 @@ def main():
         args.batch_size, args.local_rank, args.num_workers, args.total_iters, args.proxy)
     train_dataprovider = DataIterator(train_loader)
     # 原来跟train batch size一样，现在修改小一点 ， 同时修改val_iters
-    val_loader = get_val_loader(2000, args.num_workers, args.proxy)
+    val_loader = get_val_loader(
+        min(args.batch_size, CIFAR100_TEST_SET_SIZE), args.num_workers, args.proxy)
     val_dataprovider = DataIterator(val_loader)
 
     archloader = ArchLoader("data/Track1_final_archs.json")
@@ -176,7 +178,7 @@ def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, arc
         target = Variable(target, requires_grad=False).cuda(args.gpu)
 
         # Fair Sampling
-        fair_arc_list = archloader.generate_niu_fair_batch()
+        fair_arc_list = archloader.generate_niu_fair_batch(step)
 
         for arc in fair_arc_list:
             logits = model(image, archloader.convert_list_arc_str(arc))
@@ -224,7 +226,7 @@ def infer(train_dataprovider, val_dataprovider, model, criterion, fair_arc_list,
     print('{} |=> Test rng = {}'.format(now, fair_arc_list[-1]))  # 只测试最后一个模型
 
     # BN calibration
-    retrain_bn(model, 5, train_dataprovider,
+    retrain_bn(model, 15, train_dataprovider,
                archloader.convert_list_arc_str(fair_arc_list[-1]), device=0)
 
     with torch.no_grad():
