@@ -118,6 +118,11 @@ class ArchLoader():
                                       len(self.level_config['level3'])))
         return np.transpose(rngs)
 
+arch_loader = ArchLoader("data/Track1_final_archs.json")
+
+for i in range(10):
+    print(arch_loader.generate_niu_fair_batch(i)[:-1])
+
 class CrossEntropyLabelSmooth(nn.Module):
 
     def __init__(self, num_classes, epsilon):
