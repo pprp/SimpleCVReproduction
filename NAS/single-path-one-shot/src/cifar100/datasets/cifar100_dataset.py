@@ -8,6 +8,30 @@ from torchvision.datasets import CIFAR100
 import random
 from torch.utils.data import Sampler
 import torch.distributed as dist
+import json
+
+
+class ArchDataSet(torch.utils.data.Dataset):
+    def __init__(self, path):
+        super(ArchDataSet, self).__init__()
+        assert path is not None
+        with open(path, "r") as f:
+            self.arch_dict = json.load(f)
+
+        self.arc_list = []
+        self.arc_key = []
+
+        for key, v in self.arch_dict.items():
+            self.arc_list.append(v["arch"])
+            self.arc_key.append(key)
+
+    def __getitem__(self, index):
+        tmp_arc = self.arc_list[index]
+        tmp_key = self.arc_key[index]
+        return tmp_key, tmp_arc
+
+    def __len__(self):
+        return len(self.arch_dict)
 
 
 class Cutout(object):
@@ -113,7 +137,6 @@ class Random_Batch_Sampler(Sampler):
             batch_iter = []
             for _ in range(self.batch_size):
                 batch_iter.append(random.randint(0, self.dataset_num-1))
-
             yield batch_iter
 
     def __len__(self):
@@ -151,13 +174,3 @@ def get_val_loader(batch_size, num_workers, proxy):
         num_workers=num_workers, pin_memory=True
     )
     return val_loader
-
-
-# if __name__ == "__main__":
-#     dataset_train = get_val_dataset()
-
-#     dataset_train.data = dataset_train.data[:8000]
-
-#     print(len(dataset_train.data))
-
-#     print(len(dataset_train))

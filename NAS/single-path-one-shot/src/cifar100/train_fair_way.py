@@ -7,6 +7,7 @@ import random
 import shutil
 import sys
 import time
+import datetime
 from tqdm import tqdm
 import numpy as np
 import torch
@@ -29,8 +30,8 @@ print = functools.partial(print, flush=True)
 CIFAR100_TRAINING_SET_SIZE = 50000
 CIFAR100_TEST_SET_SIZE = 10000
 
-parser = argparse.ArgumentParser("ImageNet")
-parser.add_argument('--proxy', type=float, default=0.5,
+parser = argparse.ArgumentParser("ResNet20-cifar100")
+parser.add_argument('--proxy', type=float, default=1,
                     help='smaller dataset ')
 parser.add_argument('--local_rank', type=int, default=None,
                     help='local rank for distributed training')
@@ -68,11 +69,10 @@ if args.proxy > 0:
 
 
 per_epoch_iters = CIFAR100_TRAINING_SET_SIZE // args.batch_size
-val_iters = CIFAR100_TEST_SET_SIZE // 2000
+val_iters = CIFAR100_TEST_SET_SIZE // 200
 
 
 def main():
-
     if not torch.cuda.is_available():
         print('no gpu device available')
         sys.exit(1)
@@ -87,6 +87,10 @@ def main():
     torch.manual_seed(args.seed)
     cudnn.enabled = True
     torch.cuda.manual_seed(args.seed)
+
+    if args.local_rank == 0:
+        args.exp = datetime.datetime.now().strftime("%YY_%mM_%dD_%HH") + "_" + \
+            "{:04d}".format(random.randint(0, 1000))
 
     print('gpu device = %d' % args.gpu)
     print("args = %s", args)
@@ -106,33 +110,33 @@ def main():
     model = torch.nn.parallel.DistributedDataParallel(
         model, device_ids=[args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
 
-    all_parameters = model.parameters()
-    weight_parameters = []
-    for pname, p in model.named_parameters():
-        if p.ndimension() == 4 or 'classifier.0.weight' in pname or 'classifier.0.bias' in pname:
-            weight_parameters.append(p)
-    weight_parameters_id = list(map(id, weight_parameters))
-    other_parameters = list(
-        filter(lambda p: id(p) not in weight_parameters_id, all_parameters))
-    optimizer = torch.optim.SGD(
-        [{'params': other_parameters},
-         {'params': weight_parameters, 'weight_decay': args.weight_decay}],
-        args.learning_rate,
-        momentum=args.momentum,
-    )
+    # all_parameters = model.parameters()
+    # weight_parameters = []
+    # for pname, p in model.named_parameters():
+    #     if p.ndimension() == 4 or 'classifier.0.weight' in pname or 'classifier.0.bias' in pname:
+    #         weight_parameters.append(p)
+    # weight_parameters_id = list(map(id, weight_parameters))
+    # other_parameters = list(
+    #     filter(lambda p: id(p) not in weight_parameters_id, all_parameters))
+    # optimizer = torch.optim.SGD(
+    #     [{'params': other_parameters},
+    #      {'params': weight_parameters, 'weight_decay': args.weight_decay}],
+    #     args.learning_rate,
+    #     momentum=args.momentum,
+    # )
 
-    # optimizer = torch.optim.SGD(model.parameters(),
-    #                             lr=args.learning_rate,
-    #                             momentum=args.momentum,
-    #                             weight_decay=args.weight_decay)
+    optimizer = torch.optim.SGD(model.parameters(),
+                                lr=args.learning_rate,
+                                momentum=args.momentum,
+                                weight_decay=args.weight_decay)
 
     # // 16  # 16 代表是每个子网的个数
     args.total_iters = args.epochs * per_epoch_iters
 
-    scheduler = torch.optim.lr_scheduler.LambdaLR(
-        optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
+    # scheduler = torch.optim.lr_scheduler.LambdaLR(
+    #     optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
 
-    # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=5)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=5)
 
     if args.local_rank == 0:
         writer = SummaryWriter("./runs/%s-%05d" %
@@ -143,13 +147,13 @@ def main():
         args.batch_size, args.local_rank, args.num_workers, args.total_iters, args.proxy)
     train_dataprovider = DataIterator(train_loader)
     # 原来跟train batch size一样，现在修改小一点 ， 同时修改val_iters
-    # val_loader = get_val_loader(2000, args.num_workers, args.proxy)
-    # val_dataprovider = DataIterator(val_loader)
+    val_loader = get_val_loader(2000, args.num_workers, args.proxy)
+    val_dataprovider = DataIterator(val_loader)
 
     archloader = ArchLoader("data/Track1_final_archs.json")
 
     # niu 实验 将验证集替换为训练集， 加速
-    train(train_dataprovider, train_dataprovider, optimizer, scheduler,
+    train(train_dataprovider, val_dataprovider, optimizer, scheduler,
           model, archloader, criterion_smooth, args, val_iters, args.seed, writer)
     # train(train_dataprovider, val_dataprovider, optimizer, scheduler,
     #       model, archloader, criterion_smooth, args, val_iters, args.seed, writer)
@@ -208,7 +212,8 @@ def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, arc
                 writer.add_scalar("Val/loss", objs_val, step)
                 writer.add_scalar("Val/acc1", top1_val, step)
 
-            save_checkpoint({'state_dict': model.state_dict(), }, step)
+            save_checkpoint(
+                {'state_dict': model.state_dict(), }, step, args.exp)
 
 
 def infer(train_dataprovider, val_dataprovider, model, criterion, fair_arc_list, val_iters, archloader):
@@ -219,8 +224,8 @@ def infer(train_dataprovider, val_dataprovider, model, criterion, fair_arc_list,
     print('{} |=> Test rng = {}'.format(now, fair_arc_list[-1]))  # 只测试最后一个模型
 
     # BN calibration
-    retrain_bn(model, 10, train_dataprovider,
-               archloader, fair_arc_list[-1], device=0)
+    retrain_bn(model, 5, train_dataprovider,
+               archloader.convert_list_arc_str(fair_arc_list[-1]), device=0)
 
     with torch.no_grad():
         for step in range(val_iters):
@@ -245,6 +250,7 @@ def infer(train_dataprovider, val_dataprovider, model, criterion, fair_arc_list,
             #     n = image.size(0)
             #     objs.update(loss.data.item(), n)
             #     top1.update(prec1.data.item(), n)
+
         now = time.strftime('%Y-%m-%d %H:%M:%S',
                             time.localtime(time.time()))
         print('{} |=> valid: step={}, loss={:.2f}, acc={:.2f}, datatime={:.2f}'.format(

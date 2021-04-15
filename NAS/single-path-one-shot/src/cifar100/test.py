@@ -14,38 +14,45 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from PIL import Image
 from tqdm import tqdm
+from torch.utils.data.distributed import DistributedSampler
+import torch.backends.cudnn as cudnn
 
-from cifar100_dataset import get_dataset
+from datasets.cifar100_dataset import get_val_dataset, ArchDataSet
 from model.slimmable_resnet20 import mutableResNet20
-from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth, accuracy,
-                         get_lastest_model, get_parameters, save_checkpoint, bn_calibration_init, retrain_bn)
+from utils.utils import (ArchLoader, AvgrageMeter,
+                         CrossEntropyLabelSmooth, DataIterator,
+                         accuracy, bn_calibration_init,
+                         get_lastest_model, get_parameters, retrain_bn,
+                         save_checkpoint)
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2"
+CIFAR100_TEST_SET_SIZE = 10000
 
 
 def get_args():
-    parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot")
-    parser.add_argument(
-        '--path', default="Track1_final_archs.json", help="path for json arch files")
-    parser.add_argument('--eval', default=False, action='store_true')
-    parser.add_argument('--eval-resume', type=str,
-                        default='./snet_detnas.pkl', help='path for eval model')
-    parser.add_argument('--batch-size', type=int,
-                        default=163840, help='batch size')
+    parser = argparse.ArgumentParser("ResNet20-Cifar100-oneshot-Test")
 
-    parser.add_argument('--save', type=str, default='./weights',
-                        help='path for saving trained weights')
-    parser.add_argument('--label-smooth', type=float,
-                        default=0.1, help='label smoothing')
+    parser.add_argument('--rank', default=0,
+                        help='rank of current process')
+    parser.add_argument(
+        '--path', default="data/Track1_final_archs.json", help="path for json arch files")
+    parser.add_argument('--batch-size', type=int,
+                        default=20480, help='batch size')
+
+    parser.add_argument('--weights', type=str,
+                        default="./weights/checkpoint-latest.pth.tar", help="path for weights loading")
 
     parser.add_argument('--auto-continue', type=bool,
                         default=True, help='report frequency')
+    parser.add_argument('--local_rank', type=int, default=None,
+                        help='local rank for distributed training')
 
-    parser.add_argument('--train-dir', type=str,
-                        default='data/train', help='path to training dataset')
-    parser.add_argument('--val-dir', type=str,
-                        default='data/val', help='path to validation dataset')
-
+    parser.add_argument('--min_lr', type=float,
+                        default=5e-4, help='min learning rate')
+    parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
+    parser.add_argument('--weight_decay', type=float,
+                        default=4e-5, help='weight decay')
+    parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
+    parser.add_argument('--seed', type=int, default=5, help='random seed')
     args = parser.parse_args()
     return args
 
@@ -53,8 +60,21 @@ def get_args():
 def main():
     args = get_args()
 
-    # archLoader
-    arch_loader = ArchLoader(args.path)
+    num_gpus = torch.cuda.device_count()
+    np.random.seed(args.seed)
+    args.gpu = args.local_rank % num_gpus
+    torch.cuda.set_device(args.gpu)
+
+    cudnn.benchmark = True
+    cudnn.deterministic = True
+    torch.manual_seed(args.seed)
+    cudnn.enabled = True
+    torch.cuda.manual_seed(args.seed)
+
+    torch.distributed.init_process_group(
+        backend='nccl', init_method='env://')
+    args.world_size = torch.distributed.get_world_size()
+    args.batch_size = args.batch_size // args.world_size
 
     # Log
     log_format = '[%(asctime)s] %(message)s'
@@ -69,15 +89,17 @@ def main():
     fh.setFormatter(logging.Formatter(log_format))
     logging.getLogger().addHandler(fh)
 
-    use_gpu = False
-    if torch.cuda.is_available():
-        use_gpu = True
+    # archLoader
+    # arch_loader=ArchLoader(args.path)
+    arch_dataset = ArchDataSet(args.path)
+    arch_sampler = DistributedSampler(arch_dataset)
+    arch_dataloader = torch.utils.data.DataLoader(
+        arch_dataset, batch_size=1, shuffle=False, num_workers=6, pin_memory=False, sampler=arch_sampler)
 
-    _, val_dataset = get_dataset('cifar100')
-
+    val_dataset = get_val_dataset()
     val_loader = torch.utils.data.DataLoader(val_dataset,
-                                             batch_size=200, shuffle=False,
-                                             num_workers=3, pin_memory=use_gpu)
+                                             batch_size=args.batch_size, shuffle=False,
+                                             num_workers=6, pin_memory=False)
 
     print('load data successfully')
 
@@ -85,83 +107,59 @@ def main():
 
     criterion_smooth = CrossEntropyLabelSmooth(1000, 0.1)
 
-    if use_gpu:
-        model = nn.DataParallel(model)
-        loss_function = criterion_smooth.cuda()
-        device = torch.device("cuda")
-    else:
-        loss_function = criterion_smooth
-        device = torch.device("cpu")
+    model = model.cuda(args.gpu)
+    model = torch.nn.parallel.DistributedDataParallel(
+        model, device_ids=[args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
 
-    model = model.to(device)
     print("load model successfully")
 
-    all_iters = 0
     print('load from latest checkpoint')
-    lastest_model, iters = get_lastest_model()
+    lastest_model = args.weights
     if lastest_model is not None:
-        all_iters = iters
         checkpoint = torch.load(
-            lastest_model, map_location=None if use_gpu else 'cpu')
+            lastest_model, map_location=None if True else 'cpu')
         model.load_state_dict(checkpoint['state_dict'], strict=True)
 
     # 参数设置
-    args.loss_function = loss_function
+    args.loss_function = criterion_smooth
     args.val_dataloader = val_loader
-
-    # print('clear bn statics....')
-    # model.apply(bn_calibration_init)
-
-    # print('train bn with training set (BN sanitize) ....')
-    # model.train()
-
-    # for step in tqdm(range(10)):
-    #     # print('train step: {} total: {}'.format(step,max_train_iters))
-    #     data, target = iter(val_loader).next()
-    #     target = target.type(torch.LongTensor)
-    #     data, target = data.to(device), target.to(device)
-    #     output = model(data, cand)
-    #     del data, target, output
 
     print("start to validate model")
 
-    validate(model, device, args, all_iters=all_iters, arch_loader=arch_loader)
+    validate(model, args, arch_loader=arch_dataloader)
 
 
-def validate(model, device, args, *, all_iters=None, arch_loader=None):
+def validate(model, args, *, arch_loader=None):
     assert arch_loader is not None
 
     objs = AvgrageMeter()
     top1 = AvgrageMeter()
     top5 = AvgrageMeter()
 
-    loss_function = args.loss_function
     val_dataloader = args.val_dataloader
 
     model.eval()
-    model.apply(bn_calibration_init)
 
-    max_val_iters = 0
     t1 = time.time()
 
     result_dict = {}
 
-    arch_dict = arch_loader.get_arch_dict()
-
-    base_model = mutableResNet20().cuda()
+    # base_model = mutableResNet20().cuda()
 
     with torch.no_grad():
-        for key, value in arch_dict.items():  # 每一个网络
-            max_val_iters += 1
-            print('\r ', key, ' iter:', max_val_iters, end='')
-            retrain_bn(model, max_iters=10, dataprovider=iter(
-                val_dataloader), device=0, cand=value["arch"])
+        for key, arch in tqdm(arch_loader):
+            # print(key, arch)
+            # max_val_iters += 1
+            # print('\r ', key, ' iter:', max_val_iters, end='')
+
+            retrain_bn(model, max_iters=5, dataprovider=DataIterator(
+                val_dataloader), device=0, cand=arch[0])
 
             for data, target in val_dataloader:  # 过一遍数据集
                 target = target.type(torch.LongTensor)
-                data, target = data.to(device), target.to(device)
+                data, target = data.cuda(args.gpu), target.cuda(args.gpu)
 
-                output = model(data, value["arch"])
+                output = model(data, arch[0])
 
                 prec1, prec5 = accuracy(output, target, topk=(1, 5))
 
@@ -172,12 +170,12 @@ def validate(model, device, args, *, all_iters=None, arch_loader=None):
 
             print("\t acc1: ", top1.avg)
             tmp_dict = {}
-            tmp_dict['arch'] = value['arch']
+            tmp_dict['arch'] = arch[0]
             tmp_dict['acc'] = top1.avg
 
-            result_dict[key] = tmp_dict
+            result_dict[key[0]] = tmp_dict
 
-    with open("acc_result.json", "w") as f:
+    with open("acc_result_rank_%d.json" % args.local_rank, "w") as f:
         json.dump(result_dict, f)
 
     # angle_result_dict = {}

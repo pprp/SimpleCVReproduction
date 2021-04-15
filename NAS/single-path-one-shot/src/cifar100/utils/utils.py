@@ -34,6 +34,8 @@ class DataIterator(object):
         return data[0], data[1]
 
 
+
+
 class ArchLoader():
     '''
     load arch from json file
@@ -60,13 +62,6 @@ class ArchLoader():
     def get_arch_dict(self):
         return self.arc_dict
 
-    def get_random_batch(self, bs):
-        return random.sample(self.arc_list, bs)
-
-    def get_part_dict(self):
-        keys = list(self.arc_dict.keys())[:10]
-        return dict([(key, self.arc_dict[key]) for key in keys])
-
     def __next__(self):
         self.idx += 1
         if self.idx >= len(self.arc_list):
@@ -92,30 +87,6 @@ class ArchLoader():
             arc_str += item
 
         return arc_str[:-1]
-
-    def generate_fair_batch(self):
-        rngs = []
-        seed = 0
-        # level1
-        for i in range(0, 7):
-            seed += 1
-            random.seed(seed)
-            rngs.append(random.sample(self.level_config['level1'],
-                                      len(self.level_config['level1']))*4)
-        # level2
-        for i in range(7, 13):
-            seed += 1
-            random.seed(seed)
-            rngs.append(random.sample(self.level_config['level2'],
-                                      len(self.level_config['level2']))*2)
-
-        # level3
-        for i in range(13, 20):
-            seed += 1
-            random.seed(seed)
-            rngs.append(random.sample(self.level_config['level3'],
-                                      len(self.level_config['level3'])))
-        return np.transpose(rngs)
 
     def generate_niu_fair_batch(self):
         rngs = []
@@ -200,15 +171,15 @@ def accuracy(output, target, topk=(1,)):
     return res
 
 
-def save_checkpoint(state, iters, tag=''):
-    if not os.path.exists("./weights"):
-        os.makedirs("./weights")
+def save_checkpoint(state, iters, exp, tag=''):
+    if not os.path.exists("./weights/exp"):
+        os.makedirs("./weights/exp")
     filename = os.path.join(
-        "./weights/{}checkpoint-{:05}.pth.tar".format(tag, iters))
+        "./weights/exp/{}checkpoint-{:05}.pth.tar".format(tag, iters))
 
     torch.save(state, filename)
     latestfilename = os.path.join(
-        "./weights/{}checkpoint-latest.pth.tar".format(tag))
+        "./weights/exp/{}checkpoint-latest.pth.tar".format(tag))
     torch.save(state, latestfilename)
 
 
@@ -257,7 +228,7 @@ def bn_calibration_init(m):
             m.momentum = None
 
 
-def retrain_bn(model, max_iters, dataprovider,archloader, cand, device=0):
+def retrain_bn(model, max_iters, dataprovider, cand, device=0):
     # from singlepathoneshot Search/tester.py
     with torch.no_grad():
         print("Clear BN statistics...")
@@ -273,5 +244,5 @@ def retrain_bn(model, max_iters, dataprovider,archloader, cand, device=0):
         for _ in tqdm(range(max_iters)):
             inputs, targets = dataprovider.next()
             inputs, targets = inputs.to(device), targets.to(device)
-            outputs = model(inputs, archloader.convert_list_arc_str(cand))
+            outputs = model(inputs, cand)
             del inputs, targets, outputs
