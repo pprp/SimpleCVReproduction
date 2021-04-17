@@ -1,5 +1,6 @@
 import argparse
 import copy
+import datetime
 import functools
 import os
 import pickle
@@ -7,8 +8,7 @@ import random
 import shutil
 import sys
 import time
-import datetime
-from tqdm import tqdm
+
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
@@ -18,12 +18,14 @@ from torch import nn
 from torch.autograd import Variable
 from torch.optim import lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 from datasets.cifar100_dataset import get_train_loader, get_val_loader
 from model.slimmable_resnet20 import mutableResNet20
 from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
                          DataIterator, accuracy, bn_calibration_init,
-                         reduce_tensor, save_checkpoint, retrain_bn)
+                         reduce_mean, reduce_tensor, retrain_bn,
+                         save_checkpoint)
 
 print = functools.partial(print, flush=True)
 
@@ -31,15 +33,15 @@ CIFAR100_TRAINING_SET_SIZE = 50000
 CIFAR100_TEST_SET_SIZE = 10000
 
 parser = argparse.ArgumentParser("ResNet20-cifar100")
-parser.add_argument('--proxy', type=float, default=1,
+parser.add_argument('--proxy', type=float, default=0.5,
                     help='smaller dataset ')
-parser.add_argument('--local_rank', type=int, default=None,
+parser.add_argument('--local_rank', type=int, default=0,
                     help='local rank for distributed training')
-parser.add_argument('--batch_size', type=int, default=16384, help='batch size')
+parser.add_argument('--batch_size', type=int, default=2560, help='batch size')
 parser.add_argument('--learning_rate', type=float,
-                    default=0.653, help='init learning rate')  # sqrt(16384/3/128)*0.1
+                    default=0.4472, help='init learning rate')
 parser.add_argument('--num_workers', type=int,
-                    default=6, help='num of workers')
+                    default=3, help='num of workers')
 
 # hyper parameter
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
@@ -81,6 +83,7 @@ def main():
     num_gpus = torch.cuda.device_count()
     np.random.seed(args.seed)
     args.gpu = args.local_rank % num_gpus
+    args.nprocs = num_gpus
     torch.cuda.set_device(args.gpu)
     cudnn.benchmark = True
     cudnn.deterministic = True
@@ -136,8 +139,11 @@ def main():
     # scheduler = torch.optim.lr_scheduler.LambdaLR(
     #     optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
 
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        optimizer, T_0=5)
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+    #     optimizer, T_0=5)
+
+    scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optimizer, lambda epoch: 1 - (epoch / args.epochs))
 
     if args.local_rank == 0:
         writer = SummaryWriter("./runs/%s-%05d" %
@@ -146,104 +152,136 @@ def main():
     # Prepare data
     train_loader = get_train_loader(
         args.batch_size, args.local_rank, args.num_workers, args.total_iters, args.proxy)
-    train_dataprovider = DataIterator(train_loader)
+    # train_dataprovider = DataIterator(train_loader)
     # 原来跟train batch size一样，现在修改小一点 ， 同时修改val_iters
-    val_loader = get_val_loader(
-        min(args.batch_size, CIFAR100_TEST_SET_SIZE), args.num_workers, args.proxy)
-    val_dataprovider = DataIterator(val_loader)
+    val_loader = get_val_loader(args.batch_size, args.num_workers, args.proxy)
+    # val_dataprovider = DataIterator(val_loader)
 
     archloader = ArchLoader("data/Track1_final_archs.json")
 
     # niu 实验 将验证集替换为训练集， 加速
-    train(train_dataprovider, val_dataprovider, optimizer, scheduler,
-          model, archloader, criterion_smooth, args, val_iters, args.seed, writer)
+    # train(train_dataprovider, val_dataprovider, optimizer, scheduler,
+    #       model, archloader, criterion_smooth, args, val_iters, args.seed, writer)
     # train(train_dataprovider, val_dataprovider, optimizer, scheduler,
     #       model, archloader, criterion_smooth, args, val_iters, args.seed, writer)
 
+    for epoch in range(args.epochs):
+        train(train_loader, val_loader,  optimizer, scheduler, model,
+              archloader, criterion_smooth, args, val_iters, args.seed, epoch, writer)
+        scheduler.step()
+        if (epoch + 1) % args.report_freq == 0:
+            top1_val, objs_val = infer(train_loader, val_loader, model, criterion_smooth,
+                                       val_iters, archloader, args)
 
-def train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, archloader, criterion, args, val_iters, seed, writer=None):
-    objs, top1 = AvgrageMeter(), AvgrageMeter()
+            if args.local_rank == 0:
+                # model
+                if writer is not None:
+                    writer.add_scalar("Val/loss", objs_val, step)
+                    writer.add_scalar("Val/acc1", top1_val, step)
 
-    for p in model.parameters():
-        p.grad = torch.zeros_like(p)
+                save_checkpoint(
+                    {'state_dict': model.state_dict(), }, step, args.exp)
 
-    for step in range(args.total_iters):
-        model.train()
+
+def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, args, val_iters, seed, epoch, writer=None):
+    losses, top1, top5 = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
+
+    # for p in model.parameters():
+    #     p.grad = torch.zeros_like(p)
+    model.train()
+
+    train_loader = tqdm(train_dataloader)
+    train_loader.set_description(
+        '[%s%04d/%04d %s%f]' % ('Epoch:', epoch + 1, args.epochs, 'lr:', scheduler.get_last_lr()[0]))
+    for step, (image, target) in enumerate(train_loader):
         t0 = time.time()
-        image, target = train_dataprovider.next()
         datatime = time.time() - t0
         n = image.size(0)
-        optimizer.zero_grad()
-        image = Variable(image, requires_grad=False).cuda(args.gpu)
-        target = Variable(target, requires_grad=False).cuda(args.gpu)
+        image = Variable(image, requires_grad=False).cuda(
+            args.gpu, non_blocking=True)
+        target = Variable(target, requires_grad=False).cuda(
+            args.gpu, non_blocking=True)
 
         # Fair Sampling
-        fair_arc_list = archloader.generate_niu_fair_batch(step)
+        # [archloader.generate_niu_fair_batch(step)[-1]]
+        fair_arc_list = [archloader.generate_spos_like_batch()]
 
-        for arc in fair_arc_list:
-            logits = model(image, archloader.convert_list_arc_str(arc))
-            loss = criterion(logits, target)
-            loss_reduce = reduce_tensor(loss, 0, args.world_size)
-            loss.backward()
+        # for arc in fair_arc_list:
+        # logits = model(image, archloader.convert_list_arc_str(arc))
+        # loss = criterion(logits, target)
+        # loss_reduce = reduce_tensor(loss, 0, args.world_size)
+        # loss.backward()
+
+        logits = model(
+            image, archloader.convert_list_arc_str(fair_arc_list[0]))
+        loss = criterion(logits, target)
+        prec1, prec5 = accuracy(logits, target, topk=(1, 5))
+
+        torch.distributed.barrier()
+
+        reduced_loss = reduce_mean(loss, args.nprocs)
+        reduced_prec1 = reduce_mean(prec1, args.nprocs)
+        reduced_prec5 = reduce_mean(prec5, args.nprocs)
+
+        optimizer.zero_grad()
+        loss.backward()
 
         nn.utils.clip_grad_value_(model.parameters(), args.grad_clip)
+
         optimizer.step()
-        scheduler.step()
 
-        prec1, _ = accuracy(logits, target, topk=(1, 5))
-        objs.update(loss_reduce.data.item(), n)
-        top1.update(prec1.data.item(), n)
+        losses.update(reduced_loss.data.item(), n)
+        top1.update(reduced_prec1.data.item(), n)
+        top5.update(reduced_prec1.data.item(), n)
 
-        if step % args.report_freq == 0 and args.local_rank == 0:
-            now = time.strftime('%Y-%m-%d %H:%M:%S',
-                                time.localtime(time.time()))
-            print('{} |=> train: {} / {}, lr={}, loss={:.2f}, acc={:.2f}, datatime={:.2f}, seed={}'
-                  .format(now, step, args.total_iters, scheduler.get_lr()[0], objs.avg, top1.avg, float(datatime), seed))
+        postfix = {'train_loss': '%.6f' % (
+            losses.avg), 'train_acc1': '%.6f' % top1.avg, 'train_acc5': '%.6f' % top5.avg}
+        train_loader.set_postfix(log=postfix)
 
-        if args.local_rank == 0 and step % 5 == 0 and writer is not None:
-            writer.add_scalar("Train/loss", objs.avg, step)
+        if args.local_rank == 0 and step % 10 == 0 and writer is not None:
+            writer.add_scalar("Train/loss", losses.avg, step)
             writer.add_scalar("Train/acc1", top1.avg, step)
 
-        if args.local_rank == 0 and step % args.report_freq == 0:
-            # model
 
-            top1_val, objs_val = infer(train_dataprovider, val_dataprovider, model.module, criterion,
-                                       fair_arc_list, val_iters, archloader)
+def infer(train_loader, val_loader, model, criterion,  val_iters, archloader, args):
 
-            if writer is not None:
-                writer.add_scalar("Val/loss", objs_val, step)
-                writer.add_scalar("Val/acc1", top1_val, step)
+    objs, top1, top5 = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
 
-            save_checkpoint(
-                {'state_dict': model.state_dict(), }, step, args.exp)
-
-
-def infer(train_dataprovider, val_dataprovider, model, criterion, fair_arc_list, val_iters, archloader):
-    objs = AvgrageMeter()
-    top1 = AvgrageMeter()
     model.eval()
     now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
     print('{} |=> Test rng = {}'.format(now, fair_arc_list[-1]))  # 只测试最后一个模型
+
+    fair_arc_list = [archloader.generate_spos_like_batch()]
 
     # BN calibration
     retrain_bn(model, 15, train_dataprovider,
                archloader.convert_list_arc_str(fair_arc_list[-1]), device=0)
 
     with torch.no_grad():
-        for step in range(val_iters):
+        for step, (image, target) in val_loader:
             t0 = time.time()
-            image, target = val_dataprovider.next()
             datatime = time.time() - t0
-            image = Variable(image, requires_grad=False).cuda()
-            target = Variable(target, requires_grad=False).cuda()
+            image = Variable(image, requires_grad=False).cuda(
+                args.local_rank, non_blocking=True)
+            target = Variable(target, requires_grad=False).cuda(
+                args.local_rank, non_blocking=True)
 
             logits = model(
                 image, archloader.convert_list_arc_str(fair_arc_list[-1]))
             loss = criterion(logits, target)
-            prec1, _ = accuracy(logits, target, topk=(1, 5))
+
+            prec1, prec5 = accuracy(logits, target, topk=(1, 5))
+
+            torch.distributed.barrier()
+
+            reduced_loss = reduce_mean(loss, args.nprocs)
+            reduce_top1 = reduce_mean(prec1, image.size(0))
+            reduce_top5 = reduce_mean(prec5, image.size(0))
+
             n = image.size(0)
-            objs.update(loss.data.item(), n)
-            top1.update(prec1.data.item(), n)
+            objs.update(reduced_loss.data.item(), n)
+            top1.update(reduce_top1.data.item(), n)
+            top5.update(reduce_top5.data.item(), n)
 
             # for arc in fair_arc_list:
             #     logits = model(image, archloader.convert_list_arc_str(arc))

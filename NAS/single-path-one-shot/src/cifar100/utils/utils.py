@@ -18,6 +18,11 @@ def reduce_tensor(tensor, device=0, world_size=1):
     tensor.div_(world_size)
     return tensor
 
+def reduce_mean(tensor, nprocs):
+    rt = tensor.clone()
+    torch.distributed.all_reduce(rt, op=torch.distributed.ReduceOp.SUM)
+    rt /= nprocs
+    return rt
 
 class DataIterator(object):
 
@@ -32,8 +37,6 @@ class DataIterator(object):
             self.iterator = enumerate(self.dataloader)
             _, data = next(self.iterator)
         return data[0], data[1]
-
-
 
 
 class ArchLoader():
@@ -88,13 +91,22 @@ class ArchLoader():
 
         return arc_str[:-1]
 
-    def generate_niu_fair_batch(self,seed):
+    def generate_spos_like_batch(self):
+        rngs = []
+        for i in range(0, 7):
+            rngs += np.random.choice(self.level_config["level1"], size=1).tolist()
+        for i in range(7, 13):
+            rngs += np.random.choice(self.level_config['level2'], size=1).tolist()
+        for i in range(13, 20):
+            rngs += np.random.choice(self.level_config['level3'], size=1).tolist()
+        return np.array(rngs)
+
+    def generate_niu_fair_batch(self, seed):
         rngs = []
         seed = seed
+        random.seed(seed)
         # level1
         for i in range(0, 7):
-            seed += 1
-            random.seed(seed)
             tmp_rngs = []
             for _ in range(4):
                 tmp_rngs.extend(random.sample(self.level_config['level1'],
@@ -102,8 +114,6 @@ class ArchLoader():
             rngs.append(tmp_rngs)
         # level2
         for i in range(7, 13):
-            seed += 1
-            random.seed(seed)
             tmp_rngs = []
             for _ in range(2):
                 tmp_rngs.extend(random.sample(self.level_config['level2'],
@@ -112,11 +122,19 @@ class ArchLoader():
 
         # level3
         for i in range(13, 20):
-            seed += 1
-            random.seed(seed)
             rngs.append(random.sample(self.level_config['level3'],
                                       len(self.level_config['level3'])))
         return np.transpose(rngs)
+
+
+# arch_loader = ArchLoader("data/Track1_final_archs.json")
+
+# for i in range(10):
+#     ta = arch_loader.generate_spos_like_batch()
+#     print(type(ta),ta)
+#     tb = arch_loader.generate_niu_fair_batch(i)[-1]
+#     print(type(tb),tb)
+
 
 class CrossEntropyLabelSmooth(nn.Module):
 
@@ -227,7 +245,7 @@ def bn_calibration_init(m):
             m.momentum = None
 
 
-def retrain_bn(model, max_iters, dataprovider, cand, device=0):
+def retrain_bn(model, max_iters, dataloader, cand, device=0):
     # from singlepathoneshot Search/tester.py
     with torch.no_grad():
         print("Clear BN statistics...")
@@ -235,13 +253,13 @@ def retrain_bn(model, max_iters, dataprovider, cand, device=0):
             if isinstance(m, nn.BatchNorm2d):
                 m.running_mean = torch.zeros_like(m.running_mean)
                 m.running_var = torch.ones_like(m.running_var)
-        # bn_calibration_init(model)
 
         print("Train BN with training set (BN sanitize)...")
         model.train()
 
-        for _ in tqdm(range(max_iters)):
-            inputs, targets = dataprovider.next()
+        for inputs, targets in dataloader:
             inputs, targets = inputs.to(device), targets.to(device)
             outputs = model(inputs, cand)
             del inputs, targets, outputs
+
+

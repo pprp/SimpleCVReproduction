@@ -7,6 +7,7 @@ from torchvision import transforms
 from torchvision.datasets import CIFAR100
 import random
 from torch.utils.data import Sampler
+from torch.utils.data.distributed import DistributedSampler
 import torch.distributed as dist
 import json
 
@@ -92,15 +93,15 @@ def get_train_dataset(cutout_length=0):
     STD = [0.1942, 0.1918, 0.1958]
 
     train_transform = transforms.Compose([
-        transforms.RandomHorizontalFlip(),
+        # transforms.RandomHorizontalFlip(),
         transforms.RandomResizedCrop((32, 32)),
-        transforms.ColorJitter(0.2, 0.2, 0.2, 0.2),
+        # transforms.ColorJitter(0.2, 0.2, 0.2, 0.2),
         transforms.ToTensor(),
         transforms.Normalize(MEAN, STD)
     ])
 
     dataset_train = CIFAR100(
-        root="/home/stack/dpj/cifar100/data", train=True, download=True, transform=train_transform)
+        root="./data", train=True, download=True, transform=train_transform)
 
     return dataset_train
 
@@ -152,11 +153,14 @@ def get_train_loader(batch_size, local_rank, num_workers, total_iters, proxy):
         np.random.shuffle(dataset_train.data)
         dataset_train.data = dataset_train.data[:choice]
 
-    datasampler = Random_Batch_Sampler(
-        dataset_train, batch_size=batch_size, total_iters=total_iters, rank=local_rank
-    )
+    # datasampler = Random_Batch_Sampler(
+    #     dataset_train, batch_size=batch_size, total_iters=total_iters, rank=local_rank
+    # )
+
+    datasampler = DistributedSampler(dataset_train)
+
     train_loader = torch.utils.data.DataLoader(
-        dataset_train, num_workers=num_workers, pin_memory=True, batch_sampler=datasampler)
+        dataset_train, num_workers=num_workers, pin_memory=True, sampler=datasampler, batch_size=batch_size)
 
     return train_loader
 

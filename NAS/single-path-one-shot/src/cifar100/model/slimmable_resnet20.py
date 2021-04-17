@@ -5,9 +5,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from prettytable import PrettyTable
+from modules import SlimmableConv2d, SlimmableLinear, SwitchableBatchNorm2d
 
-arc_representation = "16-8-16-16-8-12-12-20-12-4-12-32-32-24-48-8-52-16-12-36"
-# "4-12-4-4-16-8-4-12-32-24-16-8-8-24-60-12-64-64-52-60"
+arc_representation = "4-12-4-4-16-8-4-12-32-24-16-8-8-24-60-12-64-64-52-60"
+# "16-8-16-16-8-12-12-20-12-4-12-32-32-24-48-8-52-16-12-36"
 max_arc_rep = "16-16-16-16-16-16-16-32-32-32-32-32-32-64-64-64-64-64-64-64"
 # 1 2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20
 
@@ -33,151 +34,6 @@ def get_configs():
         model_config[i] = level_config["level3"]
 
     return level_config, model_config
-
-
-class SlimmableLinear(nn.Linear):
-    '''
-    in_features_list: [12, 12, 12, 12]
-    in_choose_list: [1,2,3,4]
-    out_features_list: [13,25,35,34,5,34,12,66,12]
-    out_choose_list: [1,2,3,4,5,6,7,8,9]
-    '''
-
-    def __init__(self, in_features_list, out_features_list, in_choose_list=None, out_choose_list=None, bias=True):
-        super(SlimmableLinear, self).__init__(
-            max(in_features_list), max(out_features_list), bias=bias)
-        self.in_features_list = in_features_list
-        self.out_features_list = out_features_list
-
-        # 构建选择的index list
-        self.in_choose_list = [
-            i+1 for i in range(len(in_features_list))] if in_choose_list is None else in_choose_list
-        self.out_choose_list = [
-            i+1 for i in range(len(out_features_list))] if out_choose_list is None else out_choose_list
-
-        self.in_choice = max(self.in_choose_list)
-        self.out_choice = max(self.out_choose_list)
-
-        # self.width_mult = max(self.width_mult_list)
-
-    def forward(self, input):
-
-        in_idx = self.in_choose_list.index(self.in_choice)
-        out_idx = self.out_choose_list.index(self.out_choice)
-
-        self.in_features = self.in_features_list[in_idx]
-        self.out_features = self.out_features_list[out_idx]
-
-        weight = self.weight[:self.out_features, :self.in_features]
-
-        if self.bias is not None:
-            bias = self.bias[:self.out_features]
-        else:
-            bias = self.bias
-        return nn.functional.linear(input, weight, bias)
-
-
-class SwitchableBatchNorm2d(nn.Module):
-    # num_features_list: [16, 32, 48, 64]
-    # 与out_channels_list相一致
-    def __init__(self, num_features_list, out_choose_list=None):
-        super(SwitchableBatchNorm2d, self).__init__()
-        self.num_features_list = num_features_list
-        self.num_features = max(num_features_list)  # 4
-        # self.width_mult_list = width_mult_list
-
-        self.out_choose_list = [
-            i+1 for i in range(len(num_features_list))] if out_choose_list is None else out_choose_list
-
-        bns = []
-        for i in num_features_list:
-            bns.append(nn.BatchNorm2d(i))  # 分别有多个bn与其对应
-
-        self.bn = nn.ModuleList(bns)  # 其中包含4个bn
-
-        self.out_choice = max(self.out_choose_list)
-
-        self.ignore_model_profiling = True
-
-    def forward(self, input):
-        # idx = self.width_mult_list.index(self.width_mult)
-        idx = self.out_choose_list.index(self.out_choice)
-        y = self.bn[idx](input)
-        return y
-
-
-class SlimmableConv2d(nn.Conv2d):
-    # in_channels_list: [3,3,3,3]
-    # out_channels_list: [16, 32, 48, 64]
-    # kernel_size: 3
-    # stride: 1
-    # padding: 3
-    # bias=False
-    '''
-    单个convolution
-    传给该对象的应该是：
-        上一层的可选channel: in_channels_list
-        下一层的可选channel: out_channels_list
-
-    '''
-
-    def __init__(self,
-                 in_channels_list,
-                 out_channels_list,
-                 kernel_size,
-                 in_choose_list=None,
-                 out_choose_list=None,
-                 stride=1,
-                 padding=0,
-                 dilation=1,
-                 groups_list=[1],
-                 bias=True):
-        super(SlimmableConv2d, self).__init__(max(in_channels_list),
-                                              max(out_channels_list),
-                                              kernel_size,
-                                              stride=stride,
-                                              padding=padding,
-                                              dilation=dilation,
-                                              groups=max(groups_list),
-                                              bias=bias)
-
-        self.in_channels_list = in_channels_list
-        self.out_channels_list = out_channels_list
-
-        self.in_choose_list = [
-            i+1 for i in range(len(in_channels_list))] if in_choose_list is None else in_choose_list
-        self.out_choose_list = [
-            i+1 for i in range(len(out_channels_list))] if out_choose_list is None else out_choose_list
-
-        # self.width_mult_list = width_mult_list
-        self.groups_list = groups_list
-        if self.groups_list == [1]:
-            self.groups_list = [1 for _ in range(len(in_channels_list))]
-        # self.width_mult = max(self.width_mult_list)
-
-        self.in_choice = max(self.in_choose_list)
-        self.out_choice = max(self.out_choose_list)
-        # 这里必须选用最大的channel数目作为共享的对象
-
-    def forward(self, input):
-        # idx = self.width_mult_list.index(self.width_mult)  # 判定到底选择哪个作为index
-        in_idx = self.in_choose_list.index(self.in_choice)
-        out_idx = self.out_choose_list.index(self.out_choice)
-
-        self.in_channels = self.in_channels_list[in_idx]
-        self.out_channels = self.out_channels_list[out_idx]  # 找到对应的in和out
-
-        self.groups = self.groups_list[in_idx]  # 组卷积
-
-        weight = self.weight[:self.out_channels, :self.in_channels, :, :]
-
-        if self.bias is not None:
-            bias = self.bias[:self.out_channels]
-        else:
-            bias = self.bias
-        y = nn.functional.conv2d(input, weight, bias, self.stride, self.padding,
-                                 self.dilation, self.groups)
-        return y
 
 
 class MutableBlock(nn.Module):
@@ -361,15 +217,38 @@ class MutableModel(nn.Module):
         return nn.Sequential(*layers)
 
     def _initialize_weights(self):
-        for m in self.modules():
+        # for m in self.modules():
+        #     if isinstance(m, nn.Conv2d):
+        #         init.kaiming_normal_(m.weight)
+        #     elif isinstance(m, nn.BatchNorm2d):
+        #         m.weight.data.fill_(1.0)
+        #         m.bias.data.zero_()
+        #     elif isinstance(m, nn.Linear):
+        #         init.kaiming_normal_(m.weight)
+        #         m.bias.data.zero_()
+        for name, m in self.named_modules():
             if isinstance(m, nn.Conv2d):
-                init.kaiming_normal_(m.weight)
+                if 'first' in name:
+                    nn.init.normal_(m.weight, 0, 0.01)
+                else:
+                    nn.init.normal_(m.weight, 0, 1.0 / m.weight.shape[1])
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1.0)
-                m.bias.data.zero_()
+                if m.weight is not None:
+                    nn.init.constant_(m.weight, 1)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0.0001)
+                nn.init.constant_(m.running_mean, 0)
+            elif isinstance(m, nn.BatchNorm1d):
+                nn.init.constant_(m.weight, 1)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0.0001)
+                nn.init.constant_(m.running_mean, 0)
             elif isinstance(m, nn.Linear):
-                init.kaiming_normal_(m.weight)
-                m.bias.data.zero_()
+                nn.init.normal_(m.weight, 0, 0.01)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
 
     def forward(self, x, arc):
         self.get_true_arc_list(arc)
@@ -397,6 +276,7 @@ class MutableModel(nn.Module):
         实际的网络架构
         '''
         arc_list = [int(item) for item in arc_rep.split('-')]
+
         first_conv = arc_list[0]
         arc_level1 = arc_list[:7]
         arc_level2 = arc_list[7:13]
@@ -410,6 +290,8 @@ class MutableModel(nn.Module):
 
         true_arc_list = [*convert_idx(arc_level1, "level1"), *convert_idx(
             arc_level2, "level2"), *convert_idx(arc_level3, "level3")]
+
+        print("true_arc_list:", true_arc_list)
 
         self.slimmableConv2d_in_choice_list = []
         self.slimmableLinear_in_choice_list = []
@@ -459,11 +341,11 @@ class MutableModel(nn.Module):
                 self.slimmableConv2d_out_choice_list.append(index)
                 self.switchableBatchNorm2d_out_choice_list.append(index)
 
-        # print('^'*100)
-        # print(self.slimmableConv2d_in_choice_list)
-        # print(self.slimmableConv2d_out_choice_list)
-        # print(self.switchableBatchNorm2d_out_choice_list)
-        # print('^'*100)
+        print('^'*100)
+        print(self.slimmableConv2d_in_choice_list)
+        print(self.slimmableConv2d_out_choice_list)
+        print(self.switchableBatchNorm2d_out_choice_list)
+        print('^'*100)
 
         return true_arc_list
 
@@ -473,17 +355,20 @@ class MutableModel(nn.Module):
             module.out_choice = self.slimmableConv2d_out_choice_list.pop(0)
             self.tb.add_row(
                 ["SlimmableConv2d", module.in_choice, module.out_choice])
+            print("SlimmableConv2d", module.in_choice, module.out_choice)
 
         if isinstance(module, SwitchableBatchNorm2d):
             module.out_choice = self.switchableBatchNorm2d_out_choice_list.pop(
                 0)
             self.tb.add_row(["SwitchableBatchNorm2d", 0, module.out_choice])
+            # print("SwitchableBatchNorm2d", module.out_choice)
 
         if isinstance(module, SlimmableLinear):
             module.in_choice = self.slimmableLinear_in_choice_list.pop(0)
             module.out_choice = self.slimmableLinear_out_choice_list.pop(0)
             self.tb.add_row(
                 ["SlimmableLinear", module.in_choice, module.out_choice])
+            print("SlimmableLinear", module.in_choice, module.out_choice)
 
         # print(self.tb)
 
@@ -494,14 +379,13 @@ def mutableResNet20():
                         [3, 3, 3])
 
 
-# if __name__ == "__main__":
-#     model = mutableResNet20()
+if __name__ == "__main__":
+    model = mutableResNet20()
 
-#     input = torch.zeros(16, 3, 32, 32)
-#     output = model(input, arc_representation)
+    input = torch.zeros(16, 3, 32, 32)
+    output = model(input, arc_representation)
 
-    # model.apply(model.modify_channel)
+    model.apply(model.modify_channel)
 
-    # for i in model.children():
-    #     print(i)
-
+    for i in model.children():
+        print(i)
