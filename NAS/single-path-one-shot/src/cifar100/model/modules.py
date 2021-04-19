@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import torch.nn.init as init
 from prettytable import PrettyTable
 
+
 class SlimmableLinear(nn.Linear):
     '''
     in_features_list: [12, 12, 12, 12]
@@ -77,6 +78,101 @@ class SwitchableBatchNorm2d(nn.Module):
         return y
 
 
+
+
+class Slimmable_Conv2d_BN(nn.Conv2d):
+    # in_channels_list: [3,3,3,3]
+    # out_channels_list: [16, 32, 48, 64]
+    # kernel_size: 3
+    # stride: 1
+    # padding: 3
+    # bias=False
+    def __init__(self,
+                 in_channels_list,
+                 out_channels_list,
+                 kernel_size,
+                 in_choose_list=None,
+                 out_choose_list=None,
+                 stride=1,
+                 padding=0,
+                 dilation=1,
+                 groups_list=[1],
+                 bias=True):
+        super(Slimmable_Conv2d_BN, self).__init__(max(in_channels_list),
+                                              max(out_channels_list),
+                                              kernel_size,
+                                              stride=stride,
+                                              padding=padding,
+                                              dilation=dilation,
+                                              groups=max(groups_list),
+                                              bias=bias)
+
+        self.in_channels_list = in_channels_list
+        self.out_channels_list = out_channels_list
+
+        self.in_choose_list = [
+            i+1 for i in range(len(in_channels_list))] if in_choose_list is None else in_choose_list
+        self.out_choose_list = [
+            i+1 for i in range(len(out_channels_list))] if out_choose_list is None else out_choose_list
+
+        self.groups_list = groups_list
+        if self.groups_list == [1]:
+            self.groups_list = [1 for _ in range(len(in_channels_list))]
+
+        self.in_choice = max(self.in_choose_list)
+        self.out_choice = max(self.out_choose_list)
+        self.bn = nn.BatchNorm2d(max(self.out_channels_list))
+        # 这里必须选用最大的channel数目作为共享的对象
+
+    def forward(self, input):
+        # 判定到底选择哪个作为index 
+        in_idx = self.in_choose_list.index(self.in_choice)
+        out_idx = self.out_choose_list.index(self.out_choice)
+
+        self.in_channels = self.in_channels_list[in_idx]
+        self.out_channels = self.out_channels_list[out_idx]  # 找到对应的in和out
+
+        # [20, 12, 3, 3] -> 12 
+        importance = torch.sum(torch.abs(self.weight.data), dim=(1, 2, 3))
+
+        sorted_importance, sorted_idx = torch.sort(
+            importance, dim=0, descending=True)
+
+        self.weight.data = torch.index_select(
+            self.weight.data, 1, sorted_idx)
+
+        self.groups = self.groups_list[in_idx]  # 组卷积
+
+        weight = self.weight[:self.out_channels, :self.in_channels, :, :]
+        self.bn.weight.data = torch.index_select(self.bn.weight.data, 0, sorted_idx)
+        self.bn.bias.data = torch.index_select(self.bn.bias.data, 0, sorted_idx)
+        self.bn.running_mean.data = torch.index_select(
+            self.bn.running_mean.data, 0, sorted_idx)
+        self.bn.running_var.data = torch.index_select(
+            self.bn.running_var.data, 0, sorted_idx)
+
+        
+
+        if self.bias is not None:
+            bias = self.bias[:self.out_channels]
+        else:
+            bias = self.bias
+        y = nn.functional.conv2d(input, weight, bias, self.stride, self.padding,
+                                 self.dilation, self.groups)
+        # y = self.bn(y)
+
+        y = F.batch_norm(y, self.bn.running_mean[:out_channels], self.bn.running_var[:out_channels],
+           self.bn.weight[:out_channels], self.bn.bias[:out_channels], self.bn.training or not self.bn.track_running_stats, expo)
+        return y
+
+model = Slimmable_Conv2d_BN([3,3,3], [12,16,20], 3, stride=1)
+
+input = torch.randn([6, 3, 32,32])
+
+output = model(input)
+
+print(output.shape)
+
 class SlimmableConv2d(nn.Conv2d):
     # in_channels_list: [3,3,3,3]
     # out_channels_list: [16, 32, 48, 64]
@@ -84,14 +180,6 @@ class SlimmableConv2d(nn.Conv2d):
     # stride: 1
     # padding: 3
     # bias=False
-    '''
-    单个convolution
-    传给该对象的应该是：
-        上一层的可选channel: in_channels_list
-        下一层的可选channel: out_channels_list
-
-    '''
-
     def __init__(self,
                  in_channels_list,
                  out_channels_list,

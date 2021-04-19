@@ -10,7 +10,6 @@ from modules import SlimmableConv2d, SlimmableLinear, SwitchableBatchNorm2d
 arc_representation = "4-12-4-4-16-8-4-12-32-24-16-8-8-24-60-12-64-64-52-60"
 # "16-8-16-16-8-12-12-20-12-4-12-32-32-24-48-8-52-16-12-36"
 max_arc_rep = "16-16-16-16-16-16-16-32-32-32-32-32-32-64-64-64-64-64-64-64"
-# 1 2  3  4  5  6  7  8  9  10 11 12 13 14 15 16 17 18 19 20
 
 
 def get_configs():
@@ -201,7 +200,7 @@ class MutableModel(nn.Module):
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.classifier = SlimmableLinear(
-            self.mc[self.idx-1], [num_classes for _ in range(len(self.mc[self.idx-1]))])
+            self.mc[self.idx-2], [num_classes for _ in range(len(self.mc[self.idx-2]))])
 
         self._initialize_weights()
 
@@ -291,39 +290,43 @@ class MutableModel(nn.Module):
         true_arc_list = [*convert_idx(arc_level1, "level1"), *convert_idx(
             arc_level2, "level2"), *convert_idx(arc_level3, "level3")]
 
+        # true_arc_list = true_arc_list[:-1]
         print("true_arc_list:", true_arc_list)
 
         self.slimmableConv2d_in_choice_list = []
+        self.slimmableConv2d_out_choice_list = []
         self.slimmableLinear_in_choice_list = []
         self.slimmableLinear_out_choice_list = []
-        self.slimmableConv2d_out_choice_list = []
         self.switchableBatchNorm2d_out_choice_list = []
 
         self.slimmableConv2d_in_choice_list.append(1)
 
+        # self.slimmableLinear_in_choice_list.append(true_arc_list[-2])
         self.slimmableLinear_in_choice_list.append(true_arc_list[-2])
-        self.slimmableLinear_in_choice_list.append(true_arc_list[-1])
 
-        self.slimmableLinear_out_choice_list.append(true_arc_list[-1])
+        self.slimmableLinear_out_choice_list.append(true_arc_list[-2])
         self.slimmableLinear_out_choice_list.append(1)
 
-        for num, index in enumerate(true_arc_list):
+        for num, index in enumerate(true_arc_list[:-1]):
             # if num
-            if num % 2 == 0:
+            # print("num:", num)
+            if num % 2 == 0:  # 偶数
                 # shortcut node
-                if num == 0:
+                if num == 0:  # 第一个
                     # first
                     self.slimmableConv2d_in_choice_list.append(index)
                 else:
                     # other node
                     self.slimmableConv2d_in_choice_list.append(
                         true_arc_list[num-2])
-                    self.slimmableConv2d_in_choice_list.append(index)
+                    if num != len(true_arc_list[:-2]):
+                        self.slimmableConv2d_in_choice_list.append(index)
             else:
                 # normal node
                 self.slimmableConv2d_in_choice_list.append(index)
+            # print(num, index, self.slimmableConv2d_in_choice_list, '====')
 
-        for num, index in enumerate(true_arc_list):
+        for num, index in enumerate(true_arc_list[:-1]):
             if num % 2 == 0:
                 # 第一个
                 if num == 0:
@@ -357,13 +360,13 @@ class MutableModel(nn.Module):
                 ["SlimmableConv2d", module.in_choice, module.out_choice])
             print("SlimmableConv2d", module.in_choice, module.out_choice)
 
-        if isinstance(module, SwitchableBatchNorm2d):
+        elif isinstance(module, SwitchableBatchNorm2d):
             module.out_choice = self.switchableBatchNorm2d_out_choice_list.pop(
                 0)
-            self.tb.add_row(["SwitchableBatchNorm2d", 0, module.out_choice])
+            # self.tb.add_row(["SwitchableBatchNorm2d", 0, module.out_choice])
             # print("SwitchableBatchNorm2d", module.out_choice)
 
-        if isinstance(module, SlimmableLinear):
+        elif isinstance(module, SlimmableLinear):
             module.in_choice = self.slimmableLinear_in_choice_list.pop(0)
             module.out_choice = self.slimmableLinear_out_choice_list.pop(0)
             self.tb.add_row(
@@ -384,8 +387,3 @@ if __name__ == "__main__":
 
     input = torch.zeros(16, 3, 32, 32)
     output = model(input, arc_representation)
-
-    model.apply(model.modify_channel)
-
-    for i in model.children():
-        print(i)

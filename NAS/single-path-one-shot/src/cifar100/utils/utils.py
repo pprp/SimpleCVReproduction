@@ -132,7 +132,7 @@ class ArchLoader():
 # for i in range(10):
 #     ta = arch_loader.generate_spos_like_batch()
 #     print(type(ta),ta)
-#     tb = arch_loader.generate_niu_fair_batch(i)[-1]
+#     tb = arch_loader.generate_niu_fair_batch(i)[-1]   
 #     print(type(tb),tb)
 
 

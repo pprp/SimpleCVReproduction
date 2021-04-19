@@ -494,14 +494,14 @@ def mutableResNet20():
                         [3, 3, 3])
 
 
-# if __name__ == "__main__":
-#     model = mutableResNet20()
+if __name__ == "__main__":
+    model = mutableResNet20()
 
-#     input = torch.zeros(16, 3, 32, 32)
-#     output = model(input, arc_representation)
+    input = torch.zeros(16, 3, 32, 32)
+    output = model(input, arc_representation)
 
     # model.apply(model.modify_channel)
 
-    # for i in model.children():
-    #     print(i)
+    for i in model.children():
+        print(i)
 

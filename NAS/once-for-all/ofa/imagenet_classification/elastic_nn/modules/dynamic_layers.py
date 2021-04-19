@@ -10,8 +10,9 @@ from collections import OrderedDict
 from ofa.utils.layers import MBConvLayer, ConvLayer, IdentityLayer, set_layer_from_config
 from ofa.utils.layers import ResNetBottleneckBlock, LinearLayer
 from ofa.utils import MyModule, val2list, get_net_device, build_activation, make_divisible, SEModule, MyNetwork
-from .dynamic_op import DynamicSeparableConv2d, DynamicConv2d, DynamicBatchNorm2d, DynamicSE, DynamicGroupNorm
-from .dynamic_op import DynamicLinear
+# from .dynamic_op import DynamicSeparableConv2d, DynamicConv2d, DynamicBatchNorm2d, DynamicSE, DynamicGroupNorm
+# from .dynamic_op import DynamicLinear
+from ofa.imagenet_classification.elastic_nn.modules.dynamic_op import *
 
 __all__ = [
     'adjust_bn_according_to_idx', 'copy_bn',
@@ -426,7 +427,7 @@ class DynamicResNetBottleneckBlock(MyModule):
         self.act_func = act_func
         self.downsample_mode = downsample_mode
 
-        # build modules
+        # build modules 8
         max_middle_channel = make_divisible(
             round(max(self.out_channel_list) * max(self.expand_ratio_list)), MyNetwork.CHANNEL_DIVISIBLE)
 
@@ -630,3 +631,11 @@ class DynamicResNetBottleneckBlock(MyModule):
         self.conv1.conv.conv.weight.data = torch.index_select(self.conv1.conv.conv.weight.data, 0, sorted_idx)
 
         return None
+
+
+if __name__=="__main__":
+    model = DynamicResNetBottleneckBlock([3,3,3],[4,5,6])
+    input = torch.randn([5, 3, 32, 32])
+    output = model(input)
+    model.re_organize_middle_weights()
+    print(output.shape)
