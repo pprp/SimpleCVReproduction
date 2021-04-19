@@ -21,7 +21,8 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from datasets.cifar100_dataset import get_train_loader, get_val_loader
-from model.slimmable_resnet20 import mutableResNet20
+# from model.slimmable_resnet20 import mutableResNet20
+from model.dynamic_resnet20 import dynamic_resnet20
 from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
                          DataIterator, accuracy, bn_calibration_init,
                          reduce_mean, reduce_tensor, retrain_bn,
@@ -49,12 +50,12 @@ parser.add_argument('--weight_decay', type=float,
                     default=4e-5, help='weight decay')
 
 parser.add_argument('--report_freq', type=float,
-                    default=100, help='report frequency')
+                    default=10, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
 parser.add_argument('--epochs', type=int, default=30000,
                     help='num of training epochs')
 parser.add_argument('--total_iters', type=int,
-                    default=300000, help='total iters')
+                    default=3000, help='total iters')
 
 parser.add_argument('--classes', type=int, default=100,
                     help='number of classes')
@@ -107,7 +108,8 @@ def main():
     criterion_smooth = CrossEntropyLabelSmooth(args.classes, args.label_smooth)
     criterion_smooth = criterion_smooth.cuda()
 
-    model = mutableResNet20()
+    # model = mutableResNet20()
+    model = dynamic_resnet20()
 
     model = model.cuda(args.gpu)
     model = torch.nn.parallel.DistributedDataParallel(
@@ -134,7 +136,7 @@ def main():
                                 weight_decay=args.weight_decay)
 
     # // 16  # 16 代表是每个子网的个数
-    args.total_iters = args.epochs * per_epoch_iters
+    # args.total_iters = args.epochs * per_epoch_iters
 
     # scheduler = torch.optim.lr_scheduler.LambdaLR(
     #     optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
@@ -176,11 +178,11 @@ def main():
             if args.local_rank == 0:
                 # model
                 if writer is not None:
-                    writer.add_scalar("Val/loss", objs_val, step)
-                    writer.add_scalar("Val/acc1", top1_val, step)
+                    writer.add_scalar("Val/loss", objs_val, epoch)
+                    writer.add_scalar("Val/acc1", top1_val, epoch)
 
                 save_checkpoint(
-                    {'state_dict': model.state_dict(), }, step, args.exp)
+                    {'state_dict': model.state_dict(), }, epoch, args.exp)
 
 
 def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, args, val_iters, seed, epoch, writer=None):
@@ -204,7 +206,7 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
 
         # Fair Sampling
         # [archloader.generate_niu_fair_batch(step)[-1]]
-        fair_arc_list = [archloader.generate_spos_like_batch()]
+        spos_arc_list = archloader.generate_spos_like_batch().tolist()
 
         # for arc in fair_arc_list:
         # logits = model(image, archloader.convert_list_arc_str(arc))
@@ -212,8 +214,7 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
         # loss_reduce = reduce_tensor(loss, 0, args.world_size)
         # loss.backward()
 
-        logits = model(
-            image, archloader.convert_list_arc_str(fair_arc_list[0]))
+        logits = model(image, spos_arc_list[:-1])
         loss = criterion(logits, target)
         prec1, prec5 = accuracy(logits, target, topk=(1, 5))
 
@@ -249,16 +250,16 @@ def infer(train_loader, val_loader, model, criterion,  val_iters, archloader, ar
 
     model.eval()
     now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
-    print('{} |=> Test rng = {}'.format(now, fair_arc_list[-1]))  # 只测试最后一个模型
 
-    fair_arc_list = [archloader.generate_spos_like_batch()]
+    fair_arc_list = archloader.generate_spos_like_batch().tolist()
+
+    print('{} |=> Test rng = {}'.format(now, fair_arc_list))  # 只测试最后一个模型
 
     # BN calibration
-    retrain_bn(model, 15, train_dataprovider,
-               archloader.convert_list_arc_str(fair_arc_list[-1]), device=0)
+    retrain_bn(model, 15, train_loader, fair_arc_list, device=0)
 
     with torch.no_grad():
-        for step, (image, target) in val_loader:
+        for step, (image, target) in enumerate(val_loader):
             t0 = time.time()
             datatime = time.time() - t0
             image = Variable(image, requires_grad=False).cuda(
@@ -266,19 +267,18 @@ def infer(train_loader, val_loader, model, criterion,  val_iters, archloader, ar
             target = Variable(target, requires_grad=False).cuda(
                 args.local_rank, non_blocking=True)
 
-            logits = model(
-                image, archloader.convert_list_arc_str(fair_arc_list[-1]))
-            loss = criterion(logits, target)
+            logits = model(image, fair_arc_list[:-1])
+            loss=criterion(logits, target)
 
-            prec1, prec5 = accuracy(logits, target, topk=(1, 5))
+            prec1, prec5=accuracy(logits, target, topk = (1, 5))
 
             torch.distributed.barrier()
 
-            reduced_loss = reduce_mean(loss, args.nprocs)
-            reduce_top1 = reduce_mean(prec1, image.size(0))
-            reduce_top5 = reduce_mean(prec5, image.size(0))
+            reduced_loss=reduce_mean(loss, args.nprocs)
+            reduce_top1=reduce_mean(prec1, image.size(0))
+            reduce_top5=reduce_mean(prec5, image.size(0))
 
-            n = image.size(0)
+            n=image.size(0)
             objs.update(reduced_loss.data.item(), n)
             top1.update(reduce_top1.data.item(), n)
             top5.update(reduce_top5.data.item(), n)
@@ -291,7 +291,7 @@ def infer(train_loader, val_loader, model, criterion,  val_iters, archloader, ar
             #     objs.update(loss.data.item(), n)
             #     top1.update(prec1.data.item(), n)
 
-        now = time.strftime('%Y-%m-%d %H:%M:%S',
+        now=time.strftime('%Y-%m-%d %H:%M:%S',
                             time.localtime(time.time()))
         print('{} |=> valid: step={}, loss={:.2f}, acc={:.2f}, datatime={:.2f}'.format(
             now, step, objs.avg, top1.avg, datatime))

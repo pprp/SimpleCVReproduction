@@ -88,8 +88,10 @@ class ArchLoader():
         arc_list = [str(item)+"-" for item in arc_list]
         for item in arc_list:
             arc_str += item
-
         return arc_str[:-1]
+    
+    def convert_str_arc_list(self, arc_str):
+        return [int(i) for i in arc_str.split('-')]
 
     def generate_spos_like_batch(self):
         rngs = []
@@ -259,7 +261,7 @@ def retrain_bn(model, max_iters, dataloader, cand, device=0):
 
         for inputs, targets in dataloader:
             inputs, targets = inputs.to(device), targets.to(device)
-            outputs = model(inputs, cand)
+            outputs = model(inputs, cand[:-1])
             del inputs, targets, outputs
 
 

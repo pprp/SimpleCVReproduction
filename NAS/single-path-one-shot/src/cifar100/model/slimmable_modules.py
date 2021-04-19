@@ -133,7 +133,7 @@ class Slimmable_Conv2d_BN(nn.Conv2d):
         self.out_channels = self.out_channels_list[out_idx]  # 找到对应的in和out
 
         # [20, 12, 3, 3] -> 12 
-        importance = torch.sum(torch.abs(self.weight.data), dim=(1, 2, 3))
+        importance = torch.sum(torch.abs(self.weight.data), dim=(0, 2, 3))
 
         sorted_importance, sorted_idx = torch.sort(
             importance, dim=0, descending=True)
@@ -151,8 +151,6 @@ class Slimmable_Conv2d_BN(nn.Conv2d):
         self.bn.running_var.data = torch.index_select(
             self.bn.running_var.data, 0, sorted_idx)
 
-        
-
         if self.bias is not None:
             bias = self.bias[:self.out_channels]
         else:
@@ -160,18 +158,28 @@ class Slimmable_Conv2d_BN(nn.Conv2d):
         y = nn.functional.conv2d(input, weight, bias, self.stride, self.padding,
                                  self.dilation, self.groups)
         # y = self.bn(y)
+        exponential_average_factor = 0.0
 
-        y = F.batch_norm(y, self.bn.running_mean[:out_channels], self.bn.running_var[:out_channels],
-           self.bn.weight[:out_channels], self.bn.bias[:out_channels], self.bn.training or not self.bn.track_running_stats, expo)
+        if self.bn.training and self.bn.track_running_stats:
+            if self.bn.num_batches_tracked is not None:
+                self.bn.num_batches_tracked += 1
+                if self.bn.momentum is None:  # use cumulative moving average
+                    exponential_average_factor = 1.0 / \
+                        float(self.bn.num_batches_tracked)
+                else:  # use exponential moving average
+                    exponential_average_factor = self.bn.momentum
+
+        y = F.batch_norm(y, self.bn.running_mean[:self.out_channels], self.bn.running_var[:self.out_channels],
+           self.bn.weight[:self.out_channels], self.bn.bias[:self.out_channels], self.bn.training or not self.bn.track_running_stats, exponential_average_factor, self.bn.eps,)
         return y
 
-model = Slimmable_Conv2d_BN([3,3,3], [12,16,20], 3, stride=1)
+# model = Slimmable_Conv2d_BN([3,3,3], [12,16,20], 3, stride=1)
 
-input = torch.randn([6, 3, 32,32])
+# input = torch.randn([6, 3, 32,32])
 
-output = model(input)
+# output = model(input)
 
-print(output.shape)
+# print(output.shape)
 
 class SlimmableConv2d(nn.Conv2d):
     # in_channels_list: [3,3,3,3]

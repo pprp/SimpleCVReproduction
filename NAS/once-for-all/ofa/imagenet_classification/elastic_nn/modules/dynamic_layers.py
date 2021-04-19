@@ -427,7 +427,7 @@ class DynamicResNetBottleneckBlock(MyModule):
         self.act_func = act_func
         self.downsample_mode = downsample_mode
 
-        # build modules 8
+        # build modules
         max_middle_channel = make_divisible(
             round(max(self.out_channel_list) * max(self.expand_ratio_list)), MyNetwork.CHANNEL_DIVISIBLE)
 

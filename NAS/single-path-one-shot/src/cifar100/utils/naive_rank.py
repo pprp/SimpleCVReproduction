@@ -1,11 +1,11 @@
-from test_json import get_arch_list
+from statistics import get_arch_list
 import json 
 
 '''
 直接根据参数量进行排序
 '''
 
-arch_l, arch_d = get_arch_list("Track1_final_archs.json")
+arch_l, arch_d = get_arch_list("data/Track1_final_archs.json")
 
 
 def sort_by_value(d):

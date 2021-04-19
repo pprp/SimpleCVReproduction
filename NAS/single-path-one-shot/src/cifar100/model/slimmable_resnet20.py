@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from prettytable import PrettyTable
-from modules import SlimmableConv2d, SlimmableLinear, SwitchableBatchNorm2d
+from slimmable_modules import SlimmableConv2d, SlimmableLinear, SwitchableBatchNorm2d
 
 arc_representation = "4-12-4-4-16-8-4-12-32-24-16-8-8-24-60-12-64-64-52-60"
 # "16-8-16-16-8-12-12-20-12-4-12-32-32-24-48-8-52-16-12-36"
@@ -13,14 +13,10 @@ max_arc_rep = "16-16-16-16-16-16-16-32-32-32-32-32-32-64-64-64-64-64-64-64"
 
 
 def get_configs():
-    '''
-    level_config 保存每个层级可选的通道个数
-    model_config 保存模型每个Layer可选的通道个数
-    '''
     level_config = {
-        "level1": [4, 8, 12, 16],
-        "level2": [4, 8, 12, 16, 20, 24, 28, 32],
-        "level3": [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64]
+        "level1": [4*(i+1) for i in range(4)],
+        "level2": [4*(i+1) for i in range(8)],
+        "level3": [4*(i+1) for i in range(16)]
     }
 
     model_config = {}
