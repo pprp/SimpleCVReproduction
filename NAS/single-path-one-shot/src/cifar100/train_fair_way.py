@@ -202,7 +202,7 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
 
         losses_.update(loss.data.item(), n)
         top1_.update(prec1.data.item(), n)
-        top5_.update(prec1.data.item(), n)
+        top5_.update(prec5.data.item(), n)
 
         postfix = {'train_loss': '%.6f' % (
             losses_.avg), 'train_acc1': '%.6f' % top1_.avg, 'train_acc5': '%.6f' % top5_.avg}
