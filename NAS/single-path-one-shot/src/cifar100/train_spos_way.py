@@ -64,7 +64,6 @@ parser.add_argument('--label_smooth', type=float,
                     default=0.1, help='label smoothing')
 args = parser.parse_args()
 
-per_epoch_iters = CIFAR100_TRAINING_SET_SIZE // args.batch_size
 val_iters = CIFAR100_TEST_SET_SIZE // 200
 
 
@@ -129,19 +128,19 @@ def main():
     # Prepare data
     train_loader = get_train_loader(
         args.batch_size, args.local_rank, args.num_workers)
-    # 原来跟train batch size一样，现在修改小一点 ， 同时修改val_iters
+    # 原来跟train batch size一样，现在修改小一点 ，
     val_loader = get_val_loader(args.batch_size, args.num_workers)
 
     archloader = ArchLoader("data/Track1_final_archs.json")
 
     for epoch in range(args.epochs):
         train(train_loader, val_loader,  optimizer, scheduler, model,
-              archloader, criterion, args, val_iters, args.seed, epoch, writer)
+              archloader, criterion, args, args.seed, epoch, writer)
 
         scheduler.step()
         if (epoch + 1) % args.report_freq == 0:
             top1_val, top5_val,  objs_val = infer(train_loader, val_loader, model, criterion,
-                                                  val_iters, archloader, args)
+                                                  archloader, args)
 
             if args.local_rank == 0:
                 # model
@@ -154,7 +153,7 @@ def main():
                     {'state_dict': model.state_dict(), }, epoch, args.exp)
 
 
-def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, args, val_iters, seed, epoch, writer=None):
+def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, args, seed, epoch, writer=None):
     losses_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
 
     # for p in model.parameters():
@@ -172,20 +171,18 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
             args.gpu, non_blocking=True)
 
         # Fair Sampling
+        # [archloader.generate_niu_fair_batch(step)[-1]]
         # [16, 16, 16, 16, 16, 16, 16, 32, 32, 32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64]
-        # spos_arc_list = archloader.generate_spos_like_batch().tolist()
-        fair_arc_list = archloader.generate_niu_fair_batch(step)
+        spos_arc_list = archloader.generate_spos_like_batch().tolist()
 
-        for arc in fair_arc_list:
-            logits = model(image, arc[:-1])
-            loss = criterion(logits, target)
-            # loss_reduce = reduce_tensor(loss, 0, args.world_size)
-            loss.backward()
-
-        # logits = model(image, spos_arc_list[:-1])
+        # for arc in fair_arc_list:
+        # logits = model(image, archloader.convert_list_arc_str(arc))
         # loss = criterion(logits, target)
+        # loss_reduce = reduce_tensor(loss, 0, args.world_size)
         # loss.backward()
-
+        optimizer.zero_grad()
+        logits = model(image, spos_arc_list[:-1])
+        loss = criterion(logits, target)
         prec1, prec5 = accuracy(logits, target, topk=(1, 5))
 
         if torch.cuda.device_count() > 1:
@@ -195,10 +192,11 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
             prec1 = reduce_mean(prec1, args.nprocs)
             prec5 = reduce_mean(prec5, args.nprocs)
 
+        loss.backward()
+
         # nn.utils.clip_grad_value_(model.parameters(), args.grad_clip)
 
         optimizer.step()
-        optimizer.zero_grad()
 
         losses_.update(loss.data.item(), n)
         top1_.update(prec1.data.item(), n)
@@ -215,7 +213,7 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
                               len(train_dataloader) * epoch * args.batch_size)
 
 
-def infer(train_loader, val_loader, model, criterion,  val_iters, archloader, args):
+def infer(train_loader, val_loader, model, criterion,  archloader, args):
 
     objs_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
 
@@ -223,9 +221,7 @@ def infer(train_loader, val_loader, model, criterion,  val_iters, archloader, ar
     now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
 
     # [16, 16, 16, 16, 16, 16, 16, 32, 32, 32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64]
-    fair_arc_list = archloader.generate_niu_fair_batch(
-        random.randint(0, 100))[-1].tolist()
-    # archloader.generate_spos_like_batch().tolist()
+    fair_arc_list = archloader.generate_spos_like_batch().tolist()
 
     print('{} |=> Test rng = {}'.format(now, fair_arc_list))  # 只测试最后一个模型
 
@@ -241,7 +237,7 @@ def infer(train_loader, val_loader, model, criterion,  val_iters, archloader, ar
             target = Variable(target, requires_grad=False).cuda(
                 args.local_rank, non_blocking=True)
 
-            logits = model(image, fair_arc_list)
+            logits = model(image, fair_arc_list[:-1])
             loss = criterion(logits, target)
 
             top1, top5 = accuracy(logits, target, topk=(1, 5))

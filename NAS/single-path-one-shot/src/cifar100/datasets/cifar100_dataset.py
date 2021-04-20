@@ -144,19 +144,13 @@ class Random_Batch_Sampler(Sampler):
         return self.total_iters
 
 
-def get_train_loader(batch_size, local_rank, num_workers, total_iters, proxy):
+def get_train_loader(batch_size, local_rank, num_workers):
     dataset_train = get_train_dataset()
-
-    if proxy < 1:
-        # 选择其中一部分 0.5
-        choice = int(len(dataset_train.data)*proxy)
-        np.random.shuffle(dataset_train.data)
-        dataset_train.data = dataset_train.data[:choice]
 
     # datasampler = Random_Batch_Sampler(
     #     dataset_train, batch_size=batch_size, total_iters=total_iters, rank=local_rank
     # )
-    datasampler = None 
+    datasampler = None
     if torch.cuda.device_count() > 1:
         datasampler = DistributedSampler(dataset_train)
 
@@ -166,13 +160,8 @@ def get_train_loader(batch_size, local_rank, num_workers, total_iters, proxy):
     return train_loader
 
 
-def get_val_loader(batch_size, num_workers, proxy):
+def get_val_loader(batch_size, num_workers):
     dataset_val = get_val_dataset()
-
-    if proxy is not None:
-        choice = int(len(dataset_val.data)*proxy)
-        np.random.shuffle(dataset_val.data)
-        dataset_val.data = dataset_val.data[:choice]
 
     val_loader = torch.utils.data.DataLoader(
         dataset_val, batch_size=batch_size, shuffle=False,

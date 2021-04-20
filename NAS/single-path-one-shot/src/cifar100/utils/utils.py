@@ -130,7 +130,7 @@ class ArchLoader():
 
 
 # arch_loader = ArchLoader("data/Track1_final_archs.json")
-
+# print(arch_loader.generate_niu_fair_batch(random.randint(0,100))[-1].tolist())
 # for i in range(10):
 #     ta = arch_loader.generate_spos_like_batch()
 #     print(type(ta),ta)
