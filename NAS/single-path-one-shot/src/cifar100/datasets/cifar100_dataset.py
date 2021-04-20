@@ -156,8 +156,9 @@ def get_train_loader(batch_size, local_rank, num_workers, total_iters, proxy):
     # datasampler = Random_Batch_Sampler(
     #     dataset_train, batch_size=batch_size, total_iters=total_iters, rank=local_rank
     # )
-
-    datasampler = DistributedSampler(dataset_train)
+    datasampler = None 
+    if torch.cuda.device_count() > 1:
+        datasampler = DistributedSampler(dataset_train)
 
     train_loader = torch.utils.data.DataLoader(
         dataset_train, num_workers=num_workers, pin_memory=True, sampler=datasampler, batch_size=batch_size)

@@ -22,7 +22,8 @@ from tqdm import tqdm
 
 from datasets.cifar100_dataset import get_train_loader, get_val_loader
 # from model.slimmable_resnet20 import mutableResNet20
-from model.dynamic_resnet20 import dynamic_resnet20
+# from model.dynamic_resnet20 import dynamic_resnet20
+from model.resnet20 import resnet20
 from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
                          DataIterator, accuracy, bn_calibration_init,
                          reduce_mean, reduce_tensor, retrain_bn,
@@ -38,9 +39,9 @@ parser.add_argument('--proxy', type=float, default=0.5,
                     help='smaller dataset ')
 parser.add_argument('--local_rank', type=int, default=0,
                     help='local rank for distributed training')
-parser.add_argument('--batch_size', type=int, default=2560, help='batch size')
+parser.add_argument('--batch_size', type=int, default=128, help='batch size')
 parser.add_argument('--learning_rate', type=float,
-                    default=0.4472, help='init learning rate')
+                    default=0.1, help='init learning rate')
 parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
 
@@ -50,7 +51,7 @@ parser.add_argument('--weight_decay', type=float,
                     default=4e-5, help='weight decay')
 
 parser.add_argument('--report_freq', type=float,
-                    default=10, help='report frequency')
+                    default=2, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
 parser.add_argument('--epochs', type=int, default=30000,
                     help='num of training epochs')
@@ -98,22 +99,25 @@ def main():
 
     print('gpu device = %d' % args.gpu)
     print("args = %s", args)
-
-    torch.distributed.init_process_group(
-        backend='nccl', init_method='env://')
-
-    args.world_size = torch.distributed.get_world_size()
-    args.batch_size = args.batch_size // args.world_size
-
-    criterion_smooth = CrossEntropyLabelSmooth(args.classes, args.label_smooth)
-    criterion_smooth = criterion_smooth.cuda()
-
-    # model = mutableResNet20()
-    model = dynamic_resnet20()
+    model = resnet20()
 
     model = model.cuda(args.gpu)
-    model = torch.nn.parallel.DistributedDataParallel(
-        model, device_ids=[args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
+
+    if num_gpus > 1:
+        torch.distributed.init_process_group(
+            backend='nccl', init_method='env://')
+        model = torch.nn.parallel.DistributedDataParallel(
+            model, device_ids=[args.local_rank], output_device=args.local_rank, find_unused_parameters=False)
+
+        args.world_size = torch.distributed.get_world_size()
+        args.batch_size = args.batch_size // args.world_size
+
+    # criterion_smooth = CrossEntropyLabelSmooth(args.classes, args.label_smooth)
+    # criterion_smooth = criterion_smooth.cuda()
+    criterion_smooth = torch.nn.CrossEntropyLoss().cuda(args.gpu)
+
+    # model = mutableResNet20()
+    # model = dynamic_resnet20()
 
     # all_parameters = model.parameters()
     # weight_parameters = []
@@ -170,9 +174,12 @@ def main():
     for epoch in range(args.epochs):
         train(train_loader, val_loader,  optimizer, scheduler, model,
               archloader, criterion_smooth, args, val_iters, args.seed, epoch, writer)
+
+        # model.module.re_organize_middle_weight()
+
         scheduler.step()
         if (epoch + 1) % args.report_freq == 0:
-            top1_val, objs_val = infer(train_loader, val_loader, model, criterion_smooth,
+            top1_val, objs_val = infer(val_loader, val_loader, model, criterion_smooth,
                                        val_iters, archloader, args)
 
             if args.local_rank == 0:
@@ -186,7 +193,7 @@ def main():
 
 
 def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, args, val_iters, seed, epoch, writer=None):
-    losses, top1, top5 = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
+    losses_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
 
     # for p in model.parameters():
     #     p.grad = torch.zeros_like(p)
@@ -206,7 +213,8 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
 
         # Fair Sampling
         # [archloader.generate_niu_fair_batch(step)[-1]]
-        spos_arc_list = archloader.generate_spos_like_batch().tolist()
+        spos_arc_list = [16, 16, 16, 16, 16, 16, 16, 32, 32, 32, 32, 32, 32, 64,
+                         64, 64, 64, 64, 64, 64]  # archloader.generate_spos_like_batch().tolist()
 
         # for arc in fair_arc_list:
         # logits = model(image, archloader.convert_list_arc_str(arc))
@@ -214,15 +222,16 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
         # loss_reduce = reduce_tensor(loss, 0, args.world_size)
         # loss.backward()
 
-        logits = model(image, spos_arc_list[:-1])
+        logits = model(image)  # , spos_arc_list[:-1])
         loss = criterion(logits, target)
         prec1, prec5 = accuracy(logits, target, topk=(1, 5))
 
-        torch.distributed.barrier()
+        if torch.cuda.device_count() > 1:
+            torch.distributed.barrier()
 
-        reduced_loss = reduce_mean(loss, args.nprocs)
-        reduced_prec1 = reduce_mean(prec1, args.nprocs)
-        reduced_prec5 = reduce_mean(prec5, args.nprocs)
+            loss = reduce_mean(loss, args.nprocs)
+            prec1 = reduce_mean(prec1, args.nprocs)
+            prec5 = reduce_mean(prec5, args.nprocs)
 
         optimizer.zero_grad()
         loss.backward()
@@ -231,32 +240,34 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
 
         optimizer.step()
 
-        losses.update(reduced_loss.data.item(), n)
-        top1.update(reduced_prec1.data.item(), n)
-        top5.update(reduced_prec1.data.item(), n)
+        losses_.update(loss.data.item(), n)
+        top1_.update(prec1.data.item(), n)
+        top5_.update(prec1.data.item(), n)
 
         postfix = {'train_loss': '%.6f' % (
-            losses.avg), 'train_acc1': '%.6f' % top1.avg, 'train_acc5': '%.6f' % top5.avg}
+            losses_.avg), 'train_acc1': '%.6f' % top1_.avg, 'train_acc5': '%.6f' % top5_.avg}
         train_loader.set_postfix(log=postfix)
 
         if args.local_rank == 0 and step % 10 == 0 and writer is not None:
-            writer.add_scalar("Train/loss", losses.avg, step)
-            writer.add_scalar("Train/acc1", top1.avg, step)
+            writer.add_scalar("Train/loss", losses_.avg, step)
+            writer.add_scalar("Train/acc1", top1_.avg, step)
 
 
 def infer(train_loader, val_loader, model, criterion,  val_iters, archloader, args):
 
-    objs, top1, top5 = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
+    objs_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
 
     model.eval()
     now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
 
-    fair_arc_list = archloader.generate_spos_like_batch().tolist()
+    fair_arc_list = [16, 16, 16, 16, 16, 16, 16, 32,
+                     32, 32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64]
+    # archloader.generate_spos_like_batch().tolist()
 
     print('{} |=> Test rng = {}'.format(now, fair_arc_list))  # 只测试最后一个模型
 
     # BN calibration
-    retrain_bn(model, 15, train_loader, fair_arc_list, device=0)
+    # retrain_bn(model, 15, train_loader, fair_arc_list, device=0)
 
     with torch.no_grad():
         for step, (image, target) in enumerate(val_loader):
@@ -267,21 +278,22 @@ def infer(train_loader, val_loader, model, criterion,  val_iters, archloader, ar
             target = Variable(target, requires_grad=False).cuda(
                 args.local_rank, non_blocking=True)
 
-            logits = model(image, fair_arc_list[:-1])
-            loss=criterion(logits, target)
+            logits = model(image)  # , fair_arc_list[:-1])
+            loss = criterion(logits, target)
 
-            prec1, prec5=accuracy(logits, target, topk = (1, 5))
+            top1, top5 = accuracy(logits, target, topk=(1, 5))
 
-            torch.distributed.barrier()
+            if torch.cuda.device_count() > 1:
+                torch.distributed.barrier()
 
-            reduced_loss=reduce_mean(loss, args.nprocs)
-            reduce_top1=reduce_mean(prec1, image.size(0))
-            reduce_top5=reduce_mean(prec5, image.size(0))
+                loss = reduce_mean(loss, args.nprocs)
+                top1 = reduce_mean(top1, image.size(0))
+                top5 = reduce_mean(top5, image.size(0))
 
-            n=image.size(0)
-            objs.update(reduced_loss.data.item(), n)
-            top1.update(reduce_top1.data.item(), n)
-            top5.update(reduce_top5.data.item(), n)
+            n = image.size(0)
+            objs_.update(loss.data.item(), n)
+            top1_.update(top1.data.item(), n)
+            top5_.update(top5.data.item(), n)
 
             # for arc in fair_arc_list:
             #     logits = model(image, archloader.convert_list_arc_str(arc))
@@ -291,12 +303,12 @@ def infer(train_loader, val_loader, model, criterion,  val_iters, archloader, ar
             #     objs.update(loss.data.item(), n)
             #     top1.update(prec1.data.item(), n)
 
-        now=time.strftime('%Y-%m-%d %H:%M:%S',
+        now = time.strftime('%Y-%m-%d %H:%M:%S',
                             time.localtime(time.time()))
         print('{} |=> valid: step={}, loss={:.2f}, acc={:.2f}, datatime={:.2f}'.format(
-            now, step, objs.avg, top1.avg, datatime))
+            now, step, objs_.avg, top1_.avg, datatime))
 
-    return top1.avg, objs.avg
+    return top1_.avg, objs_.avg
 
 
 if __name__ == '__main__':
