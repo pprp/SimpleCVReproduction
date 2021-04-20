@@ -35,7 +35,7 @@ CIFAR100_TRAINING_SET_SIZE = 50000
 CIFAR100_TEST_SET_SIZE = 10000
 
 parser = argparse.ArgumentParser("ResNet20-cifar100")
-parser.add_argument('--proxy', type=float, default=0.8,
+parser.add_argument('--proxy', type=float, default=1,
                     help='smaller dataset ')
 parser.add_argument('--local_rank', type=int, default=0,
                     help='local rank for distributed training')
@@ -124,17 +124,11 @@ def main():
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
 
-    # // 16  # 16 代表是每个子网的个数
-    # args.total_iters = args.epochs * per_epoch_iters
-
     # scheduler = torch.optim.lr_scheduler.LambdaLR(
     #     optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
-
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
     #     optimizer, T_0=5)
-
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
-
     # scheduler = torch.optim.lr_scheduler.LambdaLR(
     #     optimizer, lambda epoch: 1 - (epoch / args.epochs))
 

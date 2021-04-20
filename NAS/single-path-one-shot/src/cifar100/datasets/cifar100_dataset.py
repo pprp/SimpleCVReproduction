@@ -147,7 +147,7 @@ class Random_Batch_Sampler(Sampler):
 def get_train_loader(batch_size, local_rank, num_workers, total_iters, proxy):
     dataset_train = get_train_dataset()
 
-    if proxy is not None:
+    if proxy < 1:
         # 选择其中一部分 0.5
         choice = int(len(dataset_train.data)*proxy)
         np.random.shuffle(dataset_train.data)
