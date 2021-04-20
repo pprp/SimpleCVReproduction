@@ -35,7 +35,7 @@ CIFAR100_TRAINING_SET_SIZE = 50000
 CIFAR100_TEST_SET_SIZE = 10000
 
 parser = argparse.ArgumentParser("ResNet20-cifar100")
-parser.add_argument('--proxy', type=float, default=0.5,
+parser.add_argument('--proxy', type=float, default=0.8,
                     help='smaller dataset ')
 parser.add_argument('--local_rank', type=int, default=0,
                     help='local rank for distributed training')
@@ -48,15 +48,15 @@ parser.add_argument('--num_workers', type=int,
 # hyper parameter
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float,
-                    default=4e-5, help='weight decay')
+                    default=5e-4, help='weight decay')
 
 parser.add_argument('--report_freq', type=float,
                     default=2, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
-parser.add_argument('--epochs', type=int, default=30000,
+parser.add_argument('--epochs', type=int, default=300,
                     help='num of training epochs')
 parser.add_argument('--total_iters', type=int,
-                    default=3000, help='total iters')
+                    default=300, help='total iters')
 
 parser.add_argument('--classes', type=int, default=100,
                     help='number of classes')
@@ -119,21 +119,6 @@ def main():
     # model = mutableResNet20()
     # model = dynamic_resnet20()
 
-    # all_parameters = model.parameters()
-    # weight_parameters = []
-    # for pname, p in model.named_parameters():
-    #     if p.ndimension() == 4 or 'classifier.0.weight' in pname or 'classifier.0.bias' in pname:
-    #         weight_parameters.append(p)
-    # weight_parameters_id = list(map(id, weight_parameters))
-    # other_parameters = list(
-    #     filter(lambda p: id(p) not in weight_parameters_id, all_parameters))
-    # optimizer = torch.optim.SGD(
-    #     [{'params': other_parameters},
-    #      {'params': weight_parameters, 'weight_decay': args.weight_decay}],
-    #     args.learning_rate,
-    #     momentum=args.momentum,
-    # )
-
     optimizer = torch.optim.SGD(model.parameters(),
                                 lr=args.learning_rate,
                                 momentum=args.momentum,
@@ -148,8 +133,10 @@ def main():
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
     #     optimizer, T_0=5)
 
-    scheduler = torch.optim.lr_scheduler.LambdaLR(
-        optimizer, lambda epoch: 1 - (epoch / args.epochs))
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+
+    # scheduler = torch.optim.lr_scheduler.LambdaLR(
+    #     optimizer, lambda epoch: 1 - (epoch / args.epochs))
 
     if args.local_rank == 0:
         writer = SummaryWriter("./runs/%s-%05d" %
@@ -203,8 +190,6 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
     train_loader.set_description(
         '[%s%04d/%04d %s%f]' % ('Epoch:', epoch + 1, args.epochs, 'lr:', scheduler.get_last_lr()[0]))
     for step, (image, target) in enumerate(train_loader):
-        t0 = time.time()
-        datatime = time.time() - t0
         n = image.size(0)
         image = Variable(image, requires_grad=False).cuda(
             args.gpu, non_blocking=True)
@@ -221,7 +206,7 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
         # loss = criterion(logits, target)
         # loss_reduce = reduce_tensor(loss, 0, args.world_size)
         # loss.backward()
-
+        optimizer.zero_grad()
         logits = model(image)  # , spos_arc_list[:-1])
         loss = criterion(logits, target)
         prec1, prec5 = accuracy(logits, target, topk=(1, 5))
@@ -233,10 +218,9 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
             prec1 = reduce_mean(prec1, args.nprocs)
             prec5 = reduce_mean(prec5, args.nprocs)
 
-        optimizer.zero_grad()
         loss.backward()
 
-        nn.utils.clip_grad_value_(model.parameters(), args.grad_clip)
+        # nn.utils.clip_grad_value_(model.parameters(), args.grad_clip)
 
         optimizer.step()
 
