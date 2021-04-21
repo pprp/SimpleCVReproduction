@@ -126,8 +126,8 @@ class ArchLoader():
 
     def generate_width_to_narrow(self, current_epoch, total_epoch):
         current_p = float(current_epoch) / total_epoch
-        opposite_p = 1 - current_epoch
-
+        opposite_p = 1 - current_p
+        # print(current_p, opposite_p)
         def p_generator(length):
             rng_list = np.linspace(current_p, opposite_p, length)
             return self.softmax(rng_list)
@@ -158,10 +158,11 @@ class ArchLoader():
         return softmax
 
 
-arch_loader = ArchLoader("data/Track1_final_archs.json")
+# arch_loader = ArchLoader("data/Track1_final_archs.json")
 
-for i in range(10):
-    print(arch_loader.generate_width_to_narrow(i, 10))
+# for i in range(20):
+#     lst= arch_loader.generate_width_to_narrow(i, 20)
+#     print(lst, sum(lst))
 
 # print(arch_loader.generate_niu_fair_batch(random.randint(0,100))[-1].tolist())
 # for i in range(10):
