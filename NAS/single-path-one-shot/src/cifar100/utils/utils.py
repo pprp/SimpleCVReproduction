@@ -18,11 +18,13 @@ def reduce_tensor(tensor, device=0, world_size=1):
     tensor.div_(world_size)
     return tensor
 
+
 def reduce_mean(tensor, nprocs):
     rt = tensor.clone()
     torch.distributed.all_reduce(rt, op=torch.distributed.ReduceOp.SUM)
     rt /= nprocs
     return rt
+
 
 class DataIterator(object):
 
@@ -65,15 +67,6 @@ class ArchLoader():
     def get_arch_dict(self):
         return self.arc_dict
 
-    def __next__(self):
-        self.idx += 1
-        if self.idx >= len(self.arc_list):
-            raise StopIteration
-        return self.arc_list[self.idx]
-
-    def __iter__(self):
-        return self
-
     def get_arch_list_dict(self, path):
         with open(path, "r") as f:
             self.arc_dict = json.load(f)
@@ -89,18 +82,21 @@ class ArchLoader():
         for item in arc_list:
             arc_str += item
         return arc_str[:-1]
-    
+
     def convert_str_arc_list(self, arc_str):
         return [int(i) for i in arc_str.split('-')]
 
     def generate_spos_like_batch(self):
         rngs = []
         for i in range(0, 7):
-            rngs += np.random.choice(self.level_config["level1"], size=1).tolist()
+            rngs += np.random.choice(
+                self.level_config["level1"], size=1).tolist()
         for i in range(7, 13):
-            rngs += np.random.choice(self.level_config['level2'], size=1).tolist()
+            rngs += np.random.choice(
+                self.level_config['level2'], size=1).tolist()
         for i in range(13, 20):
-            rngs += np.random.choice(self.level_config['level3'], size=1).tolist()
+            rngs += np.random.choice(
+                self.level_config['level3'], size=1).tolist()
         return np.array(rngs)
 
     def generate_niu_fair_batch(self, seed):
@@ -128,13 +124,50 @@ class ArchLoader():
                                       len(self.level_config['level3'])))
         return np.transpose(rngs)
 
+    def generate_width_to_narrow(self, current_epoch, total_epoch):
+        current_p = float(current_epoch) / total_epoch
+        opposite_p = 1 - current_epoch
 
-# arch_loader = ArchLoader("data/Track1_final_archs.json")
+        def p_generator(length):
+            rng_list = np.linspace(current_p, opposite_p, length)
+            return self.softmax(rng_list)
+
+        rngs = []
+        for i in range(0, 7):
+            rngs += np.random.choice(self.level_config["level1"], size=1, p=p_generator(
+                len(self.level_config['level1']))).tolist()
+        for i in range(7, 13):
+            rngs += np.random.choice(self.level_config['level2'], size=1, p=p_generator(
+                len(self.level_config['level2']))).tolist()
+        for i in range(13, 20):
+            rngs += np.random.choice(self.level_config['level3'], size=1, p=p_generator(
+                len(self.level_config['level3']))).tolist()
+        return np.array(rngs)
+
+    @staticmethod
+    def softmax(rng_lst):
+        if isinstance(rng_lst, list):
+            x = np.asarray(rng_lst)
+        else:
+            x = rng_lst
+        x_max = x.max()
+        x = x - x_max
+        x_exp = np.exp(x)
+        x_exp_sum = x_exp.sum(axis=0)
+        softmax = x_exp / x_exp_sum
+        return softmax
+
+
+arch_loader = ArchLoader("data/Track1_final_archs.json")
+
+for i in range(10):
+    print(arch_loader.generate_width_to_narrow(i, 10))
+
 # print(arch_loader.generate_niu_fair_batch(random.randint(0,100))[-1].tolist())
 # for i in range(10):
 #     ta = arch_loader.generate_spos_like_batch()
 #     print(type(ta),ta)
-#     tb = arch_loader.generate_niu_fair_batch(i)[-1]   
+#     tb = arch_loader.generate_niu_fair_batch(i)[-1]
 #     print(type(tb),tb)
 
 
@@ -263,5 +296,3 @@ def retrain_bn(model, max_iters, dataloader, cand, device=0):
             inputs, targets = inputs.to(device), targets.to(device)
             outputs = model(inputs, cand[:-1])
             del inputs, targets, outputs
-
-

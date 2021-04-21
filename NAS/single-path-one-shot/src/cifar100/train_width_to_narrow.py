@@ -50,7 +50,7 @@ parser.add_argument('--weight_decay', type=float,
                     default=5e-4, help='weight decay')
 
 parser.add_argument('--report_freq', type=float,
-                    default=2, help='report frequency')
+                    default=5, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
 parser.add_argument('--epochs', type=int, default=3000,
                     help='num of training epochs')
@@ -140,7 +140,7 @@ def main():
         scheduler.step()
         if (epoch + 1) % args.report_freq == 0:
             top1_val, top5_val,  objs_val = infer(train_loader, val_loader, model, criterion,
-                                                  archloader, args)
+                                                  archloader, args, epoch)
 
             if args.local_rank == 0:
                 # model
@@ -173,7 +173,8 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
         # Fair Sampling
         # [archloader.generate_niu_fair_batch(step)[-1]]
         # [16, 16, 16, 16, 16, 16, 16, 32, 32, 32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64]
-        spos_arc_list = archloader.generate_spos_like_batch().tolist()
+        width_to_narrow_list = archloader.generate_width_to_narrow(
+            epoch, args.epochs)  # generate_spos_like_batch().tolist()
 
         # for arc in fair_arc_list:
         # logits = model(image, archloader.convert_list_arc_str(arc))
@@ -181,7 +182,7 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
         # loss_reduce = reduce_tensor(loss, 0, args.world_size)
         # loss.backward()
         optimizer.zero_grad()
-        logits = model(image, spos_arc_list[:-1])
+        logits = model(image, width_to_narrow_list[:-1])
         loss = criterion(logits, target)
         prec1, prec5 = accuracy(logits, target, topk=(1, 5))
 
@@ -215,7 +216,7 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
                               len(train_loader)*args.batch_size*epoch)
 
 
-def infer(train_loader, val_loader, model, criterion,  archloader, args):
+def infer(train_loader, val_loader, model, criterion,  archloader, args, epoch):
 
     objs_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
 
@@ -223,12 +224,13 @@ def infer(train_loader, val_loader, model, criterion,  archloader, args):
     now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
 
     # [16, 16, 16, 16, 16, 16, 16, 32, 32, 32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64]
-    fair_arc_list = archloader.generate_spos_like_batch().tolist()
+    fair_arc_list = archloader.generate_width_to_narrow(
+        epoch, args.epochs)  # generate_spos_like_batch().tolist()
 
     print('{} |=> Test rng = {}'.format(now, fair_arc_list))  # 只测试最后一个模型
 
     # BN calibration
-    # retrain_bn(model, 15, train_loader, fair_arc_list, device=0)
+    retrain_bn(model, 15, train_loader, fair_arc_list, device=0)
 
     with torch.no_grad():
         for step, (image, target) in enumerate(val_loader):
