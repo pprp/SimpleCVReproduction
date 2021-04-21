@@ -38,9 +38,9 @@ parser = argparse.ArgumentParser("ResNet20-cifar100")
 
 parser.add_argument('--local_rank', type=int, default=0,
                     help='local rank for distributed training')
-parser.add_argument('--batch_size', type=int, default=5120, help='batch size')
+parser.add_argument('--batch_size', type=int, default=4096, help='batch size')
 parser.add_argument('--learning_rate', type=float,
-                    default=0.63245, help='init learning rate')
+                    default=0.5657, help='init learning rate')
 parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
 
@@ -213,7 +213,8 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
                               len(train_dataloader) * epoch * args.batch_size)
             writer.add_scalar("Train/acc1", top1_.avg, step +
                               len(train_dataloader) * epoch * args.batch_size)
-
+            writer.add_scalar("Train/acc5", top5_.avg, step +
+                              len(train_loader)*args.batch_size*epoch)
 
 def infer(train_loader, val_loader, model, criterion,  val_iters, archloader, args):
 
@@ -230,7 +231,7 @@ def infer(train_loader, val_loader, model, criterion,  val_iters, archloader, ar
     print('{} |=> Test rng = {}'.format(now, fair_arc_list))  # 只测试最后一个模型
 
     # BN calibration
-    # retrain_bn(model, 15, train_loader, fair_arc_list, device=0)
+    retrain_bn(model, 15, train_loader, fair_arc_list, device=0)
 
     with torch.no_grad():
         for step, (image, target) in enumerate(val_loader):

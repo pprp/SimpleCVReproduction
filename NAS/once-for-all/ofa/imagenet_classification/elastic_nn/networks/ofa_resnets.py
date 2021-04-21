@@ -181,6 +181,10 @@ class OFAResNets(ResNets):
 					self.blocks[idx].active_out_channel = self.blocks[idx].out_channel_list[w]
 
 	def sample_active_subnet(self):
+		'''
+		BASE_DEPTH_LIST = [2, 2, 4, 2]
+		STAGE_WIDTH_LIST = [256, 512, 1024, 2048]
+		'''
 		# sample expand ratio
 		expand_setting = []
 		for block in self.blocks:
