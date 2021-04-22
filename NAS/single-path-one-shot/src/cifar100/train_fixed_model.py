@@ -119,8 +119,10 @@ def main():
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
     #     optimizer, T_0=5)
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
-    scheduler = torch.optim.lr_scheduler.LambdaLR(
-        optimizer, lambda epoch: 1 - (epoch / args.epochs))
+    # scheduler = torch.optim.lr_scheduler.LambdaLR(
+    #     optimizer, lambda epoch: 1 - (epoch / args.epochs))
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                        milestones=[100, 150], last_epoch=-1)
 
     if args.local_rank == 0:
         writer = SummaryWriter("./runs/%s-%05d" %
@@ -174,7 +176,7 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
         # Fair Sampling
         # [16, 16, 16, 16, 16, 16, 16, 32, 32, 32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64]
         # spos_arc_list = archloader.generate_spos_like_batch().tolist()
-        fair_arc_list = archloader.generate_niu_fair_batch(step)
+        # fair_arc_list = archloader.generate_niu_fair_batch(step)
 
         # for arc in fair_arc_list:
         #     logits = model(image)#, arc[:-1])

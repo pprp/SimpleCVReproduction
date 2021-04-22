@@ -53,7 +53,7 @@ parser.add_argument('--weight_decay', type=float,
 parser.add_argument('--report_freq', type=float,
                     default=5, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
-parser.add_argument('--epochs', type=int, default=3000,
+parser.add_argument('--epochs', type=int, default=1000,
                     help='num of training epochs')
 
 parser.add_argument('--classes', type=int, default=100,
@@ -116,11 +116,13 @@ def main():
 
     # scheduler = torch.optim.lr_scheduler.LambdaLR(
     #     optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
-    a_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        optimizer, T_0=5)
+    # a_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+    #     optimizer, T_0=5)
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
     # a_scheduler = torch.optim.lr_scheduler.LambdaLR(
     #     optimizer, lambda epoch: 1 - (epoch / args.epochs))
+    a_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                        milestones=[500, 750], last_epoch=-1) ## !!
     scheduler = GradualWarmupScheduler(
         optimizer, 1, total_epoch=5, after_scheduler=a_scheduler)
 
