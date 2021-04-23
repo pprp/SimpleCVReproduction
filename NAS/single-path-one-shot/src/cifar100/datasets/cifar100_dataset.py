@@ -155,7 +155,7 @@ def get_train_loader(batch_size, local_rank, num_workers):
         datasampler = DistributedSampler(dataset_train)
 
     train_loader = torch.utils.data.DataLoader(
-        dataset_train, num_workers=num_workers, pin_memory=True, sampler=datasampler, batch_size=batch_size)
+        dataset_train, num_workers=num_workers, pin_memory=True, sampler=datasampler, batch_size=batch_size, drop_last=True)
 
     return train_loader
 

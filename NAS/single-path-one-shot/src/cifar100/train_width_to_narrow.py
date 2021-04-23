@@ -39,9 +39,9 @@ parser = argparse.ArgumentParser("ResNet20-cifar100")
 
 parser.add_argument('--local_rank', type=int, default=0,
                     help='local rank for distributed training')
-parser.add_argument('--batch_size', type=int, default=4096, help='batch size')
+parser.add_argument('--batch_size', type=int, default=128, help='batch size')
 parser.add_argument('--learning_rate', type=float,
-                    default=0.5657, help='init learning rate')
+                    default=0.1, help='init learning rate')
 parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
 
@@ -116,13 +116,13 @@ def main():
 
     # scheduler = torch.optim.lr_scheduler.LambdaLR(
     #     optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
-    # a_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-    #     optimizer, T_0=5)
+    a_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        optimizer, T_0=5)
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
     # a_scheduler = torch.optim.lr_scheduler.LambdaLR(
     #     optimizer, lambda epoch: 1 - (epoch / args.epochs))
-    a_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                                        milestones=[500, 750], last_epoch=-1) ## !!
+    # a_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+    #                                                     milestones=[500, 750], last_epoch=-1) ## !!
     scheduler = GradualWarmupScheduler(
         optimizer, 1, total_epoch=5, after_scheduler=a_scheduler)
 

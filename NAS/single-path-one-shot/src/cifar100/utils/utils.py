@@ -281,16 +281,16 @@ def bn_calibration_init(m):
             m.momentum = None
 
 
-def retrain_bn(model, max_iters, dataloader, cand, device=0):
+def retrain_bn(model, dataloader, cand, device=0):
     # from singlepathoneshot Search/tester.py
     with torch.no_grad():
-        print("Clear BN statistics...")
+        # print("Clear BN statistics...")
         for m in model.modules():
             if isinstance(m, nn.BatchNorm2d):
                 m.running_mean = torch.zeros_like(m.running_mean)
                 m.running_var = torch.ones_like(m.running_var)
 
-        print("Train BN with training set (BN sanitize)...")
+        # print("Train BN with training set (BN sanitize)...")
         model.train()
 
         for inputs, targets in dataloader:
