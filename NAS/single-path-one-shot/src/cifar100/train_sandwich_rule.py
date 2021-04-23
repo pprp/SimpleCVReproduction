@@ -1,3 +1,4 @@
+# Universally Slimmable Networks and Improved Training Techniques
 import argparse
 import copy
 import datetime
@@ -122,7 +123,7 @@ def main():
     # a_scheduler = torch.optim.lr_scheduler.LambdaLR(
     #     optimizer, lambda epoch: 1 - (epoch / args.epochs))
     a_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                                        milestones=[500, 750], last_epoch=-1) ## !!
+                                                       milestones=[500, 750], last_epoch=-1)  # !!
     scheduler = GradualWarmupScheduler(
         optimizer, 1, total_epoch=5, after_scheduler=a_scheduler)
 
@@ -164,6 +165,10 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
     # for p in model.parameters():
     #     p.grad = torch.zeros_like(p)
     model.train()
+    widest = [16, 16, 16, 16, 16, 16, 16, 32, 32,
+              32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64]
+    narrowest = [4,  4,  4, 4,  4,  4,  4,  4, 4,
+                 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
 
     train_loader = tqdm(train_dataloader)
     train_loader.set_description(
@@ -175,20 +180,25 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
         target = Variable(target, requires_grad=False).cuda(
             args.gpu, non_blocking=True)
 
-        # Fair Sampling
-        # [archloader.generate_niu_fair_batch(step)[-1]]
-        # [16, 16, 16, 16, 16, 16, 16, 32, 32, 32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64]
-        width_to_narrow_list = archloader.generate_width_to_narrow(
-            epoch, args.epochs)  # generate_spos_like_batch().tolist()
+        # sandwich rule
+        candidate_list = []
+        candidate_list += [narrowest]
+        candidate_list += [archloader.generate_spos_like_batch().tolist()
+                           for i in range(4)]
 
-        # for arc in fair_arc_list:
-        # logits = model(image, archloader.convert_list_arc_str(arc))
-        # loss = criterion(logits, target)
-        # loss_reduce = reduce_tensor(loss, 0, args.world_size)
-        # loss.backward()
-        optimizer.zero_grad()
-        logits = model(image, width_to_narrow_list[:-1])
-        loss = criterion(logits, target)
+        # 全模型来一遍
+        soft_target = model(image, widest)
+        soft_loss = criterion(soft_target, target)
+        soft_loss.backward()
+        soft_target.detach()
+
+        # 采样几个子网来一遍
+        for arc in candidate_list:
+            logits = model(image, arc)
+            loss = criterion(logits, soft_target)
+            loss_reduce = reduce_tensor(loss, 0, args.world_size)
+            loss.backward()
+
         prec1, prec5 = accuracy(logits, target, topk=(1, 5))
 
         if torch.cuda.device_count() > 1:
@@ -198,11 +208,8 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
             prec1 = reduce_mean(prec1, args.nprocs)
             prec5 = reduce_mean(prec5, args.nprocs)
 
-        loss.backward()
-
-        # nn.utils.clip_grad_value_(model.parameters(), args.grad_clip)
-
         optimizer.step()
+        optimizer.zero_grad()
 
         losses_.update(loss.data.item(), n)
         top1_.update(prec1.data.item(), n)
@@ -210,7 +217,7 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
 
         postfix = {'train_loss': '%.6f' % (
             losses_.avg), 'train_acc1': '%.6f' % top1_.avg, 'train_acc5': '%.6f' % top5_.avg}
-            
+
         train_loader.set_postfix(log=postfix)
 
         if args.local_rank == 0 and step % 10 == 0 and writer is not None:
