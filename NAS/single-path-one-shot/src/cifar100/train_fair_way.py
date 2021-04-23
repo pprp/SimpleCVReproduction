@@ -31,8 +31,6 @@ from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
 
 print = functools.partial(print, flush=True)
 
-CIFAR100_TRAINING_SET_SIZE = 50000
-CIFAR100_TEST_SET_SIZE = 10000
 
 parser = argparse.ArgumentParser("ResNet20-cifar100")
 
@@ -50,9 +48,9 @@ parser.add_argument('--weight_decay', type=float,
                     default=5e-4, help='weight decay')
 
 parser.add_argument('--report_freq', type=float,
-                    default=2, help='report frequency')
+                    default=5, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
-parser.add_argument('--epochs', type=int, default=1000,
+parser.add_argument('--epochs', type=int, default=1500,
                     help='num of training epochs')
 
 parser.add_argument('--classes', type=int, default=100,
@@ -63,10 +61,6 @@ parser.add_argument('--grad_clip', type=float,
 parser.add_argument('--label_smooth', type=float,
                     default=0.1, help='label smoothing')
 args = parser.parse_args()
-
-per_epoch_iters = CIFAR100_TRAINING_SET_SIZE // args.batch_size
-val_iters = CIFAR100_TEST_SET_SIZE // 200
-
 
 def main():
     if not torch.cuda.is_available():
@@ -116,11 +110,11 @@ def main():
 
     # scheduler = torch.optim.lr_scheduler.LambdaLR(
     #     optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
-    # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-    #     optimizer, T_0=5)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        optimizer, T_0=5)
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
-    scheduler = torch.optim.lr_scheduler.LambdaLR(
-        optimizer, lambda epoch: 1 - (epoch / args.epochs))
+    # scheduler = torch.optim.lr_scheduler.LambdaLR(
+    #     optimizer, lambda epoch: 1 - (epoch / args.epochs))
 
     if args.local_rank == 0:
         writer = SummaryWriter("./runs/%s-%05d" %
@@ -136,12 +130,12 @@ def main():
 
     for epoch in range(args.epochs):
         train(train_loader, val_loader,  optimizer, scheduler, model,
-              archloader, criterion, args, val_iters, args.seed, epoch, writer)
+              archloader, criterion, args, args.seed, epoch, writer)
 
         scheduler.step()
         if (epoch + 1) % args.report_freq == 0:
             top1_val, top5_val,  objs_val = infer(train_loader, val_loader, model, criterion,
-                                                  val_iters, archloader, args)
+                                                  archloader, args)
 
             if args.local_rank == 0:
                 # model
@@ -154,7 +148,7 @@ def main():
                     {'state_dict': model.state_dict(), }, epoch, args.exp)
 
 
-def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, args, val_iters, seed, epoch, writer=None):
+def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, args, seed, epoch, writer=None):
     losses_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
 
     # for p in model.parameters():
@@ -216,7 +210,7 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
             writer.add_scalar("Train/acc5", top5_.avg, step +
                               len(train_loader)*args.batch_size*epoch)
 
-def infer(train_loader, val_loader, model, criterion,  val_iters, archloader, args):
+def infer(train_loader, val_loader, model, criterion, archloader, args):
 
     objs_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
 

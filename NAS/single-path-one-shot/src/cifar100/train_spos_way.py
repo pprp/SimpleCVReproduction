@@ -128,12 +128,13 @@ def main():
     # Prepare data
     train_loader = get_train_loader(
         args.batch_size, args.local_rank, args.num_workers)
-    # 原来跟train batch size一样，现在修改小一点 ，
+    # 原来跟train batch size一样，现在修改小一点 
     val_loader = get_val_loader(args.batch_size, args.num_workers)
 
     archloader = ArchLoader("data/Track1_final_archs.json")
 
     for epoch in range(args.epochs):
+        model.re_organize_middle_weight()
         train(train_loader, val_loader,  optimizer, scheduler, model,
               archloader, criterion, args, args.seed, epoch, writer)
 
