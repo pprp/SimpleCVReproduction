@@ -29,7 +29,7 @@ from model.resnet20 import resnet20
 from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
                          DataIterator, accuracy, bn_calibration_init,
                          reduce_mean, reduce_tensor, retrain_bn,
-                         save_checkpoint)
+                         save_checkpoint, CrossEntropyLossSoft)
 
 print = functools.partial(print, flush=True)
 
@@ -109,6 +109,7 @@ def main():
     # criterion_smooth = CrossEntropyLabelSmooth(args.classes, args.label_smooth)
     # criterion_smooth = criterion_smooth.cuda()
     criterion = torch.nn.CrossEntropyLoss().cuda(args.gpu)
+    soft_criterion = CrossEntropyLossSoft()
 
     optimizer = torch.optim.SGD(model.parameters(),
                                 lr=args.learning_rate,
@@ -141,7 +142,7 @@ def main():
 
     for epoch in range(args.epochs):
         train(train_loader, val_loader,  optimizer, scheduler, model,
-              archloader, criterion, args, args.seed, epoch, writer)
+              archloader, criterion, soft_criterion, args, args.seed, epoch, writer)
 
         scheduler.step()
         if (epoch + 1) % args.report_freq == 0:
@@ -159,7 +160,7 @@ def main():
                     {'state_dict': model.state_dict(), }, epoch, args.exp)
 
 
-def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, args, seed, epoch, writer=None):
+def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, soft_criterion, args, seed, epoch, writer=None):
     losses_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
 
     # for p in model.parameters():
@@ -190,13 +191,19 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
         soft_target = model(image, widest)
         soft_loss = criterion(soft_target, target)
         soft_loss.backward()
-        soft_target.detach()
+        soft_target = torch.nn.functional.softmax(
+            soft_target, dim=1).detach()
+
+        # print(type(target), type(soft_target), target.shape, soft_target.shape)
 
         # 采样几个子网来一遍
         for arc in candidate_list:
             logits = model(image, arc)
-            loss = criterion(logits, soft_target)
-            loss_reduce = reduce_tensor(loss, 0, args.world_size)
+            # loss = soft_criterion(logits, soft_target.cuda(
+            #     args.gpu, non_blocking=True))
+            loss = criterion(logits, target)
+
+            # loss_reduce = reduce_tensor(loss, 0, args.world_size)
             loss.backward()
 
         prec1, prec5 = accuracy(logits, target, topk=(1, 5))
