@@ -1,10 +1,19 @@
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from collections import OrderedDict
 
-from model.dynamic_modules import DynamicLinear, DynamicConv2d, DynamicBatchNorm2d
+# from model.slimmable_modules import SlimmableConv2d, SlimmableLinear, SwitchableBatchNorm2d
+from independent_modules import SlimmableConv2d, SwitchableBatchNorm2d, SwitchableLinear
+
+# arc_representation = "4-12-4-4-16-8-4-12-32-24-16-8-8-24-60-12-64-64-52-60"
+arc_representation = [4, 12, 4, 4, 16, 8, 4, 12, 32,
+              24, 16, 8, 8, 24, 60, 12, 64, 64, 52, 60]
+# "16-8-16-16-8-12-12-20-12-4-12-32-32-24-48-8-52-16-12-36"
+max_arc_rep = "16-16-16-16-16-16-16-32-32-32-32-32-32-64-64-64-64-64-64-64"
 
 
 def get_configs():
@@ -20,41 +29,32 @@ def get_configs():
     return model_config
 
 
-class LambdaLayer(nn.Module):
-    def __init__(self, lambd):
-        super(LambdaLayer, self).__init__()
-        self.lambd = lambd
-
-    def forward(self, x):
-        return self.lambd(x)
-
-
-class DynamicBlock(nn.Module):
+class IndependentBlock(nn.Module):
     expansion = 1
 
     def __init__(self, in_channel_list, mid_channel_list, out_channel_list, stride=1):
-        super(DynamicBlock, self).__init__()
+        super(IndependentBlock, self).__init__()
 
         self.conv1 = nn.Sequential(
             OrderedDict([
-                ('conv', DynamicConv2d(max(in_channel_list), max(
-                    mid_channel_list), kernel_size=3, stride=stride)),
-                ('bn', DynamicBatchNorm2d(max(mid_channel_list))),
+                ('conv', SlimmableConv2d(in_channel_list,
+                                         mid_channel_list, kernel_size=3, stride=stride)),
+                ('bn', SwitchableBatchNorm2d(mid_channel_list)),
                 ('relu', nn.ReLU(inplace=True))
             ]))
 
         self.conv2 = nn.Sequential(
             OrderedDict([
-                ('conv', DynamicConv2d(max(mid_channel_list), max(
-                    out_channel_list), kernel_size=3, stride=1)),
-                ('bn', DynamicBatchNorm2d(max(out_channel_list)))
+                ('conv', SlimmableConv2d(mid_channel_list,
+                                         out_channel_list, kernel_size=3, stride=1)),
+                ('bn', SwitchableBatchNorm2d(out_channel_list))
             ]))
 
         self.downsample = nn.Sequential(
             OrderedDict([
-                ('conv', DynamicConv2d(max(in_channel_list), max(
-                    out_channel_list), stride=stride)),
-                ('bn', DynamicBatchNorm2d(max(out_channel_list)))
+                ('conv', SlimmableConv2d(in_channel_list,
+                                         out_channel_list, stride=stride, kernel_size=1)),
+                ('bn', SwitchableBatchNorm2d(out_channel_list))
             ])
         )
 
@@ -107,9 +107,9 @@ class DynamicBlock(nn.Module):
         return None
 
 
-class DynamicLayer(nn.Module):
+class IndependentLayer(nn.Module):
     def __init__(self, block, num_blocks, stride):
-        super(DynamicLayer, self).__init__()
+        super(IndependentLayer, self).__init__()
         self.mc = get_configs()
 
         global IDX
@@ -139,9 +139,9 @@ class DynamicLayer(nn.Module):
         return out
 
 
-class DynamicResNet(nn.Module):
+class IndependentResNet(nn.Module):
     def __init__(self, block, num_blocks, num_classes=100):
-        super(DynamicResNet, self).__init__()
+        super(IndependentResNet, self).__init__()
 
         global IDX
         IDX = 0
@@ -149,18 +149,18 @@ class DynamicResNet(nn.Module):
         self.mc = get_configs()
 
         self.first_conv = nn.Sequential(OrderedDict([
-            ('conv', DynamicConv2d(3, max(self.mc[IDX]), kernel_size=3)),
-            ('bn', DynamicBatchNorm2d(max(self.mc[IDX]))),
+            ('conv', SlimmableConv2d([3], self.mc[IDX], kernel_size=3)),
+            ('bn', SwitchableBatchNorm2d(self.mc[IDX])),
             ('relu', nn.ReLU(inplace=True))
         ]))
 
         IDX += 1
 
-        self.block1 = DynamicLayer(block, num_blocks[0], stride=1)
-        self.block2 = DynamicLayer(block, num_blocks[1], stride=2)
-        self.block3 = DynamicLayer(block, num_blocks[2], stride=2)
+        self.block1 = IndependentLayer(block, num_blocks[0], stride=1)
+        self.block2 = IndependentLayer(block, num_blocks[1], stride=2)
+        self.block3 = IndependentLayer(block, num_blocks[2], stride=2)
 
-        self.classifier = DynamicLinear(max(self.mc[IDX]), num_classes)
+        self.classifier = SwitchableLinear(self.mc[IDX], num_classes)
         self._initialize_weights()
 
     def forward(self, x, config=None):
@@ -186,7 +186,7 @@ class DynamicResNet(nn.Module):
         out = F.avg_pool2d(out, out.size()[3])
         out = out.view(out.size(0), -1)
         return self.classifier(out)
-    
+
     def _initialize_weights(self):
         for name, m in self.named_modules():
             if isinstance(m, nn.Conv2d):
@@ -213,13 +213,12 @@ class DynamicResNet(nn.Module):
                     nn.init.constant_(m.bias, 0)
 
 
-def dynamic_resnet20():
-    return DynamicResNet(DynamicBlock, [3, 3, 3])
+def Independent_resnet20():
+    return IndependentResNet(IndependentBlock, [3, 3, 3])
 
 
-# arc_config = [4, 12, 4, 4, 16, 8, 4, 12, 32,
-#               24, 16, 8, 8, 24, 60, 12, 64, 64, 52, 60]
-# arc_config = [i+1 for i in range(20)]
-# model = resnet20()
-# a = torch.randn(3, 3, 32, 32)
-# print(model(a, arc_config[:-1]).shape)
+if __name__ == "__main__":
+    model = Independent_resnet20()
+
+    input = torch.zeros(16, 3, 32, 32)
+    output = model(input, arc_representation)

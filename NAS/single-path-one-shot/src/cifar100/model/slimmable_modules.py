@@ -8,13 +8,6 @@ from prettytable import PrettyTable
 
 
 class SlimmableLinear(nn.Linear):
-    '''
-    in_features_list: [12, 12, 12, 12]
-    in_choose_list: [1,2,3,4]
-    out_features_list: [13,25,35,34,5,34,12,66,12]
-    out_choose_list: [1,2,3,4,5,6,7,8,9]
-    '''
-
     def __init__(self, in_features_list, out_features_list, in_choose_list=None, out_choose_list=None, bias=True):
         super(SlimmableLinear, self).__init__(
             max(in_features_list), max(out_features_list), bias=bias)
@@ -68,9 +61,6 @@ class SwitchableBatchNorm2d(nn.Module):
         self.bn = nn.ModuleList(bns)  # 其中包含4个bn
 
         self.out_choice = max(self.out_choose_list)
-
-        self.ignore_model_profiling = True
-
     def forward(self, input):
         # idx = self.width_mult_list.index(self.width_mult)
         idx = self.out_choose_list.index(self.out_choice)
@@ -81,12 +71,6 @@ class SwitchableBatchNorm2d(nn.Module):
 
 
 class Slimmable_Conv2d_BN(nn.Conv2d):
-    # in_channels_list: [3,3,3,3]
-    # out_channels_list: [16, 32, 48, 64]
-    # kernel_size: 3
-    # stride: 1
-    # padding: 3
-    # bias=False
     def __init__(self,
                  in_channels_list,
                  out_channels_list,
@@ -173,13 +157,6 @@ class Slimmable_Conv2d_BN(nn.Conv2d):
            self.bn.weight[:self.out_channels], self.bn.bias[:self.out_channels], self.bn.training or not self.bn.track_running_stats, exponential_average_factor, self.bn.eps,)
         return y
 
-# model = Slimmable_Conv2d_BN([3,3,3], [12,16,20], 3, stride=1)
-
-# input = torch.randn([6, 3, 32,32])
-
-# output = model(input)
-
-# print(output.shape)
 
 class SlimmableConv2d(nn.Conv2d):
     # in_channels_list: [3,3,3,3]

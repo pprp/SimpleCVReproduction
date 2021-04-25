@@ -110,11 +110,11 @@ def main():
 
     # scheduler = torch.optim.lr_scheduler.LambdaLR(
     #     optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        optimizer, T_0=5)
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+    #     optimizer, T_0=5)
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
-    # scheduler = torch.optim.lr_scheduler.LambdaLR(
-    #     optimizer, lambda epoch: 1 - (epoch / args.epochs))
+    scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optimizer, lambda epoch: 1 - (epoch / args.epochs))
 
     if args.local_rank == 0:
         writer = SummaryWriter("./runs/%s-%05d" %
