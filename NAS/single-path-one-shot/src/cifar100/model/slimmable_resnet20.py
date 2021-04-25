@@ -32,44 +32,6 @@ def get_configs():
 
 
 class MutableBlock(nn.Module):
-    '''
-    这是多个层级：
-    第一个block特殊处理
-    第一个层级：6个block, 可选4 8 12 16
-    第二个层级：6个block, 可选4 8 12 16 20 24 28 32
-    第三个层级：6个block, 可选4 8 12 16 20 24 28 32 36 40 44 48 52 56 60 64
-    最后一个层级，是Linear，独立实现，不在这个block实现
-
-    MutableBlock中包括两个SlimmableConv2d + shortcut层
-    ----
-    params:
-        # 由于所有的block都是6个，所以不需要特别指定
-        layer_channel_option： 层级可选目标: 
-                      eg: [4,8,12,16]
-        layer_channel_choice：层级具体选择: 
-                      eg: [16, 4, 12, 16, 8, 16, 16, 24]
-                      最后一个是多出来的，需要提前知道输出
-        idx_list: 当前模型Layer:
-                      eg: [1,2]
-        stride: 当前模型block设置步长
-                      eg: 1 or 2
-
-    eg:
-        以4-12-4-4-16-8-4-12-32-24-16-8-8-24-60-12-64-64-52-60为例：
-        第一个层级：
-            layer_channel_option: [4 8 12 16]
-            layer_channel_choice: [4 12 4 4 16 8 4]
-
-        第二个层级：
-            layer_channel_option: [4 8 12 16 20 24 28 32]
-            layer_channel_choice: [4 12 32 24 16 8 8]
-
-        第三个层级：
-            layer_channel_option: [4 8 12 16 20 24 28 32]
-            layer_channel_choice: [8 24 60 12 64 64 52]
-
-    '''
-
     def __init__(self, idx_list, stride=1):
         super(MutableBlock, self).__init__()
 
@@ -131,22 +93,11 @@ class MutableBlock(nn.Module):
     def forward(self, x):
         res = self.body(x)
 
-        # print(res.shape, x.shape)
-
         if res.shape[1] != x.shape[1] or res.shape[2] != x.shape[2]:
             res += self.shortcut2(x)
         else:
             res += self.shortcut1(x)
         return self.relu(res)
-
-
-class LambdaLayer(nn.Module):
-    def __init__(self, lambd):
-        super(LambdaLayer, self).__init__()
-        self.lambd = lambd
-
-    def forward(self, x):
-        return self.lambd(x)
 
 
 class MutableModel(nn.Module):
