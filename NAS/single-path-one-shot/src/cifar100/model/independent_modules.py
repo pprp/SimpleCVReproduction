@@ -72,16 +72,21 @@ class SlimmableConv2d(nn.Conv2d):
                                               max(out_choose_list),
                                               kernel_size,
                                               stride=stride,
-                                              padding=get_same_padding(kernel_size),
+                                              padding=get_same_padding(
+                                                  kernel_size),
                                               dilation=dilation,
                                               groups=max(groups_list),
                                               bias=bias)
+
+        print("INITRIAL: ", max(groups_list), "weight:", self.weight.shape,
+              "in channel:", max(in_choose_list), "out channel:", max(out_choose_list))
 
         self.padding = get_same_padding(kernel_size)
         self.in_choose_list = in_choose_list
         self.out_choose_list = out_choose_list
 
         self.groups_list = groups_list
+
         if self.groups_list == [1]:
             self.groups_list = [1 for _ in range(len(in_choose_list))]
 
@@ -93,13 +98,9 @@ class SlimmableConv2d(nn.Conv2d):
 
         in_channel = input.size(1)
 
-        # print("in:", in_channel, "out:", out_channel)
-
         in_idx = self.in_choose_list.index(in_channel)
 
         self.groups = self.groups_list[in_idx]  # 组卷积
-
-        # print(type(out_channel), type(in_channel))
 
         weight = self.weight[:out_channel, :in_channel, :, :]
 
@@ -107,19 +108,24 @@ class SlimmableConv2d(nn.Conv2d):
             bias = self.bias[:out_channel]
         else:
             bias = self.bias
+
+        print("weight:", weight.shape,  "groups:", self.groups)
+
         y = nn.functional.conv2d(input, weight, bias, self.stride, self.padding,
                                  self.dilation, self.groups)
         return y
 
 
-# m1 = SlimmableConv2d([4, 8, 12], [4, 4, 8], 3)
-# m2 = SwitchableLinear([4, 8, 34])
-# m3 = SwitchableBatchNorm2d([4, 4, 8])
+# m1 = SlimmableConv2d([4, 8, 12], [4, 4, 8], 3, groups_list=[4])
+# # m2 = SwitchableLinear([4, 8, 34])
+# # m3 = SwitchableBatchNorm2d([4, 4, 8])
 
-# a = torch.randn(4,4,8,8)
+# # a = torch.randn(4,4,8,8)
 
-# b = torch.randn(4, 4)
+# # b = torch.randn(4, 4)
 
-# print(m1(a,4,8).shape)
-# print(m2(b,4).shape)
-# print(m3(a,4).shape)
+# # print(m1(a,4,8).shape)
+# # print(m2(b,4).shape)
+# # print(m3(a,4).shape)
+
+# print(m1.weight.shape)

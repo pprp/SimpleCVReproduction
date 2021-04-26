@@ -11,7 +11,7 @@ from independent_modules import SlimmableConv2d, SwitchableBatchNorm2d, Switchab
 
 # arc_representation = "4-12-4-4-16-8-4-12-32-24-16-8-8-24-60-12-64-64-52-60"
 arc_representation = [4, 12, 4, 4, 16, 8, 4, 12, 32,
-              24, 16, 8, 8, 24, 60, 12, 64, 64, 52, 60]
+                      24, 16, 8, 8, 24, 60, 12, 64, 64, 52, 60]
 # "16-8-16-16-8-12-12-20-12-4-12-32-32-24-48-8-52-16-12-36"
 max_arc_rep = "16-16-16-16-16-16-16-32-32-32-32-32-32-64-64-64-64-64-64-64"
 
@@ -38,8 +38,10 @@ class IndependentBlock(nn.Module):
         self.conv1 = nn.Sequential(
             OrderedDict([
                 ('conv', SlimmableConv2d(in_channel_list,
-                                         mid_channel_list, 
-                                         kernel_size=3, 
+                                         mid_channel_list,
+                                         kernel_size=3,
+                                         groups_list=[
+                                             2 for _ in out_channel_list],
                                          stride=stride)),
                 ('bn', SwitchableBatchNorm2d(mid_channel_list)),
                 ('relu', nn.ReLU(inplace=True))
@@ -48,8 +50,10 @@ class IndependentBlock(nn.Module):
         self.conv2 = nn.Sequential(
             OrderedDict([
                 ('conv', SlimmableConv2d(mid_channel_list,
-                                         out_channel_list, 
-                                         kernel_size=3, 
+                                         out_channel_list,
+                                         kernel_size=3,
+                                         groups_list=[
+                                             2 for _ in out_channel_list],
                                          stride=1)),
                 ('bn', SwitchableBatchNorm2d(out_channel_list))
             ]))
@@ -57,8 +61,8 @@ class IndependentBlock(nn.Module):
         self.downsample = nn.Sequential(
             OrderedDict([
                 ('conv', SlimmableConv2d(in_channel_list,
-                                         out_channel_list, 
-                                         stride=stride, 
+                                         out_channel_list,
+                                         stride=stride,
                                          kernel_size=1)),
                 ('bn', SwitchableBatchNorm2d(out_channel_list))
             ])
@@ -136,6 +140,8 @@ class IndependentLayer(nn.Module):
             # layer config
             config = [16, 16, 16, 16, 16, 16, 16]
 
+        print(config)
+
         # print("block1")
         out = self.layer1(x, amc=config[1], aoc=config[2])
         # print("block2")
@@ -155,8 +161,9 @@ class IndependentResNet(nn.Module):
         self.mc = get_configs()
 
         self.first_conv = nn.Sequential(OrderedDict([
-            ('conv', SlimmableConv2d([3], 
-                                     self.mc[IDX], 
+            ('conv', SlimmableConv2d([3],
+                                     self.mc[IDX],
+                                     groups_list=[1],
                                      kernel_size=3)),
             ('bn', SwitchableBatchNorm2d(self.mc[IDX])),
             ('relu', nn.ReLU(inplace=True))
@@ -172,6 +179,7 @@ class IndependentResNet(nn.Module):
         self._initialize_weights()
 
     def forward(self, x, config=None):
+        print("!!", config)
         if config is None:
             config = [16, 16, 16, 16, 16, 16, 16, 32, 32,
                       32, 32, 32, 32, 64, 64, 64, 64, 64, 64]
@@ -181,15 +189,15 @@ class IndependentResNet(nn.Module):
         cfg_layer2 = config[6:13]
         cfg_layer3 = config[12:19]
 
-        # print("first conv")
+        print("first conv")
         out = self.first_conv.conv(x, cfg_first)
         out = self.first_conv.bn(out)
         out = self.first_conv.relu(out)
-        # print("layer1")
+        print("layer1")
         out = self.block1(out, cfg_layer1)
-        # print("layer2")
+        print("layer2")
         out = self.block2(out, cfg_layer2)
-        # print("layer3")
+        print("layer3")
         out = self.block3(out, cfg_layer3)
         out = F.avg_pool2d(out, out.size()[3])
         out = out.view(out.size(0), -1)
@@ -229,4 +237,6 @@ if __name__ == "__main__":
     model = Independent_resnet20()
 
     input = torch.zeros(16, 3, 32, 32)
-    output = model(input, arc_representation)
+
+    output = model(input, [8, 8, 8, 8, 8, 8, 8, 8, 8,
+                           8, 8, 8, 8, 8, 8, 8, 8, 8, 8])
