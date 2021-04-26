@@ -101,7 +101,7 @@ def get_train_dataset(cutout_length=0):
     ])
 
     dataset_train = CIFAR100(
-        root="./data", train=True, download=True, transform=train_transform)
+        root="/home/stack/dpj/cifar100/data", train=True, download=True, transform=train_transform)
 
     return dataset_train
 
@@ -115,7 +115,7 @@ def get_val_dataset(cutout_length=0):
     ])
 
     dataset_valid = CIFAR100(
-        root="./data", train=False, download=True, transform=valid_transform)
+        root="/home/stack/dpj/cifar100/data", train=False, download=True, transform=valid_transform)
     return dataset_valid
 
 

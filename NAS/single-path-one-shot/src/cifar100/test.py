@@ -35,12 +35,12 @@ def get_args():
     parser.add_argument('--rank', default=0,
                         help='rank of current process')
     parser.add_argument(
-        '--path', default="data/Track1_final_archs.json", help="path for json arch files")
+        '--path', default="data/benchmark.json", help="path for json arch files")
     parser.add_argument('--batch-size', type=int,
                         default=10240, help='batch size')
 
     parser.add_argument('--weights', type=str,
-                        default="./weights/2021Y_04M_21D_09H_0198/checkpoint-latest.pth.tar", help="path for weights loading")
+                        default="./weights/2021Y_04M_25D_20H_0033/checkpoint-latest.pth.tar", help="path for weights loading")
 
     parser.add_argument('--auto-continue', type=bool,
                         default=True, help='report frequency')
@@ -133,7 +133,7 @@ def main():
     args.loss_function = criterion_smooth
     args.val_dataloader = val_loader
 
-    print("start to validate model")
+    print("start to validate model...")
 
     validate(model, train_loader, args, arch_loader=arch_dataloader)
 
@@ -147,8 +147,6 @@ def validate(model, train_loader, args, *, arch_loader=None):
 
     val_dataloader = args.val_dataloader
 
-    model.eval()
-
     t1 = time.time()
 
     result_dict = {}
@@ -158,15 +156,8 @@ def validate(model, train_loader, args, *, arch_loader=None):
     with torch.no_grad():
         arch_loader = tqdm((arch_loader))
         for key, arch in arch_loader:
-            # print(key, arch)
-            # max_val_iters += 1
-            # print('\r ', key, ' iter:', max_val_iters, end='')
-
             arch_list = [int(itm) for itm in arch[0].split('-')]
-            # print(arch_list)
-
-            # retrain_bn(model, train_loader, device=0, cand=arch_list)
-
+            # bn calibration
             with torch.no_grad():
                 for m in model.modules():
                     if isinstance(m, nn.BatchNorm2d):
@@ -176,12 +167,10 @@ def validate(model, train_loader, args, *, arch_loader=None):
                 model.train()
 
                 for idx, (inputs, targets) in enumerate(train_loader):
-                    inputs, targets = inputs.to(0), targets.to(0)
+                    inputs, targets = inputs.cuda(), targets.cuda()
                     outputs = model(inputs, arch_list)
                     del inputs, targets, outputs
 
-                    if idx > 3:
-                        break
                     
             model.eval()
 

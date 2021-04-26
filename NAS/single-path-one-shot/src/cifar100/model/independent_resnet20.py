@@ -7,7 +7,7 @@ import torch.nn.init as init
 from collections import OrderedDict
 
 # from model.slimmable_modules import SlimmableConv2d, SlimmableLinear, SwitchableBatchNorm2d
-from independent_modules import SlimmableConv2d, SwitchableBatchNorm2d, SwitchableLinear
+from model.independent_modules import SlimmableConv2d, SwitchableBatchNorm2d, SwitchableLinear
 
 # arc_representation = "4-12-4-4-16-8-4-12-32-24-16-8-8-24-60-12-64-64-52-60"
 arc_representation = [4, 12, 4, 4, 16, 8, 4, 12, 32,

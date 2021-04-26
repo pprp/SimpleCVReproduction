@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torch.nn.init as init
 from collections import OrderedDict
 
-from model.dynamic_modules import DynamicLinear, DynamicConv2d, DynamicBatchNorm2d
+from .dynamic_modules import DynamicLinear, DynamicConv2d, DynamicBatchNorm2d
 
 
 def get_configs():

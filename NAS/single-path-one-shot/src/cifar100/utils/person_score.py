@@ -1,4 +1,5 @@
 import math
+import json
 import scipy.stats
 
 
@@ -23,3 +24,31 @@ def pearson(vector1, vector2):
 def kendalltau(vector1, vector2):
     tau, p_value = scipy.stats.kendalltau(vector1, vector2)
     return tau
+
+
+if __name__ == "__main__":
+    json1_path = "./acc_result_rank_0.json"
+    json_target = "data/benchmark.json"
+
+    f1 = open(json1_path, "r")
+    f2 = open(json_target, "r")
+
+    f1_dict = json.load(f1)
+    f2_dict = json.load(f2)
+
+    f1_list = []
+    f2_list = []
+
+    for k, v in f1_dict.items():
+        f1_list.append(v["acc"])
+
+    for k, v in f2_dict.items():
+        f2_list.append(float(v["acc"]))
+
+    print(f1_list, f2_list)
+
+    print("person:", pearson(f1_list, f2_list))
+    print("kendall", kendalltau(f1_list, f2_list))
+
+    f1.close()
+    f2.close()

@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from prettytable import PrettyTable
-from model.slimmable_modules import SlimmableConv2d, SlimmableLinear, SwitchableBatchNorm2d
+from .slimmable_modules import SlimmableConv2d, SlimmableLinear, SwitchableBatchNorm2d
 
 arc_representation = "4-12-4-4-16-8-4-12-32-24-16-8-8-24-60-12-64-64-52-60"
 # "16-8-16-16-8-12-12-20-12-4-12-32-32-24-48-8-52-16-12-36"
@@ -116,11 +116,10 @@ class MutableModel(nn.Module):
 
         self.idx = 0  # 代表当前model的layer层数
 
-        self.true_arc_index_list = self.get_true_arc_list(arc_representation)
+        # self.true_arc_index_list = self.get_true_arc_list(arc_representation)
 
         self.first_conv = SlimmableConv2d(
-            in_channels_list=[3 for _ in range(
-                len(self.mc[self.idx]))],  # 第一个不可变
+            in_channels_list=[3],  # 第一个不可变
             out_channels_list=self.mc[self.idx],
             kernel_size=3,
             stride=1,
@@ -217,12 +216,10 @@ class MutableModel(nn.Module):
         # print(x.shape)
         return x
 
-    def get_true_arc_list(self, arc_rep):
+    def get_true_arc_list(self, arc_list):
         '''
         实际的网络架构
         '''
-        arc_list = [int(item) for item in arc_rep.split('-')]
-
         first_conv = arc_list[0]
         arc_level1 = arc_list[:7]
         arc_level2 = arc_list[7:13]
@@ -231,6 +228,7 @@ class MutableModel(nn.Module):
         def convert_idx(arc_level, level_name):
             arc_index = []
             for i in arc_level:
+                # print(i, self.lc[level_name])
                 arc_index.append(self.lc[level_name].index(i)+1)
             return arc_index
 
@@ -238,7 +236,7 @@ class MutableModel(nn.Module):
             arc_level2, "level2"), *convert_idx(arc_level3, "level3")]
 
         # true_arc_list = true_arc_list[:-1]
-        print("true_arc_list:", true_arc_list)
+        # print("true_arc_list:", true_arc_list)
 
         self.slimmableConv2d_in_choice_list = []
         self.slimmableConv2d_out_choice_list = []
@@ -291,11 +289,11 @@ class MutableModel(nn.Module):
                 self.slimmableConv2d_out_choice_list.append(index)
                 self.switchableBatchNorm2d_out_choice_list.append(index)
 
-        print('^'*100)
-        print(self.slimmableConv2d_in_choice_list)
-        print(self.slimmableConv2d_out_choice_list)
-        print(self.switchableBatchNorm2d_out_choice_list)
-        print('^'*100)
+        # print('^'*100)
+        # print(self.slimmableConv2d_in_choice_list)
+        # print(self.slimmableConv2d_out_choice_list)
+        # print(self.switchableBatchNorm2d_out_choice_list)
+        # print('^'*100)
 
         return true_arc_list
 
@@ -303,9 +301,9 @@ class MutableModel(nn.Module):
         if isinstance(module, SlimmableConv2d):
             module.in_choice = self.slimmableConv2d_in_choice_list.pop(0)
             module.out_choice = self.slimmableConv2d_out_choice_list.pop(0)
-            self.tb.add_row(
-                ["SlimmableConv2d", module.in_choice, module.out_choice])
-            print("SlimmableConv2d", module.in_choice, module.out_choice)
+            # self.tb.add_row(
+            #     ["SlimmableConv2d", module.in_choice, module.out_choice])
+            # print("SlimmableConv2d", module.in_choice, module.out_choice)
 
         elif isinstance(module, SwitchableBatchNorm2d):
             module.out_choice = self.switchableBatchNorm2d_out_choice_list.pop(
@@ -316,9 +314,9 @@ class MutableModel(nn.Module):
         elif isinstance(module, SlimmableLinear):
             module.in_choice = self.slimmableLinear_in_choice_list.pop(0)
             module.out_choice = self.slimmableLinear_out_choice_list.pop(0)
-            self.tb.add_row(
-                ["SlimmableLinear", module.in_choice, module.out_choice])
-            print("SlimmableLinear", module.in_choice, module.out_choice)
+            # self.tb.add_row(
+            #     ["SlimmableLinear", module.in_choice, module.out_choice])
+            # print("SlimmableLinear", module.in_choice, module.out_choice)
 
         # print(self.tb)
 
@@ -333,4 +331,4 @@ if __name__ == "__main__":
     model = mutableResNet20()
 
     input = torch.zeros(16, 3, 32, 32)
-    output = model(input, arc_representation)
+    output = model(input, [int(item) for item in arc_representation.split('-')])
