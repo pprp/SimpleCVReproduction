@@ -23,10 +23,9 @@ from tqdm import tqdm
 from utils.scheduler import GradualWarmupScheduler
 
 from datasets.cifar100_dataset import get_train_loader, get_val_loader
-from model.slimmable_resnet20 import mutableResNet20
+# from model.slimmable_resnet20 import mutableResNet20
 from model.dynamic_resnet20 import dynamic_resnet20
 from model.resnet20 import resnet20
-from model.independent_resnet20 import Independent_resnet20
 from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
                          DataIterator, accuracy, bn_calibration_init,
                          reduce_mean, reduce_tensor, retrain_bn,
@@ -41,14 +40,11 @@ parser = argparse.ArgumentParser("ResNet20-cifar100")
 
 parser.add_argument('--local_rank', type=int, default=0,
                     help='local rank for distributed training')
-parser.add_argument('--batch_size', type=int, default=4096,
-                    help='batch size')  # 8192
+parser.add_argument('--batch_size', type=int, default=4096, help='batch size')
 parser.add_argument('--learning_rate', type=float,
-                    default=0.5656, help='init learning rate')  # 0.8
+                    default=0.5657, help='init learning rate')
 parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
-parser.add_argument('--model-type', type=str, default="dynamic",
-                    help="type of model(dynamic independent slimmable original)")
 
 # hyper parameter
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
@@ -58,7 +54,7 @@ parser.add_argument('--weight_decay', type=float,
 parser.add_argument('--report_freq', type=float,
                     default=5, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
-parser.add_argument('--epochs', type=int, default=1500,
+parser.add_argument('--epochs', type=int, default=1000,
                     help='num of training epochs')
 
 parser.add_argument('--classes', type=int, default=100,
@@ -96,19 +92,9 @@ def main():
 
     print('gpu device = %d' % args.gpu)
     print("args = %s", args)
-
-    if args.model_type == "dynamic":
-        model = dynamic_resnet20()
-    elif args.model_type == "independent":
-        model = Independent_resnet20()
-    elif args.model_type == "slimmable":
-        model = mutableResNet20()
-    elif args.model_type == "original":
-        model = resnet20()
-    else:
-        print("Not Implement")
-
     # model = resnet20()
+    # model = mutableResNet20()
+    model = dynamic_resnet20()
     model = model.cuda(args.gpu)
 
     if num_gpus > 1:
@@ -177,6 +163,8 @@ def main():
 def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, soft_criterion, args, seed, epoch, writer=None):
     losses_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
 
+    # for p in model.parameters():
+    #     p.grad = torch.zeros_like(p)
     model.train()
     widest = [16, 16, 16, 16, 16, 16, 16, 32, 32,
               32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64]
@@ -193,33 +181,29 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
         target = Variable(target, requires_grad=False).cuda(
             args.gpu, non_blocking=True)
 
-        if args.model_type in ["dynamic", "independent", "slimmable"]:
-            # sandwich rule
-            candidate_list = []
-            candidate_list += [narrowest]
-            candidate_list += [archloader.generate_spos_like_batch().tolist()
-                               for i in range(6)]
+        # sandwich rule
+        candidate_list = []
+        candidate_list += [narrowest]
+        candidate_list += [archloader.generate_spos_like_batch().tolist()
+                           for i in range(4)]
 
-            # archloader.generate_niu_fair_batch(step)
-            # 全模型来一遍
-            soft_target = model(image, widest)
-            soft_loss = criterion(soft_target, target)
-            soft_loss.backward()
-            soft_target = torch.nn.functional.softmax(
-                soft_target, dim=1).detach()
+        # 全模型来一遍
+        soft_target = model(image, widest)
+        soft_loss = criterion(soft_target, target)
+        soft_loss.backward()
+        soft_target = torch.nn.functional.softmax(
+            soft_target, dim=1).detach()
 
-            # 采样几个子网来一遍
-            for arc in candidate_list:
-                logits = model(image, arc)
-                # loss = soft_criterion(logits, soft_target.cuda(
-                #     args.gpu, non_blocking=True))
-                loss = criterion(logits, target)
+        # print(type(target), type(soft_target), target.shape, soft_target.shape)
 
-                # loss_reduce = reduce_tensor(loss, 0, args.world_size)
-                loss.backward()
-        elif args.model_type == "original":
-            logits = model(image)
+        # 采样几个子网来一遍
+        for arc in candidate_list:
+            logits = model(image, arc)
+            # loss = soft_criterion(logits, soft_target.cuda(
+            #     args.gpu, non_blocking=True))
             loss = criterion(logits, target)
+
+            # loss_reduce = reduce_tensor(loss, 0, args.world_size)
             loss.backward()
 
         prec1, prec5 = accuracy(logits, target, topk=(1, 5))
@@ -253,20 +237,20 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
 
 
 def infer(train_loader, val_loader, model, criterion,  archloader, args, epoch):
+
     objs_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
 
     model.eval()
     now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
 
     # [16, 16, 16, 16, 16, 16, 16, 32, 32, 32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64]
-    # .generate_width_to_narrow(epoch, args.epochs)
-    fair_arc_list = archloader.generate_spos_like_batch().tolist()
+    fair_arc_list = archloader.generate_width_to_narrow(
+        epoch, args.epochs)  # generate_spos_like_batch().tolist()
 
     print('{} |=> Test rng = {}'.format(now, fair_arc_list))  # 只测试最后一个模型
 
-    if args.model_type == "dynamic":
-        # BN calibration
-        retrain_bn(model, train_loader, fair_arc_list, device=0)
+    # BN calibration
+    retrain_bn(model, 15, train_loader, fair_arc_list, device=0)
 
     with torch.no_grad():
         for step, (image, target) in enumerate(val_loader):
@@ -277,13 +261,14 @@ def infer(train_loader, val_loader, model, criterion,  archloader, args, epoch):
             target = Variable(target, requires_grad=False).cuda(
                 args.local_rank, non_blocking=True)
 
-            logits = model(image, fair_arc_list)
+            logits = model(image, fair_arc_list[:-1])
             loss = criterion(logits, target)
 
             top1, top5 = accuracy(logits, target, topk=(1, 5))
 
             if torch.cuda.device_count() > 1:
                 torch.distributed.barrier()
+
                 loss = reduce_mean(loss, args.nprocs)
                 top1 = reduce_mean(top1, image.size(0))
                 top5 = reduce_mean(top5, image.size(0))

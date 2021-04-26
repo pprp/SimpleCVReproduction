@@ -102,6 +102,7 @@ def main():
     val_dataprovider = DataIterator(val_loader)
 
     train(train_dataprovider, val_dataprovider, optimizer, scheduler, model, criterion_smooth, args, val_iters, args.seed, operations)
+    
     if args.local_rank == 0:
         save(model.module, config.net_cache)
         evolution_trainer = EvolutionTrainer()

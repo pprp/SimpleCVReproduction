@@ -2,7 +2,6 @@
 *.jpg
 *.zip
 *.pyc
-*.json
 *.pyh
 siamese-triplet/data/MNIST/MNIST/raw/t10k-labels-idx1-ubyte
 *.pt
@@ -65,3 +64,5 @@ NAS/nni/data/cifar-10-batches-py/data_batch_3
 NAS/nni/data/cifar-10-batches-py/data_batch_5
 NAS/nni/data/cifar-10-batches-py/readme.html
 NAS/nni/data/cifar-10-batches-py/test_batch
+NAS/nni/checkpoints/*
+*.json
