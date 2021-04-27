@@ -13,6 +13,7 @@ from ofa.imagenet_classification.elastic_nn.modules.dynamic_op import DynamicBat
 __all__ = ['set_running_statistics']
 
 
+# 这个应该是bn calibration
 def set_running_statistics(model, data_loader, distributed=False):
 	bn_mean = {}
 	bn_var = {}
