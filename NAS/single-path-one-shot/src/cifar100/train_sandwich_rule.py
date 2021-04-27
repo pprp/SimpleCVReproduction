@@ -41,10 +41,10 @@ parser = argparse.ArgumentParser("ResNet20-cifar100")
 
 parser.add_argument('--local_rank', type=int, default=0,
                     help='local rank for distributed training')
-parser.add_argument('--batch_size', type=int, default=4096,
+parser.add_argument('--batch_size', type=int, default=2048,
                     help='batch size')  # 8192
 parser.add_argument('--learning_rate', type=float,
-                    default=0.5656, help='init learning rate')  # 0.8
+                    default=0.4, help='init learning rate')  # 0.8
 parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
 parser.add_argument('--model-type', type=str, default="dynamic",
