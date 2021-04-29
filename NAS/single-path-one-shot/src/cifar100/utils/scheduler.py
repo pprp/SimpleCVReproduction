@@ -10,6 +10,7 @@ from torch.optim.lr_scheduler import (CosineAnnealingLR,
 from torch.optim.sgd import SGD
 
 
+
 class GradualWarmupScheduler(_LRScheduler):
     """ Gradually warm-up(increasing) learning rate in optimizer.
     Proposed in 'Accurate, Large Minibatch SGD: Training ImageNet in 1 Hour'.
@@ -79,8 +80,8 @@ class GradualWarmupScheduler(_LRScheduler):
 #     optim = SGD(model, 0.1)
 
 #     # scheduler_warmup is chained with schduler_steplr
-#     scheduler_steplr = StepLR(optim, step_size=10, gamma=0.1)
-#     scheduler_warmup = GradualWarmupScheduler(optim, multiplier=1, total_epoch=5, after_scheduler=scheduler_steplr)
+    # scheduler_steplr = StepLR(optim, step_size=10, gamma=0.1)
+    # scheduler_warmup = GradualWarmupScheduler(optim, multiplier=1, total_epoch=5, after_scheduler=scheduler_steplr)
 
 #     # this zero gradient update is needed to avoid a warning message, issue #8.
 #     optim.zero_grad()
@@ -125,17 +126,20 @@ class model(nn.Module):
 
 
 if __name__ == '__main__':
-
+    import matplotlib.pyplot as plt
     initial_lr = 0.1
-    total_epoch = 100
+    total_epoch = 200
     net = model()
 
     optimizer = torch.optim.Adam(net.parameters(), lr=initial_lr)
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
     # scheduler = StepLR(optimizer, initial_lr, total_epoch)
     # a_scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=5)
-    a_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer,
-                                                    lambda step: (1.0-step/total_epoch), last_epoch=-1)
+    # a_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer,
+    #                                                 lambda step: (1.0-step/total_epoch), last_epoch=-1)
+    a_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+    # a_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+    #                                                    milestones=[100, 150], last_epoch=-1)
     scheduler = GradualWarmupScheduler(
         optimizer, 1, total_epoch=5, after_scheduler=a_scheduler)
     # scheduler = LambdaLR(optimizer, lambda step : (1.0-step/total_epoch), last_epoch=-1)

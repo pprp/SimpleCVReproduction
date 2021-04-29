@@ -28,6 +28,7 @@ from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
                          DataIterator, accuracy, bn_calibration_init,
                          reduce_mean, reduce_tensor, retrain_bn,
                          save_checkpoint)
+from utils.scheduler import GradualWarmupScheduler
 
 print = functools.partial(print, flush=True)
 
@@ -38,9 +39,9 @@ parser = argparse.ArgumentParser("ResNet20-cifar100")
 
 parser.add_argument('--local_rank', type=int, default=0,
                     help='local rank for distributed training')
-parser.add_argument('--batch_size', type=int, default=4096, help='batch size')
+parser.add_argument('--batch_size', type=int, default=2048, help='batch size')
 parser.add_argument('--learning_rate', type=float,
-                    default=0.5657, help='init learning rate')
+                    default=0.3, help='init learning rate')
 parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
 
@@ -50,7 +51,7 @@ parser.add_argument('--weight_decay', type=float,
                     default=5e-4, help='weight decay')
 
 parser.add_argument('--report_freq', type=float,
-                    default=2, help='report frequency')
+                    default=5, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
 parser.add_argument('--epochs', type=int, default=300,
                     help='num of training epochs')
@@ -107,30 +108,33 @@ def main():
 
     # criterion_smooth = CrossEntropyLabelSmooth(args.classes, args.label_smooth)
     # criterion_smooth = criterion_smooth.cuda()
-    criterion = torch.nn.CrossEntropyLoss().cuda(args.gpu)
+    # criterion = torch.nn.CrossEntropyLoss().cuda(args.gpu)
 
+    criterion = CrossEntropyLabelSmooth(args.classes, args.label_smooth)
     optimizer = torch.optim.SGD(model.parameters(),
                                 lr=args.learning_rate,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
 
-    # scheduler = torch.optim.lr_scheduler.LambdaLR(
-    #     optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
-    # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+    # a_scheduler = torch.optim.lr_scheduler.LambdaLR(
+    #     optimizer, lambda step: (1.0-step/args.epochs), last_epoch=-1)
+    # a_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
     #     optimizer, T_0=5)
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
-    # scheduler = torch.optim.lr_scheduler.LambdaLR(
-    #     optimizer, lambda epoch: 1 - (epoch / args.epochs))
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                                        milestones=[100, 150], last_epoch=-1)
+    a_scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optimizer, lambda epoch: 1 - (epoch / args.epochs))
+    # a_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+    #                                                    milestones=[60, 120, 180], last_epoch=-1)
+
+    scheduler = GradualWarmupScheduler(
+        optimizer, 1, total_epoch=5, after_scheduler=a_scheduler)
 
     if args.local_rank == 0:
         writer = SummaryWriter("./runs/%s-%05d" %
                                (time.strftime("%m-%d", time.localtime()), random.randint(0, 100)))
 
     # Prepare data
-    train_loader = get_train_loader(
-        args.batch_size, args.local_rank, args.num_workers)
+    train_loader = get_train_loader(args.batch_size, args.local_rank, args.num_workers)
     # 原来跟train batch size一样，现在修改小一点 ， 同时修改val_iters
     val_loader = get_val_loader(args.batch_size, args.num_workers)
 

@@ -7,6 +7,7 @@ from paddle.io import DataLoader
 from paddle.optimizer.lr import CosineAnnealingDecay, MultiStepDecay, LinearWarmup
 import random
 from resnet20 import *
+import paddle
 
 # supernet trainning 基于paddleslim模型压缩包
 # https://github.com/PaddlePaddle/PaddleSlim 欢迎大家多多star
