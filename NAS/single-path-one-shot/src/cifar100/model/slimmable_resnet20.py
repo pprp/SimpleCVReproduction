@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from prettytable import PrettyTable
-from .slimmable_modules import SlimmableConv2d, SlimmableLinear, SwitchableBatchNorm2d
+from slimmable_modules import SlimmableConv2d, SlimmableLinear, SwitchableBatchNorm2d
 
 arc_representation = "4-12-4-4-16-8-4-12-32-24-16-8-8-24-60-12-64-64-52-60"
 # "16-8-16-16-8-12-12-20-12-4-12-32-32-24-48-8-52-16-12-36"
@@ -332,3 +332,4 @@ if __name__ == "__main__":
 
     input = torch.zeros(16, 3, 32, 32)
     output = model(input, [int(item) for item in arc_representation.split('-')])
+    print(model)

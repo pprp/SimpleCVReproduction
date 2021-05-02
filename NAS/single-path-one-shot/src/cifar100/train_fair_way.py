@@ -62,6 +62,7 @@ parser.add_argument('--label_smooth', type=float,
                     default=0.1, help='label smoothing')
 args = parser.parse_args()
 
+
 def main():
     if not torch.cuda.is_available():
         print('no gpu device available')
@@ -80,8 +81,11 @@ def main():
     torch.cuda.manual_seed(args.seed)
 
     if args.local_rank == 0:
-        args.exp = datetime.datetime.now().strftime("%YY_%mM_%dD_%HH") + "_" + \
-            "{:04d}".format(random.randint(0, 1000))
+        rand_int = random.randint(0, 1000)
+        args.exp = datetime.datetime.now().strftime("%YY-%mM-%dD-%HH") + "_" + \
+            "{:04d}".format(rand_int)
+        writer = SummaryWriter("./runs/%s-%05d" %
+                               (time.strftime("%m-%04d", time.localtime()), rand_int))
 
     print('gpu device = %d' % args.gpu)
     print("args = %s", args)
@@ -115,10 +119,6 @@ def main():
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
     scheduler = torch.optim.lr_scheduler.LambdaLR(
         optimizer, lambda epoch: 1 - (epoch / args.epochs))
-
-    if args.local_rank == 0:
-        writer = SummaryWriter("./runs/%s-%05d" %
-                               (time.strftime("%m-%d", time.localtime()), random.randint(0, 100)))
 
     # Prepare data
     train_loader = get_train_loader(
@@ -210,6 +210,7 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
             writer.add_scalar("Train/acc5", top5_.avg, step +
                               len(train_loader)*args.batch_size*epoch)
 
+
 def infer(train_loader, val_loader, model, criterion, archloader, args):
 
     objs_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
@@ -225,7 +226,7 @@ def infer(train_loader, val_loader, model, criterion, archloader, args):
     print('{} |=> Test rng = {}'.format(now, fair_arc_list))  # 只测试最后一个模型
 
     # BN calibration
-    retrain_bn(model, 15, train_loader, fair_arc_list, device=0)
+    retrain_bn(model, train_loader, fair_arc_list, device=0)
 
     with torch.no_grad():
         for step, (image, target) in enumerate(val_loader):

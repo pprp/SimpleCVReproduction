@@ -27,7 +27,7 @@ def kendalltau(vector1, vector2):
 
 
 if __name__ == "__main__":
-    json1_path = "./acc_result_rank_0.json"
+    json1_path = "./acc_benchmark.json"
     json_target = "data/benchmark.json"
 
     f1 = open(json1_path, "r")

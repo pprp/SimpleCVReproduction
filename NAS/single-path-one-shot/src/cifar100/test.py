@@ -25,6 +25,7 @@ from utils.utils import (ArchLoader, AvgrageMeter,
                          accuracy, bn_calibration_init,
                          get_lastest_model, get_parameters, retrain_bn,
                          save_checkpoint)
+from utils.angle import generate_angle
 
 
 def get_args():
@@ -40,7 +41,7 @@ def get_args():
                         default=6, help='num of workers')
 
     parser.add_argument('--weights', type=str,
-                        default="./weights/2021Y_04M_24D_15H_0743/checkpoint-latest.pth.tar", help="path for weights loading")
+                        default="./weights/2021Y_04M_24D_15H_0743/checkpoint-00899.pth.tar", help="path for weights loading")
 
     parser.add_argument('--auto-continue', type=bool,
                         default=True, help='report frequency')
@@ -92,7 +93,7 @@ def main():
     logging.getLogger().addHandler(fh)
 
     # archLoader
-    # arch_loader=ArchLoader(args.path)
+    arch_loader = ArchLoader(args.path)
     arch_dataset = ArchDataSet(args.path)
     arch_sampler = None
     if num_gpus > 1:
@@ -110,7 +111,6 @@ def main():
 
     print('load data successfully')
 
-    # model = mutableResNet20()
     model = dynamic_resnet20()
 
     print("load model successfully")
@@ -132,7 +132,35 @@ def main():
 
     print("start to validate model...")
 
-    validate(model, train_loader, args, arch_loader=arch_dataloader)
+    # validate(model, train_loader, args, arch_loader=arch_dataloader)
+    angle_validate(model, arch_loader, args)
+
+
+def angle_validate(model, archloader, args):
+    arch_dict = archloader.get_arch_dict()
+    base_model = dynamic_resnet20().cuda(args.gpu)
+    # base_2 = dynamic_resnet20().cuda(args.gpu)
+
+    angle_result_dict = {}
+
+    with torch.no_grad():
+        for key, value in arch_dict.items():
+            angle = generate_angle(base_model, model, value["arch"])
+            tmp_dict = {}
+            tmp_dict['arch'] = value['arch']
+            tmp_dict['acc'] = angle.item()
+
+            print("angle: ", angle.item())
+
+            angle_result_dict[key] = tmp_dict
+
+    print('\n', "="*10, "RESULTS", "="*10)
+    for key, value in angle_result_dict.items():
+        print(key, "\t", value)
+    print("="*10, "E N D", "="*10)
+
+    with open("angle_result.json", "w") as f:
+        json.dump(angle_result_dict, f)
 
 
 def validate(model, train_loader, args, *, arch_loader=None):
@@ -148,9 +176,7 @@ def validate(model, train_loader, args, *, arch_loader=None):
 
     result_dict = {}
 
-    # base_model = mutableResNet20().cuda()
-
-    arch_loader = tqdm((arch_loader))
+    arch_loader = tqdm(arch_loader)
     for key, arch in arch_loader:
         arch_list = [int(itm) for itm in arch[0].split('-')]
         # bn calibration
@@ -201,27 +227,6 @@ def validate(model, train_loader, args, *, arch_loader=None):
 
     with open("acc_%s.json" % (args.path.split('/')[1].split('.')[0]), "w") as f:
         json.dump(result_dict, f)
-
-    # angle_result_dict = {}
-
-    # with torch.no_grad():
-    #     for key, value in arch_dict.items():
-    #         angle = generate_angle(base_model, model.module, value["arch"])
-    #         tmp_dict = {}
-    #         tmp_dict['arch'] = value['arch']
-    #         tmp_dict['acc'] = angle.item()
-
-    #         print("angle: ", angle.item())
-
-    #         angle_result_dict[key] = tmp_dict
-
-    # print('\n', "="*10, "RESULTS", "="*10)
-    # for key, value in result_dict.items():
-    #     print(key, "\t", value)
-    # print("="*10, "E N D", "="*10)
-
-    # with open("angle_result.json", "w") as f:
-    #     json.dump(angle_result_dict, f)
 
 
 if __name__ == "__main__":

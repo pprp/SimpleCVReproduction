@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torch.nn.init as init
 from collections import OrderedDict
 
-from .dynamic_modules import DynamicLinear, DynamicConv2d, DynamicBatchNorm2d
+from model.dynamic_modules import DynamicLinear, DynamicConv2d, DynamicBatchNorm2d
 
 
 def get_configs():
@@ -213,3 +213,6 @@ def dynamic_resnet20():
 # model = resnet20()
 # a = torch.randn(3, 3, 32, 32)
 # print(model(a, arc_config[:-1]).shape)
+# m1 = dynamic_resnet20()
+# print(m1)
+# print(m1.first_conv.conv.conv.weight.shape)
