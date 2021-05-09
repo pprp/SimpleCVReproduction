@@ -36,12 +36,11 @@ def get_args():
     parser.add_argument(
         '--path', default="data/Track1_final_archs.json", help="path for json arch files")
     parser.add_argument('--batch-size', type=int,
-                        default=7168, help='batch size')
+                        default=2048, help='batch size')
     parser.add_argument('--workers', type=int,
                         default=6, help='num of workers')
-
     parser.add_argument('--weights', type=str,
-                        default="./weights/2021Y_04M_24D_15H_0743/checkpoint-00899.pth.tar", help="path for weights loading")
+                        default="./weights/2021Y_05M_08D_22H_0595/checkpoint-latest.pth.tar", help="path for weights loading")
 
     parser.add_argument('--auto-continue', type=bool,
                         default=True, help='report frequency')
@@ -132,8 +131,8 @@ def main():
 
     print("start to validate model...")
 
-    # validate(model, train_loader, args, arch_loader=arch_dataloader)
-    angle_validate(model, arch_loader, args)
+    validate(model, train_loader, args, arch_loader=arch_dataloader)
+    # angle_validate(model, arch_loader, args)
 
 
 def angle_validate(model, archloader, args):
