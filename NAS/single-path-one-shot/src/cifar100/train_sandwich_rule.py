@@ -21,7 +21,7 @@ from torch.optim import lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 from utils.scheduler import GradualWarmupScheduler
-
+import torch.nn.functional as F
 from datasets.cifar100_dataset import get_train_loader, get_val_loader
 from model.slimmable_resnet20 import mutableResNet20
 from model.dynamic_resnet20 import dynamic_resnet20
@@ -159,6 +159,8 @@ def main():
         train(train_loader, val_loader,  optimizer, scheduler, model,
               archloader, criterion, soft_criterion, args, args.seed, epoch, writer)
 
+        writer.add_scalar("lr", scheduler.get_last_lr()[0], epoch)
+
         scheduler.step()
         if (epoch + 1) % args.report_freq == 0:
             top1_val, top5_val,  objs_val = infer(train_loader, val_loader, model, criterion,
@@ -177,6 +179,8 @@ def main():
 
 def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, soft_criterion, args, seed, epoch, writer=None):
     losses_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
+
+    inplace_distillation = True
 
     model.train()
     widest = [16, 16, 16, 16, 16, 16, 16, 32, 32,
@@ -206,15 +210,21 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
             soft_target = model(image, widest)
             soft_loss = criterion(soft_target, target)
             soft_loss.backward()
-            soft_target = torch.nn.functional.softmax(
-                soft_target, dim=1).detach()
 
             # 采样几个子网来一遍
             for arc in candidate_list:
                 logits = model(image, arc)
                 # loss = soft_criterion(logits, soft_target.cuda(
                 #     args.gpu, non_blocking=True))
-                loss = criterion(logits, target)
+                if inplace_distillation:
+                    T = 1  # temperature in knowledge distillation 2 10 20
+
+                    soft_target = torch.nn.functional.softmax(
+                        soft_target/T, dim=1).detach()
+
+                    loss = 0.5 * torch.mean(soft_criterion(logits, soft_target)) + 0.5 * criterion(logits, target)
+                else:
+                    loss = criterion(logits, target)
 
                 # loss_reduce = reduce_tensor(loss, 0, args.world_size)
                 loss.backward()
