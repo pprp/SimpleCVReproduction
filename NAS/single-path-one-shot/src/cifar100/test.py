@@ -40,7 +40,7 @@ def get_args():
     parser.add_argument('--workers', type=int,
                         default=6, help='num of workers')
     parser.add_argument('--weights', type=str,
-                        default="./weights/2021Y_05M_08D_22H_0595/checkpoint-latest.pth.tar", help="path for weights loading")
+                        default="./weights/checkpoint-latest.pth.tar", help="path for weights loading")
 
     parser.add_argument('--auto-continue', type=bool,
                         default=True, help='report frequency')

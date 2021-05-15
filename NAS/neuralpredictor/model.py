@@ -60,6 +60,7 @@ class NeuralPredictor(nn.Module):
         self.fc2 = nn.Linear(linear_hidden, 1, bias=False)
 
     def forward(self, inputs):
+        # 节点个数， 邻接矩阵， 对应操作
         numv, adj, out = inputs["num_vertices"], inputs["adjacency"], inputs["operations"]
         gs = adj.size(1)  # graph node number
         # assuming diagonal is not 1

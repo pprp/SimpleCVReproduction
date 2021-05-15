@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torch.nn.init as init
 from collections import OrderedDict
 
-from model.dynamic_modules import DynamicLinear, DynamicConv2d, DynamicBatchNorm2d
+from dynamic_modules import DynamicLinear, DynamicConv2d, DynamicBatchNorm2d
 
 
 def get_configs():
@@ -180,6 +180,7 @@ class DynamicResNet(nn.Module):
     def _initialize_weights(self):
         for name, m in self.named_modules():
             if isinstance(m, nn.Conv2d):
+                # print("init conv2d")
                 if 'first' in name:
                     nn.init.normal_(m.weight, 0, 0.01)
                 else:
@@ -187,32 +188,37 @@ class DynamicResNet(nn.Module):
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
+                # print("init bn")
                 if m.weight is not None:
                     nn.init.constant_(m.weight, 1)
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0.0001)
                 nn.init.constant_(m.running_mean, 0)
-            elif isinstance(m, nn.BatchNorm1d):
-                nn.init.constant_(m.weight, 1)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0.0001)
-                nn.init.constant_(m.running_mean, 0)
             elif isinstance(m, nn.Linear):
+                # print("init linear")
                 nn.init.normal_(m.weight, 0, 0.01)
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
+
+        # Zero-initialize the last BN in each residual branch,
+        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        for m in self.modules():
+            if isinstance(m, DynamicBlock):
+                nn.init.constant_(m.conv2.bn.bn.weight, 0)  # type: ignore[arg-type]
+
 
 
 def dynamic_resnet20():
     return DynamicResNet(DynamicBlock, [3, 3, 3])
 
 
-# arc_config = [4, 12, 4, 4, 16, 8, 4, 12, 32,
-#               24, 16, 8, 8, 24, 60, 12, 64, 64, 52, 60]
-# arc_config = [i+1 for i in range(20)]
-# model = resnet20()
-# a = torch.randn(3, 3, 32, 32)
-# print(model(a, arc_config[:-1]).shape)
-# m1 = dynamic_resnet20()
+arc_config = [4, 12, 4, 4, 16, 8, 4, 12, 32,
+              24, 16, 8, 8, 24, 60, 12, 64, 64, 52, 60]
+arc_config = [i+1 for i in range(20)]
+model = dynamic_resnet20()
+a = torch.randn(3, 3, 32, 32)
+print(model(a, arc_config[:-1]).shape)
+m1 = dynamic_resnet20()
 # print(m1)
 # print(m1.first_conv.conv.conv.weight.shape)

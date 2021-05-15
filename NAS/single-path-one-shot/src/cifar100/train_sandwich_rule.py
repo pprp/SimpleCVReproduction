@@ -129,6 +129,7 @@ def main():
                                 lr=args.learning_rate,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
+    # optimizer = torch.optim.RMSprop(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
 
     # scheduler = torch.optim.lr_scheduler.LambdaLR(
     #     optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)

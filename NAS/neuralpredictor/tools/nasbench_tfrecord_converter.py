@@ -5,6 +5,7 @@ from tqdm import tqdm
 
 NASBENCH_FULL_TFRECORD = "data/nasbench_full.tfrecord"
 NASBENCH_HDF5 = "data/nasbench.hdf5"
+
 LABEL2ID = {
     "input": -1,
     "output": -2,
@@ -51,6 +52,7 @@ for hashval in tqdm(nasbench.hash_iterator()):
                                                 cur[t + "_test_accuracy"]] for t in ["halfway", "final"]
                                                ], dtype=np.float32))
         metrics_[-1].append(converted_metrics)
+        
 hash_ = np.array(hash_)
 operations_ = np.stack(operations_)
 adjacency_ = np.stack(adjacency_)
