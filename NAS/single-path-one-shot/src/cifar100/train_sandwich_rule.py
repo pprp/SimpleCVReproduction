@@ -180,7 +180,7 @@ def main():
 def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, soft_criterion, args, seed, epoch, writer=None):
     losses_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
 
-    inplace_distillation = True
+    inplace_distillation = False
 
     model.train()
     widest = [16, 16, 16, 16, 16, 16, 16, 32, 32,
