@@ -2,12 +2,13 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
 from dataprovider import DataProvider
+from distributedsampler import OFADistributedSampler
 
 
 class Cifar10DataProvider(DataProvider):
 
     def __init__(self, save_path=None, train_bs=256,
-                 test_bs=256, valid_size=None, 
+                 test_bs=256, valid_size=None,
                  n_workers=8,
                  image_size=32):
         super(Cifar10DataProvider, self).__init__()
