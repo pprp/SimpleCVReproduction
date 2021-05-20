@@ -32,6 +32,7 @@ class ImagenetDataProvider(DataProvider):
         self.resize_scale = resize_scale
 
         self._valid_transform_dict = {}
+        
         if not isinstance(self.image_size, int):
             from ofa.utils.my_dataloader import MyDataLoader
             assert isinstance(self.image_size, list)
