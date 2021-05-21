@@ -1,5 +1,6 @@
 import numpy as np
-import torchvision.datasets as datasets
+# import torchvision.datasets as datasets
+# from torchvision.datasets import cifar
 import torchvision.transforms as transforms
 from torchvision.transforms.transforms import Resize
 import torchvision
@@ -11,15 +12,15 @@ import torch
 
 class Cifar10DataProvider(DataProvider):
 
-    def __init__(self, save_path=None, train_bs=256,
-                 valid_bs=256, valid_size=None,
-                 num_workers=8,
+    def __init__(self, save_path, train_bs=64,
+                 valid_bs=64, valid_size=None,
+                 num_workers=4,
                  image_size=32,
                  num_replicas=None,
                  rank=None):
         super(Cifar10DataProvider, self).__init__()
 
-        self.save_path = save_path
+        self._save_path = save_path
         MEAN = [0.5071, 0.4865, 0.4409]
         STD = [0.1942, 0.1918, 0.1958]
 
@@ -38,10 +39,10 @@ class Cifar10DataProvider(DataProvider):
         ])
 
         # datasets
-        train_dataset = datasets.CIFAR10(
-            self.save_path, train=True, download=True, transform=train_transform)
-        valid_dataset = datasets.CIFAR10(
-            self.save_path, train=False, download=True, transform=valid_transform)
+        train_dataset = torchvision.datasets.CIFAR10(
+            self._save_path, train=True, download=True, transform=train_transform)
+        valid_dataset = torchvision.datasets.CIFAR10(
+            self._save_path, train=False, download=True, transform=valid_transform)
 
         # samplers
         train_indices, valid_indices = self.random_sample_valid_set(
@@ -90,13 +91,13 @@ class Cifar10DataProvider(DataProvider):
     @staticmethod
     def labels_to_one_hot(n_classes, labels):
         """labels shape [batchsize, classlbl]"""
-        oh = np.zeros((labels.shape[0], n_classes), dtype=np.float32)
+        new_labels = np.zeros((labels.shape[0], n_classes), dtype=np.float32)
         new_labels[range(labels.shape[0]), labels] = np.ones(labels.shape)
         return new_labels
 
     @staticmethod
     def random_sample_valid_set(train_size, valid_size):
-        g = torch.Generaotr()
+        g = torch.Generator()
         g.manual_seed(DataProvider.SEED)
 
         rand_indexes = torch.randperm(train_size, generator=g).tolist()
@@ -104,3 +105,9 @@ class Cifar10DataProvider(DataProvider):
         valid_indexes = rand_indexes[:valid_size]
         train_indexes = rand_indexes[valid_size:]
         return train_indexes, valid_indexes
+
+if __name__ == "__main__":
+    cifar10provider = Cifar10DataProvider(save_path="./data")
+
+    for image, label in cifar10provider.train_loader:
+        print(image.shape, label.shape)

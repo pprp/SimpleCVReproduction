@@ -25,6 +25,7 @@ class OFAResNets(ResNets):
 		input_channel = [
 			make_divisible(64 * width_mult, MyNetwork.CHANNEL_DIVISIBLE) for width_mult in self.width_mult_list
 		]
+		
 		mid_input_channel = [
 			make_divisible(channel // 2, MyNetwork.CHANNEL_DIVISIBLE) for channel in input_channel
 		]
