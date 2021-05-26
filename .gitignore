@@ -66,3 +66,5 @@ NAS/nni/data/cifar-10-batches-py/readme.html
 NAS/nni/data/cifar-10-batches-py/test_batch
 NAS/nni/checkpoints/*
 *.json
+*.th
+NAS/ofa_cifar10/data/*
