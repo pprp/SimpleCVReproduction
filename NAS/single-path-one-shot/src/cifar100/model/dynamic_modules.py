@@ -25,7 +25,7 @@ class DynamicBatchNorm2d(nn.Module):
         super(DynamicBatchNorm2d, self).__init__()
 
         self.max_feature_dim = max_feature_dim
-        self.bn = nn.BatchNorm2d(self.max_feature_dim)
+        self.bn = nn.BatchNorm2d(self.max_feature_dim, affine=True, track_running_stats=False)
 
     @staticmethod
     def bn_forward(x, bn: nn.BatchNorm2d, feature_dim):

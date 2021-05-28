@@ -35,15 +35,13 @@ SuperNetSetting = [
     [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64],  # fc
 ]
 
-LenList = [16, 16, 16, 16, 16, 16, 16, 32, 32,
-           32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64]
+LenList = [16, 16, 16, 16, 16, 16, 16, 32, 32, 32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64]
 MaskRepeat = 1  # used in RandomMixChannelConvBN and SampleRandomConvBN
 ProbRatio = 1.  # used in 'sample_flops_uniform' and 'sample_flops_fair'
 R = 1  # used in SampleLocalFreeConvBN
 MultiConvBNNum = 2  # used in SampleMultiConvBN
-TrackFile = "Track1_Submit//files//Track1_final_archs.json"  # used in 'sample_trackarch'
-# used in SampleLocalSepMask SampleLocalSepAdd
-LocalSepPortion = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+TrackFile = "Track1_final_archs.json"  # used in 'sample_trackarch'
+LocalSepPortion = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]  # used in SampleLocalSepMask SampleLocalSepAdd
 TrackRunningStats = False  # used in BN
 SameShortCut = False  # used in BasicBlock
 
@@ -61,10 +59,8 @@ def drop_path(x, drop_prob: float = 0., training: bool = False):
     if drop_prob == 0. or not training:
         return x
     keep_prob = 1 - drop_prob
-    # work with diff dim tensors, not just 2D ConvNets
-    shape = (x.shape[0], ) + (1, ) * (x.ndim - 1)
-    random_tensor = keep_prob + \
-        torch.rand(shape, dtype=x.dtype, device=x.device)
+    shape = (x.shape[0], ) + (1, ) * (x.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
+    random_tensor = keep_prob + torch.rand(shape, dtype=x.dtype, device=x.device)
     random_tensor.floor_()  # binarize
     output = x.div(keep_prob) * random_tensor
     return output
@@ -73,27 +69,19 @@ def drop_path(x, drop_prob: float = 0., training: bool = False):
 class MixChannelConvBN(nn.Module):
     def __init__(self, layer_id, in_planes, out_planes, kernel_size, stride, padding, bias, affine=False):
         super(MixChannelConvBN, self).__init__()
-
         assert out_planes == SuperNetSetting[layer_id][-1]
         global TrackRunningStats
+        self.layer_id = layer_id
+        self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias)
+        self.bn = nn.BatchNorm2d(out_planes, affine=affine, track_running_stats=TrackRunningStats)
 
-        self.layer_id = layer_id  # number of layer
-        self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,
-                              stride=stride, padding=padding, bias=bias)
-        self.bn = nn.BatchNorm2d(
-            out_planes, affine=affine, track_running_stats=TrackRunningStats)
-
-        self.register_buffer('masks', torch.zeros(
-            [len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())
-
+        self.register_buffer('masks', torch.zeros([len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())
         for i, channel in enumerate(SuperNetSetting[layer_id]):
             self.masks[i][:channel] = 1
 
     def forward(self, x, weight, lenth=None):
-        # TODO weight??
         out = self.bn(self.conv(x))
         mixed_masks = 0
-
         if lenth is None:  # supernet forward
             for w, mask in zip(weight, self.masks):
                 mixed_masks += w * mask
@@ -111,17 +99,13 @@ class RandomMaskMixChannelConvBN(nn.Module):
         super(RandomMaskMixChannelConvBN, self).__init__()
         assert out_planes == SuperNetSetting[layer_id][-1]
         global TrackRunningStats
-        self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,
-                              stride=stride, padding=padding, bias=bias)
-        self.bn = nn.BatchNorm2d(
-            out_planes, affine=affine, track_running_stats=TrackRunningStats)
+        self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias)
+        self.bn = nn.BatchNorm2d(out_planes, affine=affine, track_running_stats=TrackRunningStats)
         global MaskRepeat
         self.mask_repeat = MaskRepeat
         self.mask_lenth = out_planes
 
-        self.register_buffer('masks', torch.zeros(
-            [len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())
-
+        self.register_buffer('masks', torch.zeros([len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())
         for i, channel in enumerate(SuperNetSetting[layer_id]):
             self.masks[i] = self.generate_random_mask(channel).cuda()
 
@@ -159,14 +143,10 @@ class SampleConvBN(nn.Module):
         assert out_planes == SuperNetSetting[layer_id][-1]
         global TrackRunningStats
         self.layer_id = layer_id
-        self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,
-                              stride=stride, padding=padding, bias=bias)
-        self.bn = nn.BatchNorm2d(
-            out_planes, affine=affine, track_running_stats=TrackRunningStats)
+        self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias)
+        self.bn = nn.BatchNorm2d(out_planes, affine=affine, track_running_stats=TrackRunningStats)
 
-        self.register_buffer('masks', torch.zeros(
-            [len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda()) # 4, 16, 1, 1
-
+        self.register_buffer('masks', torch.zeros([len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())
         for i, channel in enumerate(SuperNetSetting[layer_id]):
             self.masks[i][:channel] = 1
 
@@ -174,7 +154,7 @@ class SampleConvBN(nn.Module):
         out = self.bn(self.conv(x))
         mixed_masks = 0
         if lenth is None:  # supernet forward
-            for w, mask in zip(weight, self.masks): # weight存储的信息是, 某一层信息 alpha [0,1,0,0]，mask存储的信息也是一层的，每层包括4/8/16个mask
+            for w, mask in zip(weight, self.masks):
                 mixed_masks += w * mask
         else:  # subnet forward
             assert lenth in SuperNetSetting[self.layer_id]
@@ -188,16 +168,13 @@ class SampleRandomConvBN(nn.Module):
         super(SampleRandomConvBN, self).__init__()
         assert out_planes == SuperNetSetting[layer_id][-1]
         global TrackRunningStats
-        self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,
-                              stride=stride, padding=padding, bias=bias)
-        self.bn = nn.BatchNorm2d(
-            out_planes, affine=affine, track_running_stats=TrackRunningStats)
+        self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias)
+        self.bn = nn.BatchNorm2d(out_planes, affine=affine, track_running_stats=TrackRunningStats)
         global MaskRepeat
         self.mask_repeat = MaskRepeat
         self.mask_lenth = out_planes
 
-        self.register_buffer('masks', torch.zeros(
-            [len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())
+        self.register_buffer('masks', torch.zeros([len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())
         for i, channel in enumerate(SuperNetSetting[layer_id]):
             self.masks[i] = self.generate_random_mask(channel).cuda()
 
@@ -241,12 +218,9 @@ class SampleLocalSepAddConvBN(nn.Module):
         self.bns = nn.ModuleList()
 
         for _ in range(self.sep_num):
-            self.convs.append(nn.Conv2d(
-                in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias))
-            self.bns.append(nn.BatchNorm2d(
-                out_planes, affine=affine, track_running_stats=TrackRunningStats))
-        self.register_buffer('masks', torch.zeros(
-            [len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())
+            self.convs.append(nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias))
+            self.bns.append(nn.BatchNorm2d(out_planes, affine=affine, track_running_stats=TrackRunningStats))
+        self.register_buffer('masks', torch.zeros([len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())
         for i, channel in enumerate(SuperNetSetting[layer_id]):
             self.masks[i][:channel] = 1
 
@@ -283,12 +257,9 @@ class SampleLocalSepMaskConvBN(nn.Module):
         self.bns = nn.ModuleList()
 
         for _ in range(self.sep_num):
-            self.convs.append(nn.Conv2d(
-                in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias))
-            self.bns.append(nn.BatchNorm2d(
-                out_planes, affine=affine, track_running_stats=TrackRunningStats))
-        self.register_buffer('masks', torch.zeros(
-            [len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())
+            self.convs.append(nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias))
+            self.bns.append(nn.BatchNorm2d(out_planes, affine=affine, track_running_stats=TrackRunningStats))
+        self.register_buffer('masks', torch.zeros([len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())
         for i, channel in enumerate(SuperNetSetting[layer_id]):
             self.masks[i][:channel] = 1
 
@@ -302,15 +273,13 @@ class SampleLocalSepMaskConvBN(nn.Module):
         if lenth is None:  # supernet forward
             for i, w in enumerate(weight):
                 if w != 0:
-                    tmp = self.bns[self.get_index(i)](
-                        self.convs[self.get_index(i)](x))
+                    tmp = self.bns[self.get_index(i)](self.convs[self.get_index(i)](x))
                     tmp = self.masks[i] * tmp
                     out += w * tmp
         else:  # subnet forward
             assert lenth in SuperNetSetting[self.layer_id]
             index = SuperNetSetting[self.layer_id].index(lenth)
-            tmp = self.bns[self.get_index(index)](
-                self.convs[self.get_index(index)](x))
+            tmp = self.bns[self.get_index(index)](self.convs[self.get_index(index)](x))
             tmp = self.masks[index] * tmp
             out += tmp
         return out
@@ -327,12 +296,9 @@ class SampleSepMaskConvBN(nn.Module):
         self.convs = nn.ModuleList()
         self.bns = nn.ModuleList()
         for channel in SuperNetSetting[layer_id]:
-            self.convs.append(nn.Conv2d(
-                in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias))
-            self.bns.append(nn.BatchNorm2d(
-                out_planes, affine=affine, track_running_stats=TrackRunningStats))
-        self.register_buffer('masks', torch.zeros(
-            [len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())
+            self.convs.append(nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias))
+            self.bns.append(nn.BatchNorm2d(out_planes, affine=affine, track_running_stats=TrackRunningStats))
+        self.register_buffer('masks', torch.zeros([len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())
         for i, channel in enumerate(SuperNetSetting[layer_id]):
             self.masks[i][:channel] = 1
 
@@ -365,12 +331,9 @@ class SampleSepProjectConvBN(nn.Module):
         self.bns = nn.ModuleList()
         self.projects = nn.ModuleList()
         for channel in SuperNetSetting[layer_id]:
-            self.convs.append(nn.Conv2d(
-                in_planes, channel, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias))
-            self.bns.append(nn.BatchNorm2d(channel, affine=affine,
-                                           track_running_stats=TrackRunningStats))
-            self.projects.append(nn.Sequential(nn.Conv2d(channel, out_planes, kernel_size=1, stride=1, padding=0,
-                                                         bias=False), nn.BatchNorm2d(out_planes, affine=affine, track_running_stats=TrackRunningStats)))
+            self.convs.append(nn.Conv2d(in_planes, channel, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias))
+            self.bns.append(nn.BatchNorm2d(channel, affine=affine, track_running_stats=TrackRunningStats))
+            self.projects.append(nn.Sequential(nn.Conv2d(channel, out_planes, kernel_size=1, stride=1, padding=0, bias=False), nn.BatchNorm2d(out_planes, affine=affine, track_running_stats=TrackRunningStats)))
 
     def forward(self, x, weight, lenth=None):
         out = 0
@@ -393,16 +356,13 @@ class SampleLocalFreeConvBN(nn.Module):
         assert out_planes == SuperNetSetting[layer_id][-1]
         global TrackRunningStats
         self.layer_id = layer_id
-        self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size,
-                              stride=stride, padding=padding, bias=bias)
-        self.bn = nn.BatchNorm2d(
-            out_planes, affine=affine, track_running_stats=TrackRunningStats)
+        self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias)
+        self.bn = nn.BatchNorm2d(out_planes, affine=affine, track_running_stats=TrackRunningStats)
 
         global R
         num_masks = len(list(combinations(list(range(R * 2 + 1)), R + 1)))
         len_bin = SuperNetSetting[layer_id][0]
-        self.register_buffer('masks', torch.zeros([num_masks, len(
-            SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())
+        self.register_buffer('masks', torch.zeros([num_masks, len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())
         for k, comb in enumerate(combinations(list(range(R * 2 + 1)), R + 1)):
             for i, channel in enumerate(SuperNetSetting[layer_id]):
                 max_C = int(SuperNetSetting[layer_id][-1] / len_bin)
@@ -445,7 +405,7 @@ class SampleLocalFreeConvBN(nn.Module):
 
 def _weights_init(m):
     classname = m.__class__.__name__
-    # print(classname)
+    #print(classname)
     if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
         init.kaiming_uniform_(m.weight, mode='fan_out', nonlinearity='relu')
 
@@ -463,23 +423,17 @@ class BasicBlock(nn.Module):
 
         self.same_shortcut = SameShortCut
 
-        self.convbn1 = convbn_type(IND, self.len_list[IND - 1], self.len_list[IND],
-                                   kernel_size=3, stride=stride, padding=1, bias=False, affine=affine)
-        self.convbn2 = convbn_type(
-            IND + 1, self.len_list[IND], self.len_list[IND + 1], kernel_size=3, stride=1, padding=1, bias=False, affine=affine)
+        self.convbn1 = convbn_type(IND, self.len_list[IND - 1], self.len_list[IND], kernel_size=3, stride=stride, padding=1, bias=False, affine=affine)
+        self.convbn2 = convbn_type(IND + 1, self.len_list[IND], self.len_list[IND + 1], kernel_size=3, stride=1, padding=1, bias=False, affine=affine)
 
         self.shortcut = nn.Sequential()
-
         if SameShortCut:
-            self.shortcut = convbn_type(
-                IND + 1, self.len_list[IND - 1], self.len_list[IND + 1], kernel_size=1, stride=stride, padding=0, bias=False, affine=affine)
+            self.shortcut = convbn_type(IND + 1, self.len_list[IND - 1], self.len_list[IND + 1], kernel_size=1, stride=stride, padding=0, bias=False, affine=affine)
         else:
             if stride == 2:
-                self.shortcut = nn.Sequential(nn.Conv2d(self.len_list[IND - 1], self.len_list[IND + 1], kernel_size=1, stride=stride,
-                                                        padding=0, bias=False), nn.BatchNorm2d(self.len_list[IND + 1], track_running_stats=TrackRunningStats))
+                self.shortcut = nn.Sequential(nn.Conv2d(self.len_list[IND - 1], self.len_list[IND + 1], kernel_size=1, stride=stride, padding=0, bias=False), nn.BatchNorm2d(self.len_list[IND + 1], track_running_stats=TrackRunningStats))
             elif stride == 1 and (self.len_list[IND - 1] != self.len_list[IND + 1]):
-                self.shortcut = nn.Sequential(nn.Conv2d(self.len_list[IND - 1], self.len_list[IND + 1], kernel_size=1, stride=stride,
-                                                        padding=0, bias=False), nn.BatchNorm2d(self.len_list[IND + 1], track_running_stats=TrackRunningStats))
+                self.shortcut = nn.Sequential(nn.Conv2d(self.len_list[IND - 1], self.len_list[IND + 1], kernel_size=1, stride=stride, padding=0, bias=False), nn.BatchNorm2d(self.len_list[IND + 1], track_running_stats=TrackRunningStats))
         IND += 2
 
     def forward(self, x, weight0, weight1, weight2, lenth0=None, lenth1=None, lenth2=None):
@@ -512,17 +466,12 @@ class ResNet(nn.Module):
         global IND
         IND = 0
 
-        self.convbn1 = convbn_type(
-            IND, 3, self.len_list[IND], kernel_size=3, stride=1, padding=1, bias=False)
+        self.convbn1 = convbn_type(IND, 3, self.len_list[IND], kernel_size=3, stride=1, padding=1, bias=False)
         IND += 1
-        self.layer1 = self._make_layer(
-            self.len_list, block, num_blocks[0], stride=1)
-        self.layer2 = self._make_layer(
-            self.len_list, block, num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(
-            self.len_list, block, num_blocks[2], stride=2)
-        self.linear = nn.Sequential(nn.Dropout(
-            p=dropout), nn.Linear(self.len_list[-2], num_classes))
+        self.layer1 = self._make_layer(self.len_list, block, num_blocks[0], stride=1)
+        self.layer2 = self._make_layer(self.len_list, block, num_blocks[1], stride=2)
+        self.layer3 = self._make_layer(self.len_list, block, num_blocks[2], stride=2)
+        self.linear = nn.Sequential(nn.Dropout(p=dropout), nn.Linear(self.len_list[-2], num_classes))
         # self.linear = nn.Linear(self.len_list[-2], num_classes)
 
         self.apply(_weights_init)
@@ -532,12 +481,9 @@ class ResNet(nn.Module):
     def alpha_init(self):
         global ProbRatio
         if self.alpha_type == 'mix':
-            self.alpha1 = Variable(
-                1e-3 * torch.randn(7, 4).cuda(), requires_grad=True)
-            self.alpha2 = Variable(
-                1e-3 * torch.randn(6, 8).cuda(), requires_grad=True)
-            self.alpha3 = Variable(
-                1e-3 * torch.randn(6, 16).cuda(), requires_grad=True)
+            self.alpha1 = Variable(1e-3 * torch.randn(7, 4).cuda(), requires_grad=True)
+            self.alpha2 = Variable(1e-3 * torch.randn(6, 8).cuda(), requires_grad=True)
+            self.alpha3 = Variable(1e-3 * torch.randn(6, 16).cuda(), requires_grad=True)
 
             self.alpha = [self.alpha1, self.alpha2, self.alpha3]
         elif self.alpha_type == 'sample_fair':
@@ -546,24 +492,18 @@ class ResNet(nn.Module):
             self.register_buffer('counts3', torch.zeros(6, 16).cuda())
         elif self.alpha_type == 'sample_flops_uniform':
             l1 = ProbRatio * (np.array([4., 8., 12., 16.]) - 4) + 4
-            l2 = ProbRatio * \
-                (np.array([4., 8., 12., 16., 20., 24., 28., 32.]) - 4) + 4
-            l3 = ProbRatio * (np.array([4., 8., 12., 16., 20., 24., 28.,
-                                        32., 36., 40., 44., 48., 52., 56., 60., 64.]) - 4) + 4
+            l2 = ProbRatio * (np.array([4., 8., 12., 16., 20., 24., 28., 32.]) - 4) + 4
+            l3 = ProbRatio * (np.array([4., 8., 12., 16., 20., 24., 28., 32., 36., 40., 44., 48., 52., 56., 60., 64.]) - 4) + 4
             self.prob1 = l1 / l1.sum()
             self.prob2 = l2 / l2.sum()
             self.prob3 = l3 / l3.sum()
         elif self.alpha_type == 'sample_flops_fair':
-            self.delta1 = 4 / \
-                (ProbRatio * (np.array(SuperNetSetting[0:7]) - 4) + 4)
-            self.delta2 = 4 / \
-                (ProbRatio * (np.array(SuperNetSetting[7:13]) - 4) + 4)
-            self.delta3 = 4 / \
-                (ProbRatio * (np.array(SuperNetSetting[13:19]) - 4) + 4)
+            self.delta1 = 4 / (ProbRatio * (np.array(SuperNetSetting[0:7]) - 4) + 4)
+            self.delta2 = 4 / (ProbRatio * (np.array(SuperNetSetting[7:13]) - 4) + 4)
+            self.delta3 = 4 / (ProbRatio * (np.array(SuperNetSetting[13:19]) - 4) + 4)
             self.register_buffer('counts1', torch.Tensor(7 * [4 * [0]]).cuda())
             self.register_buffer('counts2', torch.Tensor(6 * [8 * [0]]).cuda())
-            self.register_buffer(
-                'counts3', torch.Tensor(6 * [16 * [0]]).cuda())
+            self.register_buffer('counts3', torch.Tensor(6 * [16 * [0]]).cuda())
         elif self.alpha_type == 'sample_sandwich':
             self.alpha_sandwich_type = 'random'
         elif self.alpha_type == 'sample_trackarch':
@@ -605,51 +545,33 @@ class ResNet(nn.Module):
             alpha3 = F.softmax(self.alpha3, dim=-1)
         elif 'sample_uniform' == self.alpha_type:
             with torch.no_grad():
-                alpha1 = Variable(torch.zeros(7, 4).scatter_(dim=1, index=torch.LongTensor(
-                    np.random.randint(0, 4, size=7)).view(-1, 1), value=1).cuda())
-                alpha2 = Variable(torch.zeros(6, 8).scatter_(dim=1, index=torch.LongTensor(
-                    np.random.randint(0, 8, size=6)).view(-1, 1), value=1).cuda())
-                alpha3 = Variable(torch.zeros(6, 16).scatter_(dim=1, index=torch.LongTensor(
-                    np.random.randint(0, 16, size=6)).view(-1, 1), value=1).cuda())
+                alpha1 = Variable(torch.zeros(7, 4).scatter_(dim=1, index=torch.LongTensor(np.random.randint(0, 4, size=7)).view(-1, 1), value=1).cuda())
+                alpha2 = Variable(torch.zeros(6, 8).scatter_(dim=1, index=torch.LongTensor(np.random.randint(0, 8, size=6)).view(-1, 1), value=1).cuda())
+                alpha3 = Variable(torch.zeros(6, 16).scatter_(dim=1, index=torch.LongTensor(np.random.randint(0, 16, size=6)).view(-1, 1), value=1).cuda())
         elif 'sample_fair' == self.alpha_type:
             with torch.no_grad():
-                pos1 = torch.argmin(
-                    self.counts1 + 0.01 * torch.randn(self.counts1.size()).cuda(), dim=1, keepdim=True)
-                pos2 = torch.argmin(
-                    self.counts2 + 0.01 * torch.randn(self.counts2.size()).cuda(), dim=1, keepdim=True)
-                pos3 = torch.argmin(
-                    self.counts3 + 0.01 * torch.randn(self.counts3.size()).cuda(), dim=1, keepdim=True)
-                alpha1 = Variable(torch.zeros(7, 4).cuda().scatter_(
-                    dim=1, index=pos1, value=1))
-                alpha2 = Variable(torch.zeros(6, 8).cuda().scatter_(
-                    dim=1, index=pos2, value=1))
-                alpha3 = Variable(torch.zeros(6, 16).cuda().scatter_(
-                    dim=1, index=pos3, value=1))
+                pos1 = torch.argmin(self.counts1 + 0.01 * torch.randn(self.counts1.size()).cuda(), dim=1, keepdim=True)
+                pos2 = torch.argmin(self.counts2 + 0.01 * torch.randn(self.counts2.size()).cuda(), dim=1, keepdim=True)
+                pos3 = torch.argmin(self.counts3 + 0.01 * torch.randn(self.counts3.size()).cuda(), dim=1, keepdim=True)
+                alpha1 = Variable(torch.zeros(7, 4).cuda().scatter_(dim=1, index=pos1, value=1))
+                alpha2 = Variable(torch.zeros(6, 8).cuda().scatter_(dim=1, index=pos2, value=1))
+                alpha3 = Variable(torch.zeros(6, 16).cuda().scatter_(dim=1, index=pos3, value=1))
                 self.counts1.add_(alpha1)
                 self.counts2.add_(alpha2)
                 self.counts3.add_(alpha3)
         elif 'sample_flops_uniform' == self.alpha_type:
             with torch.no_grad():
-                alpha1 = Variable(torch.zeros(7, 4).scatter_(dim=1, index=torch.LongTensor(
-                    np.random.choice(list(range(4)), size=7, p=self.prob1.ravel())).view(-1, 1), value=1).cuda())
-                alpha2 = Variable(torch.zeros(6, 8).scatter_(dim=1, index=torch.LongTensor(
-                    np.random.choice(list(range(8)), size=6, p=self.prob2.ravel())).view(-1, 1), value=1).cuda())
-                alpha3 = Variable(torch.zeros(6, 16).scatter_(dim=1, index=torch.LongTensor(
-                    np.random.choice(list(range(16)), size=6, p=self.prob3.ravel())).view(-1, 1), value=1).cuda())
+                alpha1 = Variable(torch.zeros(7, 4).scatter_(dim=1, index=torch.LongTensor(np.random.choice(list(range(4)), size=7, p=self.prob1.ravel())).view(-1, 1), value=1).cuda())
+                alpha2 = Variable(torch.zeros(6, 8).scatter_(dim=1, index=torch.LongTensor(np.random.choice(list(range(8)), size=6, p=self.prob2.ravel())).view(-1, 1), value=1).cuda())
+                alpha3 = Variable(torch.zeros(6, 16).scatter_(dim=1, index=torch.LongTensor(np.random.choice(list(range(16)), size=6, p=self.prob3.ravel())).view(-1, 1), value=1).cuda())
         elif 'sample_flops_fair' == self.alpha_type:
             with torch.no_grad():
-                pos1 = torch.argmin(
-                    self.counts1 + 0.01 * torch.randn(self.counts1.size()).cuda(), dim=1, keepdim=True)
-                pos2 = torch.argmin(
-                    self.counts2 + 0.01 * torch.randn(self.counts2.size()).cuda(), dim=1, keepdim=True)
-                pos3 = torch.argmin(
-                    self.counts3 + 0.01 * torch.randn(self.counts3.size()).cuda(), dim=1, keepdim=True)
-                alpha1 = Variable(torch.zeros(7, 4).cuda().scatter_(
-                    dim=1, index=pos1, value=1))
-                alpha2 = Variable(torch.zeros(6, 8).cuda().scatter_(
-                    dim=1, index=pos2, value=1))
-                alpha3 = Variable(torch.zeros(6, 16).cuda().scatter_(
-                    dim=1, index=pos3, value=1))
+                pos1 = torch.argmin(self.counts1 + 0.01 * torch.randn(self.counts1.size()).cuda(), dim=1, keepdim=True)
+                pos2 = torch.argmin(self.counts2 + 0.01 * torch.randn(self.counts2.size()).cuda(), dim=1, keepdim=True)
+                pos3 = torch.argmin(self.counts3 + 0.01 * torch.randn(self.counts3.size()).cuda(), dim=1, keepdim=True)
+                alpha1 = Variable(torch.zeros(7, 4).cuda().scatter_(dim=1, index=pos1, value=1))
+                alpha2 = Variable(torch.zeros(6, 8).cuda().scatter_(dim=1, index=pos2, value=1))
+                alpha3 = Variable(torch.zeros(6, 16).cuda().scatter_(dim=1, index=pos3, value=1))
                 self.counts1.add_(alpha1 * torch.Tensor(self.delta1).cuda())
                 self.counts2.add_(alpha2 * torch.Tensor(self.delta2).cuda())
                 self.counts3.add_(alpha3 * torch.Tensor(self.delta3).cuda())
@@ -657,34 +579,22 @@ class ResNet(nn.Module):
             with torch.no_grad():
                 assert self.alpha_sandwich_type in ['min', 'max', 'random']
                 if self.alpha_sandwich_type == 'random':
-                    alpha1 = Variable(torch.zeros(7, 4).scatter_(dim=1, index=torch.LongTensor(
-                        np.random.randint(0, 4, size=7)).view(-1, 1), value=1).cuda())
-                    alpha2 = Variable(torch.zeros(6, 8).scatter_(dim=1, index=torch.LongTensor(
-                        np.random.randint(0, 8, size=6)).view(-1, 1), value=1).cuda())
-                    alpha3 = Variable(torch.zeros(6, 16).scatter_(dim=1, index=torch.LongTensor(
-                        np.random.randint(0, 16, size=6)).view(-1, 1), value=1).cuda())
+                    alpha1 = Variable(torch.zeros(7, 4).scatter_(dim=1, index=torch.LongTensor(np.random.randint(0, 4, size=7)).view(-1, 1), value=1).cuda())
+                    alpha2 = Variable(torch.zeros(6, 8).scatter_(dim=1, index=torch.LongTensor(np.random.randint(0, 8, size=6)).view(-1, 1), value=1).cuda())
+                    alpha3 = Variable(torch.zeros(6, 16).scatter_(dim=1, index=torch.LongTensor(np.random.randint(0, 16, size=6)).view(-1, 1), value=1).cuda())
                 elif self.alpha_sandwich_type == 'min':
-                    alpha1 = Variable(torch.zeros(7, 4).scatter_(
-                        dim=1, index=torch.LongTensor(np.array(7 * [0])).view(-1, 1), value=1).cuda())
-                    alpha2 = Variable(torch.zeros(6, 8).scatter_(
-                        dim=1, index=torch.LongTensor(np.array(6 * [0])).view(-1, 1), value=1).cuda())
-                    alpha3 = Variable(torch.zeros(6, 16).scatter_(
-                        dim=1, index=torch.LongTensor(np.array(6 * [0])).view(-1, 1), value=1).cuda())
+                    alpha1 = Variable(torch.zeros(7, 4).scatter_(dim=1, index=torch.LongTensor(np.array(7 * [0])).view(-1, 1), value=1).cuda())
+                    alpha2 = Variable(torch.zeros(6, 8).scatter_(dim=1, index=torch.LongTensor(np.array(6 * [0])).view(-1, 1), value=1).cuda())
+                    alpha3 = Variable(torch.zeros(6, 16).scatter_(dim=1, index=torch.LongTensor(np.array(6 * [0])).view(-1, 1), value=1).cuda())
                 elif self.alpha_sandwich_type == 'max':
-                    alpha1 = Variable(torch.zeros(7, 4).scatter_(
-                        dim=1, index=torch.LongTensor(np.array(7 * [3])).view(-1, 1), value=1).cuda())
-                    alpha2 = Variable(torch.zeros(6, 8).scatter_(
-                        dim=1, index=torch.LongTensor(np.array(6 * [7])).view(-1, 1), value=1).cuda())
-                    alpha3 = Variable(torch.zeros(6, 16).scatter_(
-                        dim=1, index=torch.LongTensor(np.array(6 * [15])).view(-1, 1), value=1).cuda())
+                    alpha1 = Variable(torch.zeros(7, 4).scatter_(dim=1, index=torch.LongTensor(np.array(7 * [3])).view(-1, 1), value=1).cuda())
+                    alpha2 = Variable(torch.zeros(6, 8).scatter_(dim=1, index=torch.LongTensor(np.array(6 * [7])).view(-1, 1), value=1).cuda())
+                    alpha3 = Variable(torch.zeros(6, 16).scatter_(dim=1, index=torch.LongTensor(np.array(6 * [15])).view(-1, 1), value=1).cuda())
         elif 'sample_trackarch' == self.alpha_type:
             with torch.no_grad():
-                alpha1 = Variable(torch.zeros(7, 4).scatter_(dim=1, index=torch.LongTensor(
-                    self.trackarchs[self.trackindex]['arch'][0:7]).view(-1, 1), value=1).cuda())
-                alpha2 = Variable(torch.zeros(6, 8).scatter_(dim=1, index=torch.LongTensor(
-                    self.trackarchs[self.trackindex]['arch'][7:13]).view(-1, 1), value=1).cuda())
-                alpha3 = Variable(torch.zeros(6, 16).scatter_(dim=1, index=torch.LongTensor(
-                    self.trackarchs[self.trackindex]['arch'][13:19]).view(-1, 1), value=1).cuda())
+                alpha1 = Variable(torch.zeros(7, 4).scatter_(dim=1, index=torch.LongTensor(self.trackarchs[self.trackindex]['arch'][0:7]).view(-1, 1), value=1).cuda())
+                alpha2 = Variable(torch.zeros(6, 8).scatter_(dim=1, index=torch.LongTensor(self.trackarchs[self.trackindex]['arch'][7:13]).view(-1, 1), value=1).cuda())
+                alpha3 = Variable(torch.zeros(6, 16).scatter_(dim=1, index=torch.LongTensor(self.trackarchs[self.trackindex]['arch'][13:19]).view(-1, 1), value=1).cuda())
                 self.trackindex += 1
                 if self.trackindex == len(self.trackarchs):
                     random.shuffle(self.trackarchs)
@@ -700,8 +610,7 @@ class ResNet(nn.Module):
         strides = [stride] + [1] * (num_blocks - 1)
         layers = []
         for stride in strides:
-            layers.append(block(len_list, stride, self.affine,
-                                self.convbn_type, self.drop_path_rate))
+            layers.append(block(len_list, stride, self.affine, self.convbn_type, self.drop_path_rate))
 
         return nn.Sequential(*layers)
 
@@ -715,18 +624,13 @@ class ResNet(nn.Module):
         out = F.relu(self.convbn1(x, alpha1[0], lenth_list[k]))
         k += 1
         for i, layer in enumerate(self.layer1):
-            out = layer(out, alpha1[2 * i], alpha1[1 + 2 * i], alpha1[1 +
-                                                                      2 * i + 1], lenth_list[k - 1], lenth_list[k], lenth_list[k + 1])
+            out = layer(out, alpha1[2 * i], alpha1[1 + 2 * i], alpha1[1 + 2 * i + 1], lenth_list[k - 1], lenth_list[k], lenth_list[k + 1])
             k += 2
-
         for i, layer in enumerate(self.layer2):
-            out = layer(out, alpha2[2 * i] if i > 0 else alpha1[-1], alpha2[2 * i],
-                        alpha2[2 * i + 1], lenth_list[k - 1], lenth_list[k], lenth_list[k + 1])
+            out = layer(out, alpha2[2 * i] if i > 0 else alpha1[-1], alpha2[2 * i], alpha2[2 * i + 1], lenth_list[k - 1], lenth_list[k], lenth_list[k + 1])
             k += 2
-            
         for i, layer in enumerate(self.layer3):
-            out = layer(out, alpha3[2 * i] if i > 0 else alpha2[-1], alpha3[2 * i],
-                        alpha3[2 * i + 1], lenth_list[k - 1], lenth_list[k], lenth_list[k + 1])
+            out = layer(out, alpha3[2 * i] if i > 0 else alpha2[-1], alpha3[2 * i], alpha3[2 * i + 1], lenth_list[k - 1], lenth_list[k], lenth_list[k + 1])
             k += 2
         out = F.avg_pool2d(out, out.size()[3])
         out = out.view(out.size(0), -1)
@@ -772,8 +676,7 @@ def set_localsep_portion(localsep_layers, localsep_portion):
                 LocalSepPortion[int(layer)] = localsep_portion
             print(LocalSepPortion)
         except:
-            raise Exception(
-                "Localsep_layers format is NOT true: {}".format(localsep_layers))
+            raise Exception("Localsep_layers format is NOT true: {}".format(localsep_layers))
 
 
 def resnet20(

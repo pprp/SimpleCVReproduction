@@ -193,7 +193,7 @@ class DynamicResNet(nn.Module):
                     nn.init.constant_(m.weight, 1)
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0.0001)
-                nn.init.constant_(m.running_mean, 0)
+                # nn.init.constant_(m.running_mean, 0)
             elif isinstance(m, nn.Linear):
                 # print("init linear")
                 nn.init.normal_(m.weight, 0, 0.01)
