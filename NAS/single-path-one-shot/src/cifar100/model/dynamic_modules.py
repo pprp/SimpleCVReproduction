@@ -25,7 +25,8 @@ class DynamicBatchNorm2d(nn.Module):
         super(DynamicBatchNorm2d, self).__init__()
 
         self.max_feature_dim = max_feature_dim
-        self.bn = nn.BatchNorm2d(self.max_feature_dim, affine=True, track_running_stats=False)
+        self.bn = nn.BatchNorm2d(self.max_feature_dim,
+                                 affine=True, track_running_stats=False)
 
     @staticmethod
     def bn_forward(x, bn: nn.BatchNorm2d, feature_dim):
@@ -42,12 +43,19 @@ class DynamicBatchNorm2d(nn.Module):
                             float(bn.num_batches_tracked)
                     else:  # use exponential moving average
                         exponential_average_factor = bn.momentum
-            return F.batch_norm(
-                x, bn.running_mean[:feature_dim], bn.running_var[:
-                                                                 feature_dim], bn.weight[:feature_dim],
-                bn.bias[:feature_dim], bn.training or not bn.track_running_stats,
-                exponential_average_factor, bn.eps,
-            )
+            if bn.track_running_stats is False:
+                return F.batch_norm(
+                    x, None, None, bn.weight[:feature_dim],
+                    bn.bias[:feature_dim], bn.training or not bn.track_running_stats,
+                    exponential_average_factor, bn.eps,
+                )
+            else:
+                return F.batch_norm(
+                    x, bn.running_mean[:feature_dim], bn.running_var[:
+                                                                     feature_dim], bn.weight[:feature_dim],
+                    bn.bias[:feature_dim], bn.training or not bn.track_running_stats,
+                    exponential_average_factor, bn.eps,
+                )
 
     def forward(self, x):
         feature_dim = x.size(1)

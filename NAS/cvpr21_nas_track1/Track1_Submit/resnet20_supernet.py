@@ -174,7 +174,9 @@ class SampleConvBN(nn.Module):
         out = self.bn(self.conv(x))
         mixed_masks = 0
         if lenth is None:  # supernet forward
-            for w, mask in zip(weight, self.masks): # weight存储的信息是, 某一层信息 alpha [0,1,0,0]，mask存储的信息也是一层的，每层包括4/8/16个mask
+            for w, mask in zip(weight, self.masks):
+                # weight存储的信息是, 某一层信息 alpha [0,1,0,0]
+                # mask存储的信息也是一层的，每层包括4/8/16个mask
                 mixed_masks += w * mask
         else:  # subnet forward
             assert lenth in SuperNetSetting[self.layer_id]

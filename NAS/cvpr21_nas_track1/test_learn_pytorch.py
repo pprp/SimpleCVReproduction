@@ -26,3 +26,8 @@ for buffer in model.buffers():
     print(buffer)
 print("----------------")
 print(model.state_dict())
+
+a = nn.BatchNorm2d(5, affine=True, track_running_stats=True)
+b = nn.BatchNorm2d(5, affine=True, track_running_stats=False)
+c = nn.BatchNorm2d(5, affine=False, track_running_stats=True)
+d = nn.BatchNorm2d(5, affine=False, track_running_stats=False)

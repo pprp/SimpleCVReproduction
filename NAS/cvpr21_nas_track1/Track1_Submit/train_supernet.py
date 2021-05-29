@@ -465,7 +465,7 @@ def train(train_queue, valid_queue, model, criterion, soft_criterion, optimizer,
                 loss.backward()  # compute gradient
             optimizer.step()  # do SGD step
 
-        if valid_queue is not None:
+        if valid_queue is not None: # TODO 在验证集上跑？
             # arch compute output
             output_search = model(input_search_var)
             loss_search = criterion(output_search, target_search_var)
