@@ -9,23 +9,23 @@ import cv2
 import numpy as np
 import PIL
 import torch
+import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from PIL import Image
-from tqdm import tqdm
 from torch.utils.data.distributed import DistributedSampler
-import torch.backends.cudnn as cudnn
+from tqdm import tqdm
 
-from datasets.cifar100_dataset import get_val_dataset, ArchDataSet, get_train_loader
+from datasets.cifar100_dataset import (ArchDataSet, get_train_loader,
+                                       get_val_dataset)
 # from model.slimmable_resnet20 import mutableResNet20
 from model.dynamic_resnet20 import dynamic_resnet20
-from utils.utils import (ArchLoader, AvgrageMeter,
-                         CrossEntropyLabelSmooth, DataIterator,
-                         accuracy, bn_calibration_init,
+from utils.angle import generate_angle
+from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
+                         DataIterator, accuracy, bn_calibration_init,
                          get_lastest_model, get_parameters, retrain_bn,
                          save_checkpoint)
-from utils.angle import generate_angle
 
 
 def get_args():
@@ -40,7 +40,7 @@ def get_args():
     parser.add_argument('--workers', type=int,
                         default=6, help='num of workers')
     parser.add_argument('--weights', type=str,
-                        default="./weights/checkpoint-latest.pth.tar", help="path for weights loading")
+                        default="./weights/2021Y_05M_29D_23H_0860/checkpoint-latest.pth.tar", help="path for weights loading")
 
     parser.add_argument('--auto-continue', type=bool,
                         default=True, help='report frequency')
@@ -175,29 +175,30 @@ def validate(model, train_loader, args, *, arch_loader=None):
 
     result_dict = {}
 
+    model.eval()
+
     arch_loader = tqdm(arch_loader)
     for key, arch in arch_loader:
         arch_list = [int(itm) for itm in arch[0].split('-')]
         # bn calibration
-        model.apply(bn_calibration_init)
+        # model.apply(bn_calibration_init)
 
-        model.train()
+        # model.train()
 
-        t1 = time.time()
+        # t1 = time.time()
 
-        for idx, (inputs, targets) in enumerate(train_loader):
-            inputs, targets = inputs.cuda(args.gpu, non_blocking=True), targets.cuda(
-                args.gpu, non_blocking=True)
-            outputs = model(inputs, arch_list)
-            del inputs, targets, outputs
-            if idx > 2:
-                break
+        # for idx, (inputs, targets) in enumerate(train_loader):
+        #     inputs, targets = inputs.cuda(args.gpu, non_blocking=True), targets.cuda(
+        #         args.gpu, non_blocking=True)
+        #     outputs = model(inputs, arch_list)
+        #     del inputs, targets, outputs
+        #     if idx > 2:
+        #         break
 
-        # print("bn calibration time:", time.time()-t1)
+        # # print("bn calibration time:", time.time()-t1)
 
-        t2 = time.time()
+        # t2 = time.time()
 
-        model.eval()
 
         for data, target in val_dataloader:  # 过一遍数据集
             target = target.type(torch.LongTensor)
@@ -221,7 +222,7 @@ def validate(model, train_loader, args, *, arch_loader=None):
 
         result_dict[key[0]] = tmp_dict
 
-        post_fix = {"top1": "%.6f" % (top1.avg/100)}
+        post_fix = {"top1": "%.4f" % (top1.avg/100)}
         arch_loader.set_postfix(log=post_fix)
 
     with open("acc_%s.json" % (args.path.split('/')[1].split('.')[0]), "w") as f:

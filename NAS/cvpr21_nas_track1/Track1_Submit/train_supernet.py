@@ -22,24 +22,53 @@ from utils import *
 from auto_argument import *
 
 '''
-Namespace(aa=False, affine=True, alpha_type='sample_trackarch',
- arch_lr=0.0003, arch_weight_decay=0.001, 
- batch_size=128, convbn_type='sample_channel', 
- cutout=True, cutout_lenth=16, distill=True, 
- distill_lamda=2.0, drop_path_rate=0.0, 
- dropout=0.0, epochs=20, evaluate=False,
- label_smooth=0.0, linear_dp_rate=False, 
- localsep_layers=None, localsep_portion=1, 
- lr=0.0035, mask_repeat=1, min_distill=False, 
- min_distill_lamda=1.0, min_lr=0.0005, 
- momentum=0.9, print_freq=50, prob_ratio=1.0, 
- r=1.0, resume='train/model.th', sameshortcut=True, 
- sample_accumulation_steps=6, sandwich_N=2, 
- save_alpha=False, save_dir='train', save_every=1, 
- seed=0, start_epoch=0, tauloss=False, tauloss_lamda=1.0, 
- tauloss_noise=0.01, track_file='files/Track1_100_archs.json', 
- track_running_stats=False, train_portion=0.5, 
- warmup=False, warmup_step=2000, weight_decay=0.0, workers=4)
+Namespace(aa=False, 
+affine=True, 
+alpha_type='sample_trackarch',
+arch_lr=0.0003, 
+arch_weight_decay=0.001, 
+batch_size=128, 
+convbn_type='sample_channel', 
+cutout=True, 
+cutout_lenth=16, 
+distill=True, 
+distill_lamda=2.0, 
+drop_path_rate=0.0, 
+dropout=0.0, 
+epochs=20, 
+evaluate=False,
+label_smooth=0.0, 
+linear_dp_rate=False, 
+localsep_layers=None, 
+localsep_portion=1, 
+lr=0.0035, 
+mask_repeat=1, 
+min_distill=False, 
+min_distill_lamda=1.0, 
+min_lr=0.0005, 
+momentum=0.9, 
+print_freq=50, 
+prob_ratio=1.0, 
+r=1.0, 
+resume='train/model.th', 
+sameshortcut=True, 
+sample_accumulation_steps=6, 
+sandwich_N=2, 
+save_alpha=False, 
+save_dir='train', 
+save_every=1, 
+seed=0, 
+start_epoch=0, 
+tauloss=False, 
+tauloss_lamda=1.0, 
+tauloss_noise=0.01, 
+track_file='files/Track1_100_archs.json', 
+track_running_stats=False, 
+train_portion=0.5, 
+warmup=False,
+warmup_step=2000, 
+weight_decay=0.0, 
+workers=4)
 '''
 
 parser = argparse.ArgumentParser(
@@ -416,7 +445,7 @@ def train(train_queue, valid_queue, model, criterion, soft_criterion, optimizer,
             model.set_drop_path_rate(drop_path_rate)
         elif args.tauloss:
             optimizer.zero_grad()  # zero gradient
-            for _ in range(args.sample_accumulation_steps):
+            for _ in range(args.sample_accumulation_steps): 
                 model.alpha_hold()
                 output = model(input_var)
                 loss1 = criterion(output, target_var)
@@ -441,6 +470,7 @@ def train(train_queue, valid_queue, model, criterion, soft_criterion, optimizer,
         else: # 进入这里
             optimizer.zero_grad()  # zero gradient
             for _ in range(args.sample_accumulation_steps): # TODO 为什么要多来几个step呢
+                # 作者解释说这是类似fairnas的方式，累积多个以后，然后同时进行更新
                 output = model(input_var)  # compute output
                 loss = criterion(output, target_var)  # compute loss
 

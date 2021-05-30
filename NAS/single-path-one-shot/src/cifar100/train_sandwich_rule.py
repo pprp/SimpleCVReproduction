@@ -44,7 +44,7 @@ parser.add_argument('--local_rank', type=int, default=0,
 parser.add_argument('--batch_size', type=int, default=2048,
                     help='batch size')  # 8192
 parser.add_argument('--learning_rate', type=float,
-                    default=0.4, help='init learning rate')  # 0.8
+                    default=0.1, help='init learning rate')  # 0.8
 parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
 parser.add_argument('--model-type', type=str, default="dynamic",
@@ -135,13 +135,13 @@ def main():
     #     optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
     # a_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
     #     optimizer, T_0=5)
-    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 200, eta_min=0.0005)
     # a_scheduler = torch.optim.lr_scheduler.LambdaLR(
     #     optimizer, lambda epoch: 1 - (epoch / args.epochs))
-    a_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                                       milestones=[60, 120, 160], last_epoch=-1)  # !!
-    scheduler = GradualWarmupScheduler(
-        optimizer, 1, total_epoch=5, after_scheduler=a_scheduler)
+    # a_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+    #                                                    milestones=[60, 120, 160], last_epoch=-1)  # !!
+    # scheduler = GradualWarmupScheduler(
+    #     optimizer, 1, total_epoch=5, after_scheduler=a_scheduler)
 
     if args.local_rank == 0:
         writer = SummaryWriter("./runs/%s-%05d" %
@@ -275,9 +275,9 @@ def infer(train_loader, val_loader, model, criterion,  archloader, args, epoch):
 
     print('{} |=> Test rng = {}'.format(now, fair_arc_list))  # 只测试最后一个模型
 
-    if args.model_type == "dynamic":
-        # BN calibration
-        retrain_bn(model, train_loader, fair_arc_list, device=0)
+    # if args.model_type == "dynamic":
+    #     # BN calibration
+    #     retrain_bn(model, train_loader, fair_arc_list, device=0)
 
     with torch.no_grad():
         for step, (image, target) in enumerate(val_loader):

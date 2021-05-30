@@ -41,7 +41,8 @@ MaskRepeat = 1  # used in RandomMixChannelConvBN and SampleRandomConvBN
 ProbRatio = 1.  # used in 'sample_flops_uniform' and 'sample_flops_fair'
 R = 1  # used in SampleLocalFreeConvBN
 MultiConvBNNum = 2  # used in SampleMultiConvBN
-TrackFile = "Track1_Submit//files//Track1_final_archs.json"  # used in 'sample_trackarch'
+# used in 'sample_trackarch'
+TrackFile = "Track1_Submit//files//Track1_final_archs.json"
 # used in SampleLocalSepMask SampleLocalSepAdd
 LocalSepPortion = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 TrackRunningStats = False  # used in BN
@@ -165,7 +166,7 @@ class SampleConvBN(nn.Module):
             out_planes, affine=affine, track_running_stats=TrackRunningStats)
 
         self.register_buffer('masks', torch.zeros(
-            [len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda()) # 4, 16, 1, 1
+            [len(SuperNetSetting[layer_id]), SuperNetSetting[layer_id][-1], 1, 1]).cuda())  # 4, 16, 1, 1
 
         for i, channel in enumerate(SuperNetSetting[layer_id]):
             self.masks[i][:channel] = 1
@@ -725,7 +726,7 @@ class ResNet(nn.Module):
             out = layer(out, alpha2[2 * i] if i > 0 else alpha1[-1], alpha2[2 * i],
                         alpha2[2 * i + 1], lenth_list[k - 1], lenth_list[k], lenth_list[k + 1])
             k += 2
-            
+
         for i, layer in enumerate(self.layer3):
             out = layer(out, alpha3[2 * i] if i > 0 else alpha2[-1], alpha3[2 * i],
                         alpha3[2 * i + 1], lenth_list[k - 1], lenth_list[k], lenth_list[k + 1])
@@ -829,7 +830,8 @@ def resnet20(
         'sample_trackarch': ['sample_channel', 'sample_random_channel', 'sample_sepmask_channel', 'sample_sepproject_channel', 'sample_localfree_channel', 'sample_localsepmask_channel', 'sample_localsepadd_channel'],
     }
     assert alpha_type in alpha_dict and convbn_type in alpha_dict[alpha_type]
-    return ResNet(BasicBlock, [3, 3, 3], affine=affine, convbn_type=convbn_dict[convbn_type], alpha_type=alpha_type, drop_path_rate=drop_path_rate, dropout=dropout)
+    return ResNet(BasicBlock, [3, 3, 3], affine=affine, convbn_type=convbn_dict[convbn_type],
+                  alpha_type=alpha_type, drop_path_rate=drop_path_rate, dropout=dropout)
 
 
 def test():

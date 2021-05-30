@@ -92,12 +92,21 @@ def get_train_dataset(cutout_length=0):
     MEAN = [0.5071, 0.4865, 0.4409]
     STD = [0.1942, 0.1918, 0.1958]
 
-    train_transform = transforms.Compose([
+    original_train_transform = transforms.Compose([
         # transforms.RandomHorizontalFlip(),
         transforms.RandomResizedCrop((32, 32)),
         # transforms.ColorJitter(0.2, 0.2, 0.2, 0.2),
         transforms.ToTensor(),
         transforms.Normalize(MEAN, STD)
+    ])
+
+    train_transform = transforms.Compose([
+        transforms.RandomCrop(32,4),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(15),
+        transforms.ToTensor(),
+        Cutout(16),
+        transforms.Normalize(MEAN,STD)
     ])
 
     dataset_train = CIFAR100(

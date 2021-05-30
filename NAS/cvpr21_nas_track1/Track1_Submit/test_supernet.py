@@ -20,40 +20,100 @@ import numpy as np
 from resnet20_supernet import resnet20
 from utils import *
 
-parser = argparse.ArgumentParser(description='Propert ResNets for CIFAR10 in pytorch')
-parser.add_argument('--eval_json_path', help='json file containing archs to evaluete', default='Track1_200_archs.json', type=str)
-parser.add_argument('--model_path', default='/home/yanglongxing/project/CVPR2021-NAS-Track1/result/2021.5.11/15/model.th', help='model checkpoint', type=str)
-parser.add_argument('--arch_start', default=1, type=int, metavar='N', help='the start index of eval archs')
-parser.add_argument('--arch_num', default=50000, type=int, metavar='N', help='the num of eval archs')
-parser.add_argument('--workers', default=4, type=int, metavar='N', help='number of data loading workers (default: 4)')
-parser.add_argument('--batch_size', default=10000, type=int, metavar='N', help='mini-batch size (default: 128)')
+'''
+Namespace(affine=True, 
+alpha_type='sample_uniform', 
+arch_num=50000, 
+arch_start=1, 
+batch_size=10000, 
+bn_calibrate=False, 
+bn_calibrate_batch=10000, 
+bn_calibrate_batch_num=1, 
+convbn_type='sample_channel', 
+eval_json_path='files/Track1_final_archs.json', 
+localsep_layers=None, 
+localsep_portion=1.0, 
+mask_repeat=1, 
+model_path='files/supernet.th', 
+prob_ratio=1.0, 
+r=1.0, 
+sameshortcut=True, 
+save_dir='eval', 
+save_every=1, 
+save_file='eval-final', 
+seed=2, 
+track_running_stats=False, 
+train=False, 
+train_batch_size=128, 
+train_epochs=1, 
+train_lr=0.001, 
+train_min_lr=0, 
+train_momentum=0.9, 
+train_print_freq=100, 
+train_weight_decay=0.0005, 
+workers=4)
+'''
+parser = argparse.ArgumentParser(
+    description='Propert ResNets for CIFAR10 in pytorch')
+parser.add_argument('--eval_json_path', help='json file containing archs to evaluete',
+                    default='Track1_200_archs.json', type=str)
+parser.add_argument('--model_path', default='/home/yanglongxing/project/CVPR2021-NAS-Track1/result/2021.5.11/15/model.th',
+                    help='model checkpoint', type=str)
+parser.add_argument('--arch_start', default=1, type=int,
+                    metavar='N', help='the start index of eval archs')
+parser.add_argument('--arch_num', default=50000, type=int,
+                    metavar='N', help='the num of eval archs')
+parser.add_argument('--workers', default=4, type=int, metavar='N',
+                    help='number of data loading workers (default: 4)')
+parser.add_argument('--batch_size', default=16, type=int,
+                    metavar='N', help='mini-batch size (default: 128)')
 parser.add_argument('--affine', action='store_true', help='BN affine')
-parser.add_argument('--save_dir', help='The directory used to save the trained models', default='./checkpoints', type=str)
-parser.add_argument('--save_file', help='The file used to save the result', default='eval-1_50000', type=str)
-parser.add_argument('--save_every', help='Saves checkpoints at every specified number of epochs', type=int, default=1)
+parser.add_argument('--save_dir', help='The directory used to save the trained models',
+                    default='./checkpoints', type=str)
+parser.add_argument('--save_file', help='The file used to save the result',
+                    default='eval-1_50000', type=str)
+parser.add_argument(
+    '--save_every', help='Saves checkpoints at every specified number of epochs', type=int, default=1)
 parser.add_argument('--convbn_type',
                     default='sample_channel',
                     type=str,
                     help='convbn forward with different mask: mix_channel or random_mix_channel or sample_channel or sample_random_channel or sample_sepmask_channel or sample_sepproject_channel or sample_localfree_channel')
-parser.add_argument('--alpha_type', default='sample_uniform', type=str, help='how to cal alpha in forward process: mix, sample_uniform, sample_fair, sample_flops_uniform, sample_flops_fair, sample_sandwich')
-parser.add_argument('--mask_repeat', type=int, default=1, help='used in random_mix_channel')
-parser.add_argument('--prob_ratio', type=float, default=1., help='used in sample_flops_uniform or sample_flops_fair')
-parser.add_argument('--r', type=int, default=1., help='used in local sample_localfree_channel')
-parser.add_argument('--localsep_layers', default=None, type=str, help='used in sample_localsepmask_channel')
-parser.add_argument('--localsep_portion', type=float, default=1., help='used in sample_localsepmask_channel')
-parser.add_argument('--sameshortcut', action='store_true', help='same shortcut')
-parser.add_argument('--track_running_stats', action='store_true', help='bn track_running_stats')
+parser.add_argument('--alpha_type', default='sample_uniform', type=str,
+                    help='how to cal alpha in forward process: mix, sample_uniform, sample_fair, sample_flops_uniform, sample_flops_fair, sample_sandwich')
+parser.add_argument('--mask_repeat', type=int, default=1,
+                    help='used in random_mix_channel')
+parser.add_argument('--prob_ratio', type=float, default=1.,
+                    help='used in sample_flops_uniform or sample_flops_fair')
+parser.add_argument('--r', type=int, default=1.,
+                    help='used in local sample_localfree_channel')
+parser.add_argument('--localsep_layers', default=None,
+                    type=str, help='used in sample_localsepmask_channel')
+parser.add_argument('--localsep_portion', type=float,
+                    default=1., help='used in sample_localsepmask_channel')
+parser.add_argument('--sameshortcut', action='store_true',
+                    help='same shortcut')
+parser.add_argument('--track_running_stats',
+                    action='store_true', help='bn track_running_stats')
 parser.add_argument('--bn_calibrate', action='store_true', help='bn calibrate')
-parser.add_argument('--bn_calibrate_batch', type=int, default=10000, help='bn calibrate batch')
-parser.add_argument('--bn_calibrate_batch_num', type=int, default=1, help='bn calibrate batch num')
+parser.add_argument('--bn_calibrate_batch', type=int,
+                    default=10000, help='bn calibrate batch')
+parser.add_argument('--bn_calibrate_batch_num', type=int,
+                    default=1, help='bn calibrate batch num')
 parser.add_argument('--train', action='store_true', help='train on supernet')
-parser.add_argument('--train_batch_size', type=int, default=128, help='train epoch on supernet')
-parser.add_argument('--train_epochs', type=int, default=1, help='train epoch on supernet')
-parser.add_argument('--train_lr', type=float, default=1e-3, help='train lr on supernet')
-parser.add_argument('--train_momentum', type=float, default=0.9, help='train momentum on supernet')
-parser.add_argument('--train_min_lr', type=float, default=0, help='train min_lr on supernet')
-parser.add_argument('--train_weight_decay', type=float, default=5e-4, help='train wd on supernet')
-parser.add_argument('--train_print_freq', type=int, default=100, help='train print freq epoch on supernet')
+parser.add_argument('--train_batch_size', type=int,
+                    default=128, help='train epoch on supernet')
+parser.add_argument('--train_epochs', type=int, default=1,
+                    help='train epoch on supernet')
+parser.add_argument('--train_lr', type=float, default=1e-3,
+                    help='train lr on supernet')
+parser.add_argument('--train_momentum', type=float,
+                    default=0.9, help='train momentum on supernet')
+parser.add_argument('--train_min_lr', type=float, default=0,
+                    help='train min_lr on supernet')
+parser.add_argument('--train_weight_decay', type=float,
+                    default=5e-4, help='train wd on supernet')
+parser.add_argument('--train_print_freq', type=int, default=100,
+                    help='train print freq epoch on supernet')
 parser.add_argument('--seed', type=int, default=2, help='random seed')
 args = parser.parse_args()
 best_prec1 = 0
@@ -64,8 +124,10 @@ if args.bn_calibrate:
     args.track_running_stats = True
 
 log_format = '%(asctime)s %(message)s'
-logging.basicConfig(stream=sys.stdout, level=logging.INFO, format=log_format, datefmt='%m/%d %I:%M:%S %p')
-fh = logging.FileHandler(os.path.join(args.save_dir, '{}.txt'.format(args.save_file)))
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,
+                    format=log_format, datefmt='%m/%d %I:%M:%S %p')
+fh = logging.FileHandler(os.path.join(
+    args.save_dir, '{}.txt'.format(args.save_file)))
 fh.setFormatter(logging.Formatter(log_format))
 logging.getLogger().addHandler(fh)
 logging.info(args)
@@ -82,15 +144,18 @@ def main():
     cudnn.enabled = True
     cudnn.deterministic = True
 
-    model = resnet20(args.affine, args.convbn_type, args.mask_repeat, args.alpha_type, localsep_layers=args.localsep_layers, localsep_portion=args.localsep_portion, same_shortcut=args.sameshortcut, track_running_stats=args.track_running_stats)
+    model = resnet20(args.affine, args.convbn_type, args.mask_repeat, args.alpha_type, localsep_layers=args.localsep_layers,
+                     localsep_portion=args.localsep_portion, same_shortcut=args.sameshortcut, track_running_stats=args.track_running_stats)
     model.cuda()
     try:
         model.load_state_dict(torch.load(args.model_path)['state_dict'])
     except:
         print("BN track running stats is False in pt but True in model, so here ignore it")
-        model.load_state_dict(torch.load(args.model_path)['state_dict'], strict=False)
+        model.load_state_dict(torch.load(args.model_path)[
+                              'state_dict'], strict=False)
 
-    normalize = transforms.Normalize(mean=[0.5071, 0.4865, 0.4409], std=[0.1942, 0.1918, 0.1958])
+    normalize = transforms.Normalize(
+        mean=[0.5071, 0.4865, 0.4409], std=[0.1942, 0.1918, 0.1958])
 
     if args.bn_calibrate:
         for m in model.modules():
@@ -100,7 +165,8 @@ def main():
                 del m.num_batches_tracked
                 m.register_buffer('running_mean', torch.zeros(m.num_features))
                 m.register_buffer('running_var', torch.ones(m.num_features))
-                m.register_buffer('num_batches_tracked', torch.tensor(0, dtype=torch.long))
+                m.register_buffer('num_batches_tracked',
+                                  torch.tensor(0, dtype=torch.long))
         model.cuda()
 
         calib_loader = torch.utils.data.DataLoader(
@@ -179,15 +245,18 @@ def main():
                 model = train(train_loader, model_origin, lenlist, args)
 
             if args.bn_calibrate:
-                model = calibrate_bn(calib_loader, model, lenlist, args.bn_calibrate_batch_num)
+                model = calibrate_bn(calib_loader, model,
+                                     lenlist, args.bn_calibrate_batch_num)
 
             prec1 = validate(val_loader, model, lenlist)
 
             sub_archs_info['arch{}'.format(arch_i)] = {}
             sub_archs_info['arch{}'.format(arch_i)]['acc'] = prec1
-            sub_archs_info['arch{}'.format(arch_i)]['arch'] = archs_info['arch{}'.format(arch_i)]['arch']
+            sub_archs_info['arch{}'.format(
+                arch_i)]['arch'] = archs_info['arch{}'.format(arch_i)]['arch']
 
-            logging.info('Arch{}: [acc: {:.5f}][arch: {}]'.format(arch_i, prec1, archs_info['arch{}'.format(arch_i)]['arch']))
+            logging.info('Arch{}: [acc: {:.5f}][arch: {}]'.format(
+                arch_i, prec1, archs_info['arch{}'.format(arch_i)]['arch']))
 
     save_json = os.path.join(args.save_dir, '{}.json'.format(args.save_file))
     with open(save_json, 'w') as f:
@@ -227,8 +296,10 @@ def calibrate_bn(loader, model, lenlist, num):
 def train(train_queue, model, lenlist, args):
     model = copy.deepcopy(model)
     criterion = nn.CrossEntropyLoss().cuda()
-    optimizer = torch.optim.SGD(model.parameters(), args.train_lr, momentum=args.train_momentum, weight_decay=args.train_weight_decay)
-    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, args.train_epochs, eta_min=args.train_min_lr)
+    optimizer = torch.optim.SGD(model.parameters(
+    ), args.train_lr, momentum=args.train_momentum, weight_decay=args.train_weight_decay)
+    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, args.train_epochs, eta_min=args.train_min_lr)
 
     logging.info('Train arch: {}'.format(lenlist))
     for epoch in range(args.train_epochs):
