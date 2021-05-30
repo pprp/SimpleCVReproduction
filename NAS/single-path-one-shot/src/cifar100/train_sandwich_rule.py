@@ -11,6 +11,7 @@ import sys
 import time
 
 import numpy as np
+from numpy.lib.twodim_base import _trilu_dispatcher
 import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
@@ -135,7 +136,8 @@ def main():
     #     optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
     # a_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
     #     optimizer, T_0=5)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 200, eta_min=0.0005)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, 200, eta_min=0.0005)
     # a_scheduler = torch.optim.lr_scheduler.LambdaLR(
     #     optimizer, lambda epoch: 1 - (epoch / args.epochs))
     # a_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
@@ -156,8 +158,8 @@ def main():
     archloader = ArchLoader("data/Track1_final_archs.json")
 
     for epoch in range(args.epochs):
-        train(train_loader, val_loader,  optimizer, scheduler, model,
-              archloader, criterion, soft_criterion, args, args.seed, epoch, writer)
+        train_lu_shun(train_loader, val_loader,  optimizer, scheduler, model,
+                      archloader, criterion, soft_criterion, args, args.seed, epoch, writer)
 
         writer.add_scalar("lr", scheduler.get_last_lr()[0], epoch)
 
@@ -177,10 +179,106 @@ def main():
                     {'state_dict': model.state_dict(), }, epoch, args.exp)
 
 
+def train_lu_shun(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, soft_criterion, args, seed, epoch, writer=None):
+    losses_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
+
+    inplace_distillation = True
+    trick = False
+    distill = _trilu_dispatcher
+    distill_lamda = 2.0
+    sample_accumulation_steps = 6
+    valid_running = False
+    # arch_optimizer = torch.optim.Adam(model.alpha, lr=0.0003, betas=(
+    #     0.5, 0.999), weight_decay=0.001)
+
+    model.train()
+    widest = [16, 16, 16, 16, 16, 16, 16, 32, 32,
+              32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64]
+    narrowest = [4,  4,  4, 4,  4,  4,  4,  4, 4,
+                 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+    candidates = [archloader.generate_spos_like_batch().tolist()
+                  for i in range(6)]
+
+    train_loader = tqdm(train_dataloader)
+    train_loader.set_description(
+        '[%s%04d/%04d %s%f]' % ('Epoch:', epoch + 1, args.epochs, 'lr:', scheduler.get_last_lr()[0]))
+
+    optimizer.zero_grad()
+
+    for step, (image, target) in enumerate(train_loader):
+        n = image.size(0)
+
+        image = Variable(image, requires_grad=False).cuda(
+            args.gpu, non_blocking=True)
+        target = Variable(target, requires_grad=False).cuda(
+            args.gpu, non_blocking=True)
+
+        # small trick to avoid lr shift
+        if trick:
+            scheduler.step(max(0, epoch-1))
+
+        optimizer.zero_grad()
+
+        for idx in range(sample_accumulation_steps):
+            output = model(image, candidates[idx])
+            loss = criterion(output, target)
+
+            if distill:
+                teacher_output = model(image, widest)
+                teacher_loss = criterion(teacher_output, target)
+
+                soft_target = torch.nn.functional.softmax(
+                    teacher_output, dim=1).detach()
+                distill_loss = soft_criterion(output, soft_target)
+
+                loss = 0.5 * (loss + teacher_loss) + \
+                    distill_loss * distill_lamda
+
+            loss.backward()
+
+        optimizer.step()
+
+        if valid_running and val_dataloader is not None:
+            # 暂未开启
+            output_search = model(image)
+            loss_search = criterion(output_search, target)
+
+            arch_optimizer.zero_grad()
+            loss_search.backward()
+            arch_optimizer.step()
+
+        # statistics show ....
+        prec1, prec5 = accuracy(output, target, topk=(1, 5))
+
+        if torch.cuda.device_count() > 1:
+            torch.distributed.barrier()
+
+            loss = reduce_mean(loss, args.nprocs)
+            prec1 = reduce_mean(prec1, args.nprocs)
+            prec5 = reduce_mean(prec5, args.nprocs)
+
+        losses_.update(loss.data.item(), n)
+        top1_.update(prec1.data.item(), n)
+        top5_.update(prec1.data.item(), n)
+
+        postfix = {'train_loss': '%.6f' % (
+            losses_.avg), 'train_acc1': '%.6f' % top1_.avg, 'train_acc5': '%.6f' % top5_.avg}
+
+        train_loader.set_postfix(log=postfix)
+
+        if args.local_rank == 0 and step % 10 == 0 and writer is not None:
+            writer.add_scalar("Train/loss", losses_.avg, step +
+                              len(train_dataloader) * epoch * args.batch_size)
+            writer.add_scalar("Train/acc1", top1_.avg, step +
+                              len(train_dataloader) * epoch * args.batch_size)
+            writer.add_scalar("Train/acc5", top5_.avg, step +
+                              len(train_loader)*args.batch_size*epoch)
+
+
 def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, soft_criterion, args, seed, epoch, writer=None):
     losses_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
 
-    inplace_distillation = False
+    inplace_distillation = True
 
     model.train()
     widest = [16, 16, 16, 16, 16, 16, 16, 32, 32,
@@ -222,7 +320,9 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
                     soft_target = torch.nn.functional.softmax(
                         soft_target/T, dim=1).detach()
 
-                    loss = 0.5 * torch.mean(soft_criterion(logits, soft_target)) + 0.5 * criterion(logits, target)
+                    loss = 0.5 * \
+                        torch.mean(soft_criterion(logits, soft_target)
+                                   ) + 0.5 * criterion(logits, target)
                 else:
                     loss = criterion(logits, target)
 
