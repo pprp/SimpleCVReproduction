@@ -40,7 +40,7 @@ def get_args():
     parser.add_argument('--workers', type=int,
                         default=6, help='num of workers')
     parser.add_argument('--weights', type=str,
-                        default="./weights/2021Y_05M_29D_23H_0860/checkpoint-latest.pth.tar", help="path for weights loading")
+                        default="./weights/2021Y_05M_30D_15H_0320/checkpoint-latest.pth.tar", help="path for weights loading")
 
     parser.add_argument('--auto-continue', type=bool,
                         default=True, help='report frequency')
@@ -199,20 +199,20 @@ def validate(model, train_loader, args, *, arch_loader=None):
 
         # t2 = time.time()
 
+        with torch.no_grad():
+            for data, target in val_dataloader:  # 过一遍数据集
+                target = target.type(torch.LongTensor)
+                data, target = data.cuda(args.gpu, non_blocking=True), target.cuda(
+                    args.gpu, non_blocking=True)
 
-        for data, target in val_dataloader:  # 过一遍数据集
-            target = target.type(torch.LongTensor)
-            data, target = data.cuda(args.gpu, non_blocking=True), target.cuda(
-                args.gpu, non_blocking=True)
+                output = model(data, arch_list)
 
-            output = model(data, arch_list)
+                prec1, prec5 = accuracy(output, target, topk=(1, 5))
 
-            prec1, prec5 = accuracy(output, target, topk=(1, 5))
+                n = data.size(0)
 
-            n = data.size(0)
-
-            top1.update(prec1.item(), n)
-            top5.update(prec5.item(), n)
+                top1.update(prec1.item(), n)
+                top5.update(prec5.item(), n)
 
         tmp_dict = {}
         tmp_dict['arch'] = arch[0]

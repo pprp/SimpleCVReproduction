@@ -488,8 +488,10 @@ class BasicBlock(nn.Module):
     def forward(self, x, weight0, weight1, weight2, lenth0=None, lenth1=None, lenth2=None):
         out = F.relu(self.convbn1(x, weight1, lenth1))
         out = self.convbn2(out, weight2, lenth2)
+
         if self.drop_path_rate > 0. and self.stride != 2:
             x = drop_path(x, self.drop_path_rate, self.training)
+        
         if self.same_shortcut:
             out += self.shortcut(x, weight2, lenth2)
             # if self.stride == 1 and (torch.equal(weight0, weight2) or (lenth0 != None and lenth0 == lenth2)):
@@ -524,8 +526,10 @@ class ResNet(nn.Module):
             self.len_list, block, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(
             self.len_list, block, num_blocks[2], stride=2)
-        self.linear = nn.Sequential(nn.Dropout(
-            p=dropout), nn.Linear(self.len_list[-2], num_classes))
+
+        self.linear = nn.Sequential(
+            nn.Dropout(p=dropout),
+            nn.Linear(self.len_list[-2], num_classes))
         # self.linear = nn.Linear(self.len_list[-2], num_classes)
 
         self.apply(_weights_init)
@@ -731,6 +735,7 @@ class ResNet(nn.Module):
             out = layer(out, alpha3[2 * i] if i > 0 else alpha2[-1], alpha3[2 * i],
                         alpha3[2 * i + 1], lenth_list[k - 1], lenth_list[k], lenth_list[k + 1])
             k += 2
+
         out = F.avg_pool2d(out, out.size()[3])
         out = out.view(out.size(0), -1)
         out = self.linear(out)

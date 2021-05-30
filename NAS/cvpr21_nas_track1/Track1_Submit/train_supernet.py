@@ -469,7 +469,7 @@ def train(train_queue, valid_queue, model, criterion, soft_criterion, optimizer,
             optimizer.step()  # do SGD step
         else: # 进入这里
             optimizer.zero_grad()  # zero gradient
-            for _ in range(args.sample_accumulation_steps): # TODO 为什么要多来几个step呢
+            for _ in range(args.sample_accumulation_steps): 
                 # 作者解释说这是类似fairnas的方式，累积多个以后，然后同时进行更新
                 output = model(input_var)  # compute output
                 loss = criterion(output, target_var)  # compute loss
