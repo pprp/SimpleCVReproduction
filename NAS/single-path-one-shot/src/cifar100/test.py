@@ -37,11 +37,11 @@ def get_args():
     parser.add_argument(
         '--path', default="data/benchmark.json", help="path for json arch files")
     parser.add_argument('--batch-size', type=int,
-                        default=2048, help='batch size')
+                        default=1024, help='batch size')
     parser.add_argument('--workers', type=int,
                         default=6, help='num of workers')
     parser.add_argument('--weights', type=str,
-                        default="./weights/2021Y_05M_30D_23H_0119/checkpoint-latest.pth.tar", help="path for weights loading")
+                        default="./weights/2021Y_05M_31D_20H_0559/checkpoint-latest.pth.tar", help="path for weights loading")
 
     parser.add_argument('--auto-continue', type=bool,
                         default=True, help='report frequency')

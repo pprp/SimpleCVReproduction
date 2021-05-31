@@ -55,7 +55,6 @@ parser.add_argument('--finetune', action='store_true',
 parser.add_argument('--distill', action="store_true",
                     help="finetune model with track_200.json")
 
-
 # hyper parameter
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float,
@@ -115,6 +114,8 @@ def main():
         model = resnet20()
     else:
         print("Not Implement")
+    
+    # print(model)
 
     # args.finetune = False
 
@@ -271,14 +272,12 @@ def train_lu_shun(train_dataloader, val_dataloader, optimizer, scheduler, model,
 
             loss = reduce_mean(loss, args.nprocs)
             prec1 = reduce_mean(prec1, args.nprocs)
-            prec5 = reduce_mean(prec5, args.nprocs)
 
         losses_.update(loss.data.item(), n)
         top1_.update(prec1.data.item(), n)
-        top5_.update(prec1.data.item(), n)
 
         postfix = {'train_loss': '%.6f' % (
-            losses_.avg), 'train_acc1': '%.6f' % top1_.avg, 'train_acc5': '%.6f' % top5_.avg}
+            losses_.avg), 'train_acc1': '%.6f' % top1_.avg}
 
         train_loader.set_postfix(log=postfix)
 
@@ -287,8 +286,6 @@ def train_lu_shun(train_dataloader, val_dataloader, optimizer, scheduler, model,
                               len(train_dataloader) * epoch * args.batch_size)
             writer.add_scalar("Train/acc1", top1_.avg, step +
                               len(train_dataloader) * epoch * args.batch_size)
-            writer.add_scalar("Train/acc5", top5_.avg, step +
-                              len(train_loader)*args.batch_size*epoch)
 
 
 def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, soft_criterion, args, seed, epoch, writer=None):

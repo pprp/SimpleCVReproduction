@@ -171,24 +171,16 @@ class ArchLoader():
 
 
 # arch_loader = ArchLoader("data/benchmark.json")
-
-
 # for key , arch in arch_loader:
 #     print(key, arch)
 # print(arch_loader.get_arch_list())
-
-
 # for i in range(20):
 #     lst= arch_loader.generate_width_to_narrow(i, 20)
 #     print(lst, sum(lst))
-
 # print(arch_loader.generate_niu_fair_batch(random.randint(0,100))[-1].tolist())
 # for i in range(10):
 #     ta = arch_loader.generate_spos_like_batch()
 #     print(type(ta),ta)
-#     tb = arch_loader.generate_niu_fair_batch(i)[-1]
-#     print(type(tb),tb)
-
 
 class CrossEntropyLabelSmooth(nn.Module):
 

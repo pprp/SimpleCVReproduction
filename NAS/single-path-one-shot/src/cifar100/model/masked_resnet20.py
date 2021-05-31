@@ -9,14 +9,12 @@ from model.masked_modules import MaskedConv2dBN
 
 def get_configs():
     model_config = {}
-
     for i in range(0, 7):
         model_config[i] = [4*(i+1) for i in range(4)]
     for i in range(7, 13):
         model_config[i] = [4*(i+1) for i in range(8)]
     for i in range(13, 20):
         model_config[i] = [4*(i+1) for i in range(16)]
-
     return model_config
 
 
@@ -41,12 +39,15 @@ class MaskedBlock(nn.Module):
                     out_channel_list), kernel_size=3, stride=1)),
             ]))
 
-        self.downsample = nn.Sequential(
-            OrderedDict([
-                ('convbn', MaskedConv2dBN(IDX+1, max(in_channel_list), max(
-                    out_channel_list), stride=stride)),
-            ])
-        )
+        if stride == 2:
+            self.shortcut = nn.Sequential(
+                OrderedDict([
+                    ('convbn', MaskedConv2dBN(IDX+1, max(in_channel_list), max(
+                        out_channel_list), stride=stride)),
+                ])
+            )
+        else:
+            self.shortcut = nn.Sequential()
 
         IDX += 2
 
@@ -63,14 +64,12 @@ class MaskedBlock(nn.Module):
 
         self.conv1.convbn.active_out_channel = amc
         self.conv2.convbn.active_out_channel = aoc
-        self.downsample.convbn.active_out_channel = aoc
-
-        residual = self.downsample(x)
+        # self.shortcut.convbn.active_out_channel = aoc
 
         out = self.conv1(x)
         out = self.conv2(out)
 
-        out += residual
+        out += self.shortcut(x)
         out = F.relu(out)
         return out
 
@@ -200,10 +199,10 @@ class MaskedResNet(nn.Module):
         # Zero-initialize the last BN in each residual branch,
         # so that the residual branch starts with zeros, and each residual block behaves like an identity.
         # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
-        for m in self.modules():
-            if isinstance(m, MaskedBlock):
-                # type: ignore[arg-type]
-                nn.init.constant_(m.downsample.convbn.bn.weight, 0)
+        # for m in self.modules():
+        #     if isinstance(m, MaskedBlock):
+        #         # type: ignore[arg-type]
+        #         nn.init.constant_(m.shortcut.convbn.bn.weight, 0)
 
 
 def masked_resnet20():

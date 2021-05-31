@@ -1,6 +1,6 @@
 gpu=0
 
-batch_size=128
+batch_size=1024
 seed=0
 steps=6
 bn="--affine"
@@ -8,7 +8,8 @@ cutout="--cutout"
 same_shortcut="--sameshortcut"
 convbn_type="sample_channel"
 Epochs=(250 30 30 30 20)
-LR=(0.025 1e-3 1e-3 4e-3 3.5e-3)
+# LR=(0.025 1e-3 1e-3 4e-3 3.5e-3)
+LR=(0.07 0.00283 0.00283 0.01132 0.0099)
 WD=(5e-4 0 0 0 0)
 distill=("" "" "--distill" "--distill"  "--distill")
 distill_lamda=(0 0 2 2 2)
@@ -37,5 +38,6 @@ for(( index = 0; index < 5; index++)); do
             --alpha_type=${alpha_type[${index}]} \
             --track_file=${track_file[${index}]} \
             --resume=${resume[${index}]} \
-            --save_dir=${save_dir[${index}]}
+            --save_dir=train/${save_dir[${index}]}
 done;
+#LR=(0.025 1e-3 1e-3 4e-3 3.5e-3)
