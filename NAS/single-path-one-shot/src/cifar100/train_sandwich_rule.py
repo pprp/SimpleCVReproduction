@@ -28,6 +28,7 @@ from model.dynamic_resnet20 import dynamic_resnet20
 from model.resnet20 import resnet20
 from model.independent_resnet20 import Independent_resnet20
 from model.masked_resnet20 import masked_resnet20
+from model.sample_resnet20 import sample_resnet20
 from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
                          DataIterator, accuracy, bn_calibration_init,
                          reduce_mean, reduce_tensor, retrain_bn,
@@ -48,8 +49,8 @@ parser.add_argument('--learning_rate', type=float,
                     default=0.1, help='init learning rate')  # 0.8
 parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
-parser.add_argument('--model-type', type=str, default="masked",
-                    help="type of model(masked dynamic independent slimmable original)")
+parser.add_argument('--model-type', type=str, default="sample",
+                    help="type of model(sample masked dynamic independent slimmable original)")
 parser.add_argument('--finetune', action='store_true',
                     help='finetune model with distill')
 parser.add_argument('--distill', action="store_true",
@@ -106,6 +107,8 @@ def main():
         model = dynamic_resnet20()
     elif args.model_type == "masked":
         model = masked_resnet20()
+    elif args.model_type == "sample":
+        model = sample_resnet20()
     elif args.model_type == "independent":
         model = Independent_resnet20()
     elif args.model_type == "slimmable":
@@ -237,7 +240,7 @@ def train_lu_shun(train_dataloader, val_dataloader, optimizer, scheduler, model,
         optimizer.zero_grad()
 
         for idx in range(sample_accumulation_steps):
-            output = model(image, candidates[idx])
+            output = model(image)
             loss = criterion(output, target)
 
             if args.distill:

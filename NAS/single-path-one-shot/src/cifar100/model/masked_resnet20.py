@@ -209,14 +209,17 @@ def masked_resnet20():
     return MaskedResNet(MaskedBlock, [3, 3, 3])
 
 
-# arc_config = [4, 12, 4, 4, 16, 8, 4, 12, 32,
-#               24, 16, 8, 8, 24, 60, 12, 64, 64, 52, 60]
+if __name__ == "__main__":
 
-# arc_config = [i+1 for i in range(20)]
-# model = masked_resnet20()
-# a = torch.randn(3, 3, 32, 32)
-# print(model(a, arc_config).shape)
+    arc_config = [4, 12, 4, 4, 16, 8, 4, 12, 32,
+                  24, 16, 8, 8, 24, 60, 12, 64, 64, 52, 60]
 
-# m1 = masked_resnet20()
-# print(m1)
-# print(m1.first_conv.conv.conv.weight.shape)
+    model = masked_resnet20()
+    print(model)
+
+    a = torch.randn(3, 3, 32, 32)
+    print(model(a, arc_config).shape)
+
+    # m1 = masked_resnet20()
+    # print(m1)
+    # print(m1.first_conv.conv.conv.weight.shape)

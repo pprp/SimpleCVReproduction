@@ -31,9 +31,6 @@ from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
 
 print = functools.partial(print, flush=True)
 
-CIFAR100_TRAINING_SET_SIZE = 50000
-CIFAR100_TEST_SET_SIZE = 10000
-
 parser = argparse.ArgumentParser("ResNet20-cifar100")
 
 parser.add_argument('--local_rank', type=int, default=0,

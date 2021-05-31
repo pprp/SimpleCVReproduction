@@ -7,6 +7,23 @@ import json
 import numpy as np
 from tqdm import tqdm
 
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
 class CrossEntropyLossSoft(torch.nn.modules.loss._Loss):
     """ inplace distillation for image classification """
 
@@ -61,7 +78,6 @@ class ArchLoader():
         self.arc_list = []
         self.arc_dict = {}
         self.get_arch_list_dict(path)
-        random.shuffle(self.arc_list)
         self.idx = -1
 
         self.level_config = {

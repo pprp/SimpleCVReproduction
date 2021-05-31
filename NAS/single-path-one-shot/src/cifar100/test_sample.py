@@ -7,6 +7,7 @@ import random
 import glob
 import logging
 import copy
+import json 
 
 import torch
 import torch.nn as nn
@@ -17,8 +18,8 @@ import torch.utils.data
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import numpy as np
-from resnet20_supernet import resnet20
-from utils import *
+from model.sample_resnet20 import sample_resnet20
+from utils.utils import *
 
 '''
 Namespace(affine=True, 
@@ -56,8 +57,8 @@ workers=4)
 parser = argparse.ArgumentParser(
     description='Propert ResNets for CIFAR10 in pytorch')
 parser.add_argument('--eval_json_path', help='json file containing archs to evaluete',
-                    default='Track1_Submit/files/benchmark.json', type=str)
-parser.add_argument('--model_path', default='Track1_Submit/train/model.th',
+                    default='data/benchmark.json', type=str)
+parser.add_argument('--model_path', default='weights/2021Y_05M_31D_21H_0208/checkpoint-latest.pth.tar',
                     help='model checkpoint', type=str)
 parser.add_argument('--arch_start', default=1, type=int,
                     metavar='N', help='the start index of eval archs')
@@ -65,7 +66,7 @@ parser.add_argument('--arch_num', default=101, type=int,
                     metavar='N', help='the num of eval archs')
 parser.add_argument('--workers', default=1, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
-parser.add_argument('--batch_size', default=2, type=int,
+parser.add_argument('--batch_size', default=512, type=int,
                     metavar='N', help='mini-batch size (default: 128)')
 parser.add_argument('--affine', action='store_true', help='BN affine')
 parser.add_argument('--save_dir', help='The directory used to save the trained models',
@@ -144,7 +145,7 @@ def main():
     cudnn.enabled = True
     cudnn.deterministic = True
 
-    model = resnet20(args.affine, args.convbn_type, args.mask_repeat, 
+    model = sample_resnet20(args.affine, args.convbn_type, args.mask_repeat, 
                      args.alpha_type, localsep_layers=args.localsep_layers,
                      localsep_portion=args.localsep_portion, 
                      same_shortcut=args.sameshortcut, 

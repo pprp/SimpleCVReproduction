@@ -22,6 +22,7 @@ from datasets.cifar100_dataset import (ArchDataSet, get_train_loader,
 # from model.slimmable_resnet20 import mutableResNet20
 from model.dynamic_resnet20 import dynamic_resnet20
 from model.masked_resnet20 import masked_resnet20
+from model.sample_resnet20 import sample_resnet20
 from utils.angle import generate_angle
 from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
                          DataIterator, accuracy, bn_calibration_init,
@@ -41,7 +42,7 @@ def get_args():
     parser.add_argument('--workers', type=int,
                         default=6, help='num of workers')
     parser.add_argument('--weights', type=str,
-                        default="./weights/2021Y_05M_31D_20H_0559/checkpoint-latest.pth.tar", help="path for weights loading")
+                        default="./weights/2021Y_05M_31D_21H_0208/checkpoint-latest.pth.tar", help="path for weights loading")
 
     parser.add_argument('--auto-continue', type=bool,
                         default=True, help='report frequency')
@@ -111,8 +112,9 @@ def main():
 
     print('load data successfully')
 
-    model = masked_resnet20()
-
+    # model = masked_resnet20()
+    model = sample_resnet20()
+    
     print("load model successfully")
 
     print('load from latest checkpoint')
@@ -120,7 +122,7 @@ def main():
     if lastest_model is not None:
         checkpoint = torch.load(
             lastest_model, map_location=None if True else 'cpu')
-        model.load_state_dict(checkpoint['state_dict'])
+        model.load_state_dict(checkpoint['state_dict'], strict=False)
 
     model = model.cuda(args.gpu)
     if num_gpus > 1:
