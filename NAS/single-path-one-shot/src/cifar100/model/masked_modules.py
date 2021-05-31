@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
+from torch.utils.tensorboard.writer import SummaryWriter
 
 SuperNetSetting = [
     [4, 8, 12, 16],  # 1
@@ -88,12 +89,13 @@ class SampleConvBN(nn.Module):
 
 
 class MaskedConv2dBN(nn.Module):
-    def __init__(self, max_in_channels, max_out_channels, kernel_size=1, stride=1, affine=True):
+    def __init__(self, layer_id, max_in_channels, max_out_channels, kernel_size=1, stride=1, affine=True):
         super(MaskedConv2dBN, self).__init__()
         self.max_in_channels = max_in_channels
         self.max_out_channels = max_out_channels
         self.kernel_size = kernel_size
         self.stride = stride
+        self.layer_id = layer_id
 
         self.conv = nn.Conv2d(
             self.max_in_channels,
@@ -101,12 +103,16 @@ class MaskedConv2dBN(nn.Module):
             self.kernel_size,
             stride=self.stride,
             bias=False,
+            padding=get_same_padding(self.kernel_size)
         )
         self.bn = nn.BatchNorm2d(
             max_out_channels, affine=affine, track_running_stats=False)
 
-        self.register_buffer('masks', torch.zeros(
-            max_out_channels, 1, 1).cuda())
+        self.register_buffer('masks', torch.zeros([len(SuperNetSetting[layer_id]),
+                                                   SuperNetSetting[layer_id][-1], 1, 1]).cuda())
+        
+        for i, channel in enumerate(SuperNetSetting[layer_id]):
+            self.masks[i][:channel] = 1
 
         self.active_out_channel = self.max_out_channels
 
@@ -114,19 +120,19 @@ class MaskedConv2dBN(nn.Module):
         if out_channel is None:
             out_channel = self.active_out_channel
 
+        mixed_masks = 0
+
         # set mask based on out_channel
-        self.masks[:out_channel] = 1
-
-        in_channel = x.size(1)
-
+        index = SuperNetSetting[self.layer_id].index(out_channel)
+        mixed_masks += self.masks[index]
+        
         # forward
         out = self.bn(self.conv(x))
-        out = out.cuda()
 
-        return out * self.masks
+        return out * mixed_masks
 
 
-model = MaskedConv2d(8, 8)
-input = torch.zeros(64, 8, 32, 32)
-output = model(input, 8)
-print(output.shape)
+# model = MaskedConv2dBN(8, 8)
+# input = torch.zeros(64, 8, 32, 32)
+# output = model(input, 8)
+# print(output.shape)

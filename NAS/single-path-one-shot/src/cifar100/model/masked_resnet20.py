@@ -19,31 +19,36 @@ def get_configs():
 
     return model_config
 
+
 class MaskedBlock(nn.Module):
     expansion = 1
 
     def __init__(self, in_channel_list, mid_channel_list, out_channel_list, stride=1):
         super(MaskedBlock, self).__init__()
 
+        global IDX
+
         self.conv1 = nn.Sequential(
             OrderedDict([
-                ('convbn', MaskedConv2dBN(max(in_channel_list), max(
+                ('convbn', MaskedConv2dBN(IDX, max(in_channel_list), max(
                     mid_channel_list), kernel_size=3, stride=stride)),
                 ('relu', nn.ReLU(inplace=True))
             ]))
 
         self.conv2 = nn.Sequential(
             OrderedDict([
-                ('convbn', MaskedConv2dBN(max(mid_channel_list), max(
+                ('convbn', MaskedConv2dBN(IDX+1, max(mid_channel_list), max(
                     out_channel_list), kernel_size=3, stride=1)),
             ]))
 
         self.downsample = nn.Sequential(
             OrderedDict([
-                ('convbn', MaskedConv2dBN(max(in_channel_list), max(
+                ('convbn', MaskedConv2dBN(IDX+1, max(in_channel_list), max(
                     out_channel_list), stride=stride)),
             ])
         )
+
+        IDX += 2
 
         self.active_mid_channel = max(mid_channel_list)
         self.active_out_channel = max(out_channel_list)
@@ -69,48 +74,44 @@ class MaskedBlock(nn.Module):
         out = F.relu(out)
         return out
 
-    def re_organize_middle_weight(self):
-        # conv2 -> conv1
-        importance = torch.sum(
-            torch.abs(self.conv2.conv.conv.weight.data), dim=(0, 2, 3))
-        sorted_importance, sorted_idx = torch.sort(
-            importance, dim=0, descending=True)
-        self.conv2.conv.conv.weight.data = torch.index_select(
-            self.conv2.conv.conv.weight.data, 1, sorted_idx)
-        self.adjust_bn_according_to_idx(self.conv1.bn.bn, sorted_idx)
-        self.conv1.conv.conv.weight.data = torch.index_select(
-            self.conv1.conv.conv.weight.data, 0, sorted_idx)
-        # print("re org done")
-        return None
+    # def re_organize_middle_weight(self):
+    #     # conv2 -> conv1
+    #     importance = torch.sum(
+    #         torch.abs(self.conv2.conv.conv.weight.data), dim=(0, 2, 3))
+    #     sorted_importance, sorted_idx = torch.sort(
+    #         importance, dim=0, descending=True)
+    #     self.conv2.conv.conv.weight.data = torch.index_select(
+    #         self.conv2.conv.conv.weight.data, 1, sorted_idx)
+    #     self.adjust_bn_according_to_idx(self.conv1.bn.bn, sorted_idx)
+    #     self.conv1.conv.conv.weight.data = torch.index_select(
+    #         self.conv1.conv.conv.weight.data, 0, sorted_idx)
+    #     # print("re org done")
+    #     return None
 
-    def adjust_bn_according_to_idx(self, bn, idx):
-        bn.weight.data = torch.index_select(bn.weight.data, 0, idx)
-        bn.bias.data = torch.index_select(bn.bias.data, 0, idx)
-        if type(bn) in [nn.BatchNorm1d, nn.BatchNorm2d]:
-            bn.running_mean.data = torch.index_select(
-                bn.running_mean.data, 0, idx)
-            bn.running_var.data = torch.index_select(
-                bn.running_var.data, 0, idx)
-        return None
+    # def adjust_bn_according_to_idx(self, bn, idx):
+    #     bn.weight.data = torch.index_select(bn.weight.data, 0, idx)
+    #     bn.bias.data = torch.index_select(bn.bias.data, 0, idx)
+    #     if type(bn) in [nn.BatchNorm1d, nn.BatchNorm2d]:
+    #         bn.running_mean.data = torch.index_select(
+    #             bn.running_mean.data, 0, idx)
+    #         bn.running_var.data = torch.index_select(
+    #             bn.running_var.data, 0, idx)
+    #     return None
 
 
-class DynamicLayer(nn.Module):
+class MaskedLayer(nn.Module):
     def __init__(self, block, num_blocks, stride):
-        super(DynamicLayer, self).__init__()
+        super(MaskedLayer, self).__init__()
         self.mc = get_configs()
 
-        global IDX
         strides = [stride] + [1]*(num_blocks-1)
 
         self.layer1 = block(
             self.mc[IDX-1], self.mc[IDX], self.mc[IDX+1], stride=strides[0])
-        IDX += 2
         self.layer2 = block(
             self.mc[IDX-1], self.mc[IDX], self.mc[IDX+1], stride=strides[1])
-        IDX += 2
         self.layer3 = block(
             self.mc[IDX-1], self.mc[IDX], self.mc[IDX+1], stride=strides[2])
-        IDX += 2
 
     def forward(self, x, config=None):
         if config is None:
@@ -136,15 +137,15 @@ class MaskedResNet(nn.Module):
         self.mc = get_configs()
 
         self.first_conv = nn.Sequential(OrderedDict([
-            ('convbn', MaskedConv2dBN(3, max(self.mc[IDX]), kernel_size=3)),
+            ('convbn', MaskedConv2dBN(0, 3, max(self.mc[IDX]), kernel_size=3)),
             ('relu', nn.ReLU(inplace=True))
         ]))
 
         IDX += 1
 
-        self.block1 = DynamicLayer(block, num_blocks[0], stride=1)
-        self.block2 = DynamicLayer(block, num_blocks[1], stride=2)
-        self.block3 = DynamicLayer(block, num_blocks[2], stride=2)
+        self.block1 = MaskedLayer(block, num_blocks[0], stride=1)
+        self.block2 = MaskedLayer(block, num_blocks[1], stride=2)
+        self.block3 = MaskedLayer(block, num_blocks[2], stride=2)
 
         self.classifier = nn.Linear(max(self.mc[IDX]), num_classes)
         self._initialize_weights()
@@ -160,8 +161,7 @@ class MaskedResNet(nn.Module):
         cfg_layer3 = config[12:19]
 
         # print("first conv")
-        out = self.first_conv.conv(x, cfg_first)
-        out = self.first_conv.bn(out)
+        out = self.first_conv.convbn(x, cfg_first)
         out = self.first_conv.relu(out)
         # print("layer1")
         out = self.block1(out, cfg_layer1)
@@ -169,10 +169,11 @@ class MaskedResNet(nn.Module):
         out = self.block2(out, cfg_layer2)
         # print("layer3")
         out = self.block3(out, cfg_layer3)
+
         out = F.avg_pool2d(out, out.size()[3])
         out = out.view(out.size(0), -1)
         return self.classifier(out)
-    
+
     def _initialize_weights(self):
         for name, m in self.named_modules():
             if isinstance(m, nn.Conv2d):
@@ -201,8 +202,8 @@ class MaskedResNet(nn.Module):
         # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
         for m in self.modules():
             if isinstance(m, MaskedBlock):
-                nn.init.constant_(m.conv2.bn.bn.weight, 0)  # type: ignore[arg-type]
-
+                # type: ignore[arg-type]
+                nn.init.constant_(m.downsample.convbn.bn.weight, 0)
 
 
 def masked_resnet20():
@@ -211,10 +212,12 @@ def masked_resnet20():
 
 # arc_config = [4, 12, 4, 4, 16, 8, 4, 12, 32,
 #               24, 16, 8, 8, 24, 60, 12, 64, 64, 52, 60]
+
 # arc_config = [i+1 for i in range(20)]
-# model = dynamic_resnet20()
+# model = masked_resnet20()
 # a = torch.randn(3, 3, 32, 32)
-# print(model(a, arc_config[:-1]).shape)
-# m1 = dynamic_resnet20()
+# print(model(a, arc_config).shape)
+
+# m1 = masked_resnet20()
 # print(m1)
 # print(m1.first_conv.conv.conv.weight.shape)

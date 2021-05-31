@@ -71,7 +71,10 @@ class ArchLoader():
         }
 
     def get_arch_list(self):
-        return self.arc_list
+        arc_int_list = []
+        for str_arc in self.arc_list:
+            arc_int_list.append(self.convert_str_arc_list(str_arc))
+        return arc_int_list
 
     def get_arch_dict(self):
         return self.arc_dict
@@ -167,7 +170,13 @@ class ArchLoader():
         return softmax
 
 
-# arch_loader = ArchLoader("data/Track1_final_archs.json")
+# arch_loader = ArchLoader("data/benchmark.json")
+
+
+# for key , arch in arch_loader:
+#     print(key, arch)
+# print(arch_loader.get_arch_list())
+
 
 # for i in range(20):
 #     lst= arch_loader.generate_width_to_narrow(i, 20)

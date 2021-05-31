@@ -11,7 +11,6 @@ import sys
 import time
 
 import numpy as np
-from numpy.lib.twodim_base import _trilu_dispatcher
 import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
@@ -28,6 +27,7 @@ from model.slimmable_resnet20 import mutableResNet20
 from model.dynamic_resnet20 import dynamic_resnet20
 from model.resnet20 import resnet20
 from model.independent_resnet20 import Independent_resnet20
+from model.masked_resnet20 import masked_resnet20
 from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
                          DataIterator, accuracy, bn_calibration_init,
                          reduce_mean, reduce_tensor, retrain_bn,
@@ -48,8 +48,13 @@ parser.add_argument('--learning_rate', type=float,
                     default=0.1, help='init learning rate')  # 0.8
 parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
-parser.add_argument('--model-type', type=str, default="dynamic",
-                    help="type of model(dynamic independent slimmable original)")
+parser.add_argument('--model-type', type=str, default="masked",
+                    help="type of model(masked dynamic independent slimmable original)")
+parser.add_argument('--finetune', action='store_true',
+                    help='finetune model with distill')
+parser.add_argument('--distill', action="store_true",
+                    help="finetune model with track_200.json")
+
 
 # hyper parameter
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
@@ -100,6 +105,8 @@ def main():
 
     if args.model_type == "dynamic":
         model = dynamic_resnet20()
+    elif args.model_type == "masked":
+        model = masked_resnet20()
     elif args.model_type == "independent":
         model = Independent_resnet20()
     elif args.model_type == "slimmable":
@@ -108,6 +115,13 @@ def main():
         model = resnet20()
     else:
         print("Not Implement")
+
+    # args.finetune = False
+
+    if args.finetune:
+        checkpoint = torch.load("./weights/2021Y_05M_31D_07H_0329/checkpoint-latest.pth.tar",
+                                map_location=None)
+        model.load_state_dict(checkpoint['state_dict'])
 
     # model = resnet20()
     model = model.cuda(args.gpu)
@@ -155,7 +169,7 @@ def main():
     # 原来跟train batch size一样，现在修改小一点 ，
     val_loader = get_val_loader(args.batch_size, args.num_workers)
 
-    archloader = ArchLoader("data/Track1_final_archs.json")
+    archloader = ArchLoader("data/track_200.json")
 
     for epoch in range(args.epochs):
         train_lu_shun(train_loader, val_loader,  optimizer, scheduler, model,
@@ -182,9 +196,7 @@ def main():
 def train_lu_shun(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, soft_criterion, args, seed, epoch, writer=None):
     losses_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
 
-    inplace_distillation = True
     trick = False
-    distill = _trilu_dispatcher
     distill_lamda = 2.0
     sample_accumulation_steps = 6
     valid_running = False
@@ -196,8 +208,12 @@ def train_lu_shun(train_dataloader, val_dataloader, optimizer, scheduler, model,
               32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64]
     narrowest = [4,  4,  4, 4,  4,  4,  4,  4, 4,
                  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
-    candidates = [archloader.generate_spos_like_batch().tolist()
-                  for i in range(6)]
+
+    if args.finetune:
+        candidates = archloader.get_arch_list()
+    else:
+        candidates = [archloader.generate_spos_like_batch().tolist()
+                      for i in range(6)]
 
     train_loader = tqdm(train_dataloader)
     train_loader.set_description(
@@ -223,7 +239,7 @@ def train_lu_shun(train_dataloader, val_dataloader, optimizer, scheduler, model,
             output = model(image, candidates[idx])
             loss = criterion(output, target)
 
-            if distill:
+            if args.distill:
                 teacher_output = model(image, widest)
                 teacher_loss = criterion(teacher_output, target)
 

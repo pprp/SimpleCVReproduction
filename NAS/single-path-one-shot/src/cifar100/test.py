@@ -21,6 +21,7 @@ from datasets.cifar100_dataset import (ArchDataSet, get_train_loader,
                                        get_val_dataset)
 # from model.slimmable_resnet20 import mutableResNet20
 from model.dynamic_resnet20 import dynamic_resnet20
+from model.masked_resnet20 import masked_resnet20
 from utils.angle import generate_angle
 from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
                          DataIterator, accuracy, bn_calibration_init,
@@ -34,13 +35,13 @@ def get_args():
     parser.add_argument('--rank', default=0,
                         help='rank of current process')
     parser.add_argument(
-        '--path', default="data/Track1_final_archs.json", help="path for json arch files")
+        '--path', default="data/benchmark.json", help="path for json arch files")
     parser.add_argument('--batch-size', type=int,
                         default=2048, help='batch size')
     parser.add_argument('--workers', type=int,
                         default=6, help='num of workers')
     parser.add_argument('--weights', type=str,
-                        default="./weights/2021Y_05M_30D_15H_0320/checkpoint-latest.pth.tar", help="path for weights loading")
+                        default="./weights/2021Y_05M_30D_23H_0119/checkpoint-latest.pth.tar", help="path for weights loading")
 
     parser.add_argument('--auto-continue', type=bool,
                         default=True, help='report frequency')
@@ -92,7 +93,7 @@ def main():
     logging.getLogger().addHandler(fh)
 
     # archLoader
-    arch_loader = ArchLoader(args.path)
+    # arch_loader = ArchLoader(args.path)
     arch_dataset = ArchDataSet(args.path)
     arch_sampler = None
     if num_gpus > 1:
@@ -110,7 +111,7 @@ def main():
 
     print('load data successfully')
 
-    model = dynamic_resnet20()
+    model = masked_resnet20()
 
     print("load model successfully")
 

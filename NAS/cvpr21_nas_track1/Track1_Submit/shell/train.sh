@@ -16,6 +16,7 @@ min_lr=(0 5e-4 5e-4 5e-4 5e-4)
 alpha_type=("sample_uniform" "sample_trackarch" "sample_trackarch" "sample_trackarch" "sample_trackarch")
 track_file=("" "files/Track1_200_archs.json" "files/Track1_200_archs.json" "files/Track1_200_archs.json" "files/Track1_100_archs.json")
 resume=("" "train/model.th" "train/model.th" "train/model.th" "train/model.th")
+save_dir=("01uniform" "02trackarch" "03distill200" "04distill200" "05distill100")
 
 for(( index = 0; index < 5; index++)); do
     CUDA_VISIBLE_DEVICES=${gpu} \
@@ -36,5 +37,5 @@ for(( index = 0; index < 5; index++)); do
             --alpha_type=${alpha_type[${index}]} \
             --track_file=${track_file[${index}]} \
             --resume=${resume[${index}]} \
-            --save_dir=train
+            --save_dir=${save_dir[${index}]}
 done;
