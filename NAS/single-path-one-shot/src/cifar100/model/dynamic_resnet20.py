@@ -19,11 +19,13 @@ def get_configs():
 
     return model_config
 
+
 class DynamicBlock(nn.Module):
     expansion = 1
 
     def __init__(self, in_channel_list, mid_channel_list, out_channel_list, stride=1):
         super(DynamicBlock, self).__init__()
+        self.stride = stride
 
         self.conv1 = nn.Sequential(
             OrderedDict([
@@ -45,8 +47,8 @@ class DynamicBlock(nn.Module):
                 ('conv', DynamicConv2d(max(in_channel_list), max(
                     out_channel_list), stride=stride)),
                 ('bn', DynamicBatchNorm2d(max(out_channel_list)))
-            ])
-        )
+            ]))
+
 
         self.active_mid_channel = max(mid_channel_list)
         self.active_out_channel = max(out_channel_list)
@@ -61,14 +63,18 @@ class DynamicBlock(nn.Module):
 
         self.conv1.conv.active_out_channel = amc
         self.conv2.conv.active_out_channel = aoc
-        self.downsample.conv.active_out_channel = aoc
 
-        residual = self.downsample(x)
+        self.downsample.conv.active_out_channel = aoc
+        
+        # print("amc:", amc, "aoc:", aoc)
 
         out = self.conv1(x)
         out = self.conv2(out)
 
-        out += residual
+        # print("shape: ", "x:", x.shape,  "out:", out.shape,
+        #       "shortcut:", self.downsample(x).shape)
+
+        out += self.downsample(x)
         out = F.relu(out)
         return out
 
@@ -154,6 +160,7 @@ class DynamicResNet(nn.Module):
         self._initialize_weights()
 
     def forward(self, x, config=None):
+        # print("config:", config)
         if config is None:
             config = [16, 16, 16, 16, 16, 16, 16, 32, 32,
                       32, 32, 32, 32, 64, 64, 64, 64, 64, 64]
@@ -175,8 +182,9 @@ class DynamicResNet(nn.Module):
         out = self.block3(out, cfg_layer3)
         out = F.avg_pool2d(out, out.size()[3])
         out = out.view(out.size(0), -1)
+        # print("end")
         return self.classifier(out)
-    
+
     def _initialize_weights(self):
         for name, m in self.named_modules():
             if isinstance(m, nn.Conv2d):
@@ -203,10 +211,10 @@ class DynamicResNet(nn.Module):
         # Zero-initialize the last BN in each residual branch,
         # so that the residual branch starts with zeros, and each residual block behaves like an identity.
         # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
-        for m in self.modules():
-            if isinstance(m, DynamicBlock):
-                nn.init.constant_(m.conv2.bn.bn.weight, 0)  # type: ignore[arg-type]
-
+        # for m in self.modules():
+        #     if isinstance(m, DynamicBlock):
+        #         # type: ignore[arg-type]
+        #         nn.init.constant_(m.conv2.bn.bn.weight, 0)
 
 
 def dynamic_resnet20():
@@ -217,6 +225,7 @@ def dynamic_resnet20():
 #               24, 16, 8, 8, 24, 60, 12, 64, 64, 52, 60]
 # arc_config = [i+1 for i in range(20)]
 # model = dynamic_resnet20()
+# print(model)
 # a = torch.randn(3, 3, 32, 32)
 # print(model(a, arc_config[:-1]).shape)
 # m1 = dynamic_resnet20()

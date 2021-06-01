@@ -42,7 +42,7 @@ def get_args():
     parser.add_argument('--workers', type=int,
                         default=3, help='num of workers')
     parser.add_argument('--weights', type=str,
-                        default="./weights/2021Y_05M_31D_23H_0060/model-latest.th", help="path for weights loading")
+                        default="./weights/2021Y_06M_01D_17H_0193/model-latest.th", help="path for weights loading")
 
     parser.add_argument('--local_rank', type=int, default=0,
                         help='local rank for distributed training')
@@ -109,6 +109,7 @@ def main():
     print('load data successfully')
 
     model = sample_resnet20()
+    # model = dynamic_resnet20()
 
     print("load model successfully")
 
@@ -146,7 +147,6 @@ def validate(model, args, *, arch_loader=None):
     arch_loader = tqdm(arch_loader)
     for key, arch in arch_loader:
         arch_list = [int(itm) for itm in arch[0].split('-')]
-        print(key, arch, arch_list)
 
         with torch.no_grad():
             top1 = AvgrageMeter()

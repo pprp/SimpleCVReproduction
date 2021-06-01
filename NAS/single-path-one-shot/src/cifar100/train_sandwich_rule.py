@@ -36,9 +36,6 @@ from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
 
 print = functools.partial(print, flush=True)
 
-CIFAR100_TRAINING_SET_SIZE = 50000
-CIFAR100_TEST_SET_SIZE = 10000
-
 parser = argparse.ArgumentParser("ResNet20-cifar100")
 
 parser.add_argument('--local_rank', type=int, default=0,
@@ -51,6 +48,7 @@ parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
 parser.add_argument('--model-type', type=str, default="sample",
                     help="type of model(sample masked dynamic independent slimmable original)")
+
 parser.add_argument('--finetune', action='store_true',
                     help='finetune model with distill')
 parser.add_argument('--distill', action="store_true",
@@ -75,8 +73,6 @@ parser.add_argument('--grad_clip', type=float,
 parser.add_argument('--label_smooth', type=float,
                     default=0.1, help='label smoothing')
 args = parser.parse_args()
-
-val_iters = CIFAR100_TEST_SET_SIZE // 200
 
 
 def main():
@@ -108,7 +104,6 @@ def main():
     elif args.model_type == "masked":
         model = masked_resnet20()
     elif args.model_type == "sample":
-        print("sample!!!!!!!!!!!!!!!!!!!")
         model = sample_resnet20()
     elif args.model_type == "independent":
         model = Independent_resnet20()
@@ -118,7 +113,7 @@ def main():
         model = resnet20()
     else:
         print("Not Implement")
-    
+
     # print(model)
 
     # args.finetune = False
@@ -128,7 +123,6 @@ def main():
                                 map_location=None)
         model.load_state_dict(checkpoint['state_dict'])
 
-    # model = resnet20()
     model = model.cuda(args.gpu)
 
     if num_gpus > 1:
@@ -176,29 +170,28 @@ def main():
     archloader = ArchLoader("data/track_200.json")
 
     for epoch in range(args.epochs):
-        train_lu_shun(train_loader, val_loader,  optimizer, scheduler, model,
+        train(train_loader, val_loader,  optimizer, scheduler, model,
                       archloader, criterion, soft_criterion, args, args.seed, epoch, writer)
 
         writer.add_scalar("lr", scheduler.get_last_lr()[0], epoch)
 
         scheduler.step()
         if (epoch + 1) % args.report_freq == 0:
-            top1_val, top5_val,  objs_val = infer(train_loader, val_loader, model, criterion,
-                                                  archloader, args, epoch)
+            top1_val, objs_val = infer(train_loader, val_loader, model, criterion,
+                                       archloader, args, epoch)
 
             if args.local_rank == 0:
                 # model
                 if writer is not None:
                     writer.add_scalar("Val/loss", objs_val, epoch)
                     writer.add_scalar("Val/acc1", top1_val, epoch)
-                    writer.add_scalar("Val/acc5", top5_val, epoch)
 
                 save_checkpoint(
                     {'state_dict': model.state_dict(), }, epoch, args.exp)
 
 
 def train_lu_shun(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, soft_criterion, args, seed, epoch, writer=None):
-    losses_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
+    losses_, top1_ = AvgrageMeter(), AvgrageMeter()
 
     trick = False
     distill_lamda = 2.0
@@ -292,8 +285,7 @@ def train_lu_shun(train_dataloader, val_dataloader, optimizer, scheduler, model,
 
 
 def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, soft_criterion, args, seed, epoch, writer=None):
-    losses_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
-
+    losses_, top1_ = AvgrageMeter(), AvgrageMeter()
     inplace_distillation = True
 
     model.train()
@@ -315,9 +307,10 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
         if args.model_type in ["dynamic", "independent", "slimmable"]:
             # sandwich rule
             candidate_list = []
-            candidate_list += [narrowest]
             candidate_list += [archloader.generate_spos_like_batch().tolist()
                                for i in range(6)]
+            candidate_list += [narrowest]
+
 
             # archloader.generate_niu_fair_batch(step)
             # 全模型来一遍
@@ -349,24 +342,22 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
             loss = criterion(logits, target)
             loss.backward()
 
-        prec1, prec5 = accuracy(logits, target, topk=(1, 5))
+        prec1, _ = accuracy(logits, target, topk=(1, 5))
 
         if torch.cuda.device_count() > 1:
             torch.distributed.barrier()
 
             loss = reduce_mean(loss, args.nprocs)
             prec1 = reduce_mean(prec1, args.nprocs)
-            prec5 = reduce_mean(prec5, args.nprocs)
 
         optimizer.step()
         optimizer.zero_grad()
 
         losses_.update(loss.data.item(), n)
         top1_.update(prec1.data.item(), n)
-        top5_.update(prec1.data.item(), n)
 
         postfix = {'train_loss': '%.6f' % (
-            losses_.avg), 'train_acc1': '%.6f' % top1_.avg, 'train_acc5': '%.6f' % top5_.avg}
+            losses_.avg), 'train_acc1': '%.6f' % top1_.avg}
 
         train_loader.set_postfix(log=postfix)
 
@@ -375,12 +366,11 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
                               len(train_dataloader) * epoch * args.batch_size)
             writer.add_scalar("Train/acc1", top1_.avg, step +
                               len(train_dataloader) * epoch * args.batch_size)
-            writer.add_scalar("Train/acc5", top5_.avg, step +
-                              len(train_loader)*args.batch_size*epoch)
+
 
 
 def infer(train_loader, val_loader, model, criterion,  archloader, args, epoch):
-    objs_, top1_, top5_ = AvgrageMeter(), AvgrageMeter(), AvgrageMeter()
+    objs_, top1_ = AvgrageMeter(), AvgrageMeter()
 
     model.eval()
     now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
@@ -407,7 +397,7 @@ def infer(train_loader, val_loader, model, criterion,  archloader, args, epoch):
             logits = model(image, fair_arc_list)
             loss = criterion(logits, target)
 
-            top1, top5 = accuracy(logits, target, topk=(1, 5))
+            top1, _ = accuracy(logits, target, topk=(1, 5))
 
             if torch.cuda.device_count() > 1:
                 torch.distributed.barrier()
@@ -418,14 +408,13 @@ def infer(train_loader, val_loader, model, criterion,  archloader, args, epoch):
             n = image.size(0)
             objs_.update(loss.data.item(), n)
             top1_.update(top1.data.item(), n)
-            top5_.update(top5.data.item(), n)
 
         now = time.strftime('%Y-%m-%d %H:%M:%S',
                             time.localtime(time.time()))
-        print('{} |=> valid: step={}, loss={:.2f}, val_acc1={:.2f}, val_acc5={:2f}, datatime={:.2f}'.format(
-            now, step, objs_.avg, top1_.avg, top5_.avg,  datatime))
+        print('{} |=> valid: step={}, loss={:.2f}, val_acc1={:.2f}, datatime={:.2f}'.format(
+            now, step, objs_.avg, top1_.avg, datatime))
 
-    return top1_.avg, top5_.avg, objs_.avg
+    return top1_.avg, objs_.avg
 
 
 if __name__ == '__main__':
