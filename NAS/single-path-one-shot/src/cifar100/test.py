@@ -40,12 +40,10 @@ def get_args():
     parser.add_argument('--batch-size', type=int,
                         default=1024, help='batch size')
     parser.add_argument('--workers', type=int,
-                        default=6, help='num of workers')
+                        default=3, help='num of workers')
     parser.add_argument('--weights', type=str,
-                        default="./weights/2021Y_05M_31D_21H_0208/checkpoint-latest.pth.tar", help="path for weights loading")
+                        default="./weights/2021Y_05M_31D_23H_0060/model-latest.th", help="path for weights loading")
 
-    parser.add_argument('--auto-continue', type=bool,
-                        default=True, help='report frequency')
     parser.add_argument('--local_rank', type=int, default=0,
                         help='local rank for distributed training')
 
@@ -55,7 +53,7 @@ def get_args():
     parser.add_argument('--weight_decay', type=float,
                         default=4e-5, help='weight decay')
     parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
-    parser.add_argument('--seed', type=int, default=5, help='random seed')
+    parser.add_argument('--seed', type=int, default=0, help='random seed')
     args = parser.parse_args()
     return args
 
@@ -68,11 +66,11 @@ def main():
     args.gpu = args.local_rank % num_gpus
     torch.cuda.set_device(args.gpu)
 
-    # cudnn.benchmark = True
-    # cudnn.deterministic = True
-    # torch.manual_seed(args.seed)
-    # cudnn.enabled = True
-    # torch.cuda.manual_seed(args.seed)
+    cudnn.benchmark = True
+    cudnn.deterministic = True
+    torch.manual_seed(args.seed)
+    cudnn.enabled = True
+    torch.cuda.manual_seed(args.seed)
 
     if num_gpus > 1:
         torch.distributed.init_process_group(
@@ -107,35 +105,74 @@ def main():
     val_loader = torch.utils.data.DataLoader(val_dataset,
                                              batch_size=args.batch_size, shuffle=False,
                                              num_workers=args.workers, pin_memory=True)
-    train_loader = get_train_loader(
-        batch_size=args.batch_size, local_rank=0, num_workers=args.workers)
 
     print('load data successfully')
 
-    # model = masked_resnet20()
     model = sample_resnet20()
-    
+
     print("load model successfully")
 
     print('load from latest checkpoint')
     lastest_model = args.weights
     if lastest_model is not None:
-        checkpoint = torch.load(
-            lastest_model, map_location=None if True else 'cpu')
-        model.load_state_dict(checkpoint['state_dict'], strict=False)
+        checkpoint = torch.load(lastest_model)
+        model.load_state_dict(checkpoint['state_dict'])
 
     model = model.cuda(args.gpu)
-    if num_gpus > 1:
-        model = torch.nn.parallel.DistributedDataParallel(
-            model, device_ids=[args.local_rank], output_device=args.local_rank, find_unused_parameters=False)
+    # if num_gpus > 1:
+    #     model = torch.nn.parallel.DistributedDataParallel(
+    #         model, device_ids=[args.local_rank], output_device=args.local_rank, find_unused_parameters=False)
 
     # 参数设置
     args.val_dataloader = val_loader
 
     print("start to validate model...")
 
-    validate(model, train_loader, args, arch_loader=arch_dataloader)
+    validate(model, args, arch_loader=arch_dataloader)
     # angle_validate(model, arch_loader, args)
+
+
+def validate(model, args, *, arch_loader=None):
+    assert arch_loader is not None
+
+    val_dataloader = args.val_dataloader
+
+    t1 = time.time()
+
+    result_dict = {}
+
+    model.eval()
+
+    arch_loader = tqdm(arch_loader)
+    for key, arch in arch_loader:
+        arch_list = [int(itm) for itm in arch[0].split('-')]
+        print(key, arch, arch_list)
+
+        with torch.no_grad():
+            top1 = AvgrageMeter()
+            for data, target in val_dataloader:  # 过一遍数据集
+
+                data = data.cuda(args.gpu, non_blocking=True)
+                target = target.cuda(args.gpu, non_blocking=True)
+
+                output = model(data, arch_list)
+
+                prec1, prec5 = accuracy(output, target, topk=(1, 5))
+
+                n = data.size(0)
+                top1.update(prec1.item(), n)
+
+        tmp_dict = {}
+        tmp_dict['arch'] = arch[0]
+        tmp_dict['acc'] = top1.avg / 100
+
+        result_dict[key[0]] = tmp_dict
+
+        post_fix = {"top1": "%.4f" % (top1.avg/100)}
+        arch_loader.set_postfix(log=post_fix)
+
+    with open("acc_%s.json" % (args.path.split('/')[1].split('.')[0]), "w") as f:
+        json.dump(result_dict, f)
 
 
 def angle_validate(model, archloader, args):
@@ -163,73 +200,6 @@ def angle_validate(model, archloader, args):
 
     with open("angle_result.json", "w") as f:
         json.dump(angle_result_dict, f)
-
-
-def validate(model, train_loader, args, *, arch_loader=None):
-    assert arch_loader is not None
-
-    objs = AvgrageMeter()
-    top1 = AvgrageMeter()
-    top5 = AvgrageMeter()
-
-    val_dataloader = args.val_dataloader
-
-    t1 = time.time()
-
-    result_dict = {}
-
-    model.eval()
-
-    arch_loader = tqdm(arch_loader)
-    for key, arch in arch_loader:
-        arch_list = [int(itm) for itm in arch[0].split('-')]
-        # bn calibration
-        # model.apply(bn_calibration_init)
-
-        # model.train()
-
-        # t1 = time.time()
-
-        # for idx, (inputs, targets) in enumerate(train_loader):
-        #     inputs, targets = inputs.cuda(args.gpu, non_blocking=True), targets.cuda(
-        #         args.gpu, non_blocking=True)
-        #     outputs = model(inputs, arch_list)
-        #     del inputs, targets, outputs
-        #     if idx > 2:
-        #         break
-
-        # # print("bn calibration time:", time.time()-t1)
-
-        # t2 = time.time()
-
-        with torch.no_grad():
-            for data, target in val_dataloader:  # 过一遍数据集
-                target = target.type(torch.LongTensor)
-                data, target = data.cuda(args.gpu, non_blocking=True), target.cuda(
-                    args.gpu, non_blocking=True)
-
-                output = model(data, arch_list)
-
-                prec1, prec5 = accuracy(output, target, topk=(1, 5))
-
-                n = data.size(0)
-
-                top1.update(prec1.item(), n)
-                top5.update(prec5.item(), n)
-
-        tmp_dict = {}
-        tmp_dict['arch'] = arch[0]
-        tmp_dict['acc'] = top1.avg / 100
-
-        # print("val time:", time.time() - t2)
-
-        result_dict[key[0]] = tmp_dict
-
-        post_fix = {"top1": "%.4f" % (top1.avg/100)}
-        arch_loader.set_postfix(log=post_fix)
-
-    with open("acc_%s.json" % (args.path.split('/')[1].split('.')[0]), "w") as f:
-        json.dump(result_dict, f)
 
 
 if __name__ == "__main__":

@@ -58,13 +58,13 @@ parser = argparse.ArgumentParser(
     description='Propert ResNets for CIFAR10 in pytorch')
 parser.add_argument('--eval_json_path', help='json file containing archs to evaluete',
                     default='data/benchmark.json', type=str)
-parser.add_argument('--model_path', default='weights/2021Y_05M_31D_21H_0208/checkpoint-latest.pth.tar',
+parser.add_argument('--model_path', default='weights/2021Y_05M_31D_23H_0060/model-latest.th',
                     help='model checkpoint', type=str)
 parser.add_argument('--arch_start', default=1, type=int,
                     metavar='N', help='the start index of eval archs')
 parser.add_argument('--arch_num', default=101, type=int,
                     metavar='N', help='the num of eval archs')
-parser.add_argument('--workers', default=1, type=int, metavar='N',
+parser.add_argument('--workers', default=3, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--batch_size', default=512, type=int,
                     metavar='N', help='mini-batch size (default: 128)')
@@ -72,7 +72,7 @@ parser.add_argument('--affine', action='store_true', help='BN affine')
 parser.add_argument('--save_dir', help='The directory used to save the trained models',
                     default='./checkpoints', type=str)
 parser.add_argument('--save_file', help='The file used to save the result',
-                    default='eval-1_50000', type=str)
+                    default='eval-final', type=str)
 parser.add_argument(
     '--save_every', help='Saves checkpoints at every specified number of epochs', type=int, default=1)
 parser.add_argument('--convbn_type',
@@ -145,76 +145,23 @@ def main():
     cudnn.enabled = True
     cudnn.deterministic = True
 
-    model = sample_resnet20(args.affine, args.convbn_type, args.mask_repeat, 
-                     args.alpha_type, localsep_layers=args.localsep_layers,
-                     localsep_portion=args.localsep_portion, 
-                     same_shortcut=args.sameshortcut, 
-                     track_running_stats=args.track_running_stats)
+    # model = sample_resnet20(args.affine, args.convbn_type, args.mask_repeat, 
+    #                  args.alpha_type, localsep_layers=args.localsep_layers,
+    #                  localsep_portion=args.localsep_portion, 
+    #                  same_shortcut=args.sameshortcut, 
+    #                  track_running_stats=args.track_running_stats)
+    model = sample_resnet20()
     model.cuda()
-    try:
-        model.load_state_dict(torch.load(args.model_path)['state_dict'])
-    except:
-        print("BN track running stats is False in pt but True in model, so here ignore it")
-        model.load_state_dict(torch.load(args.model_path)[
-                              'state_dict'], strict=False)
+    # try:
+    model.load_state_dict(torch.load(args.model_path)['state_dict'])
+    # except:
+    #     print("BN track running stats is False in pt but True in model, so here ignore it")
+    #     model.load_state_dict(torch.load(args.model_path)[
+    #                           'state_dict'], strict=False)
 
     normalize = transforms.Normalize(
         mean=[0.5071, 0.4865, 0.4409], std=[0.1942, 0.1918, 0.1958])
 
-    if args.bn_calibrate:
-        for m in model.modules():
-            if isinstance(m, torch.nn.BatchNorm2d) and m.track_running_stats is False:
-                del m.running_mean
-                del m.running_var
-                del m.num_batches_tracked
-                m.register_buffer('running_mean', torch.zeros(m.num_features))
-                m.register_buffer('running_var', torch.ones(m.num_features))
-                m.register_buffer('num_batches_tracked',
-                                  torch.tensor(0, dtype=torch.long))
-        model.cuda()
-
-        calib_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR100(
-                root='./data',
-                train=False,
-                transform=transforms.Compose([
-                    # transforms.RandomCrop(32, 4),
-                    # transforms.RandomApply([transforms.ColorJitter(brightness=0.1, contrast=0.1)]),
-                    # transforms.RandomHorizontalFlip(),
-                    # transforms.RandomRotation(15),
-                    transforms.ToTensor(),
-                    normalize,
-                ]),
-                download=True,
-            ),
-            batch_size=args.bn_calibrate_batch,
-            pin_memory=True,
-            shuffle=True,
-            num_workers=args.workers,
-        )
-
-        calib_loader = get_loader(calib_loader)
-
-    if args.train:
-        train_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR100(
-                root='./data',
-                train=True,
-                transform=transforms.Compose([
-                    transforms.RandomCrop(32, 4),
-                    transforms.RandomHorizontalFlip(),
-                    transforms.RandomRotation(15),
-                    transforms.ToTensor(),
-                    Cutout(16),
-                    normalize,
-                ]),
-                download=True,
-            ),
-            batch_size=args.train_batch_size,
-            pin_memory=True,
-            shuffle=True,
-            num_workers=args.workers,
-        )
 
     val_loader = torch.utils.data.DataLoader(
         datasets.CIFAR100(
@@ -245,13 +192,6 @@ def main():
         if 'arch{}'.format(arch_i) in archs_info:
             lenlist = get_arch_lenlist(archs_info, arch_i)
 
-            if args.train:
-                model = train(train_loader, model_origin, lenlist, args)
-
-            if args.bn_calibrate:
-                model = calibrate_bn(calib_loader, model,
-                                     lenlist, args.bn_calibrate_batch_num)
-
             prec1 = validate(val_loader, model, lenlist)
 
             sub_archs_info['arch{}'.format(arch_i)] = {}
@@ -280,78 +220,6 @@ def get_loader(loader):
     for x, y in loader:
         new_loader.append((x.cuda(), y.cuda()))
     return new_loader
-
-
-def calibrate_bn(loader, model, lenlist, num):
-    model.train()
-    for m in model.modules():
-        if isinstance(m, torch.nn.BatchNorm2d):
-            m.running_mean.data.fill_(0)
-            m.running_var.data.fill_(0)
-            m.num_batches_tracked.data.zero_()
-            m.momentum = None
-    for i, (input, _) in enumerate(loader):
-        # input = input.cuda()
-        if i < min(len(loader), num):
-            model(input, lenlist)
-    return model
-
-
-def train(train_queue, model, lenlist, args):
-    model = copy.deepcopy(model)
-    criterion = nn.CrossEntropyLoss().cuda()
-    optimizer = torch.optim.SGD(model.parameters(
-    ), args.train_lr, momentum=args.train_momentum, weight_decay=args.train_weight_decay)
-    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, args.train_epochs, eta_min=args.train_min_lr)
-
-    logging.info('Train arch: {}'.format(lenlist))
-    for epoch in range(args.train_epochs):
-        batch_time = AverageMeter()
-        data_time = AverageMeter()
-        losses = AverageMeter()
-        top1 = AverageMeter()
-
-        model.train()
-
-        end = time.time()
-        for i, (input, target) in enumerate(train_queue):
-            data_time.update(time.time() - end)
-
-            target_var = target.cuda()
-            input_var = input.cuda()
-
-            optimizer.zero_grad()  # zero gradient
-            output = model(input_var, lenlist)  # compute output
-            loss = criterion(output, target_var)  # compute loss
-            loss.backward()  # compute gradient
-            optimizer.step()  # do SGD step
-
-            output = output.float()
-            loss = loss.float()
-            # measure accuracy and record loss
-            prec1 = accuracy(output.data, target_var.data)[0]
-            losses.update(loss.item(), input.size(0))
-            top1.update(prec1.item(), input.size(0))
-
-            # measure elapsed time
-            batch_time.update(time.time() - end)
-            end = time.time()
-
-            if i % args.train_print_freq == 0 or i == len(train_queue) - 1:
-                logging.info('\tEpoch: [{0}][{1}/{2}]\t'
-                             'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                             'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                             'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                             'Prec@1 {top1.val:.3f} ({top1.avg:.3f})'.format(epoch, i, len(train_queue), batch_time=batch_time, data_time=data_time, loss=losses, top1=top1))
-
-        lr_scheduler.step()
-
-    del criterion
-    del optimizer
-    del lr_scheduler
-
-    return model
 
 
 def validate(valid_queue, model, lenlist):

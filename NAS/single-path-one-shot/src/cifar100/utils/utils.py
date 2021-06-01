@@ -6,9 +6,52 @@ import random
 import json
 import numpy as np
 from tqdm import tqdm
+import shutil
+
+
+class Cutout(object):
+    def __init__(self, length):
+        self.length = length
+
+    def __call__(self, img):
+        h, w = img.size(1), img.size(2)
+        mask = np.ones((h, w), np.float32)
+        y = np.random.randint(h)
+        x = np.random.randint(w)
+
+        y1 = np.clip(y - self.length // 2, 0, h)
+        y2 = np.clip(y + self.length // 2, 0, h)
+        x1 = np.clip(x - self.length // 2, 0, w)
+        x2 = np.clip(x + self.length // 2, 0, w)
+
+        mask[y1:y2, x1:x2] = 0.
+        mask = torch.from_numpy(mask)
+        mask = mask.expand_as(img)
+        img *= mask
+        return img
+
+
+def generate_result(file, alpha1, alpha2, alpha3):
+    with open('Track1_final_archs.json', 'r') as f:
+        data = json.load(f)
+
+    alpha = alpha1.detach().cpu().numpy().tolist() + \
+        alpha2.detach().cpu().numpy().tolist() + alpha3.detach().cpu().numpy().tolist()
+    archindex_logprob_list = []
+    for i in range(1, 50001):
+        archindex = 'arch{}'.format(i)
+        logprob = 0
+        arch = data[archindex]['arch']
+        for j, c in enumerate(arch.split('-')[:-1]):
+            index = SuperNetSetting[j].index(int(c))
+            logprob += math.log(alpha[j][index])
+        archindex_logprob_list.append((archindex, logprob))
+    archindex_logprob_list = sorted(archindex_logprob_list, key=lambda x: x[1])
+
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
+
     def __init__(self):
         self.reset()
 
@@ -24,6 +67,7 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
+
 class CrossEntropyLossSoft(torch.nn.modules.loss._Loss):
     """ inplace distillation for image classification """
 
@@ -33,7 +77,8 @@ class CrossEntropyLossSoft(torch.nn.modules.loss._Loss):
         output_log_prob = output_log_prob.unsqueeze(2)
         cross_entropy_loss = -torch.bmm(target, output_log_prob)
         return cross_entropy_loss.mean()
-        
+
+
 def get_num_correct(preds, labels):
     return preds.argmax(dim=1).eq(labels).sum().item()
 
@@ -156,6 +201,7 @@ class ArchLoader():
         current_p = float(current_epoch) / total_epoch
         opposite_p = 1 - current_p
         # print(current_p, opposite_p)
+
         def p_generator(length):
             rng_list = np.linspace(current_p, opposite_p, length)
             return self.softmax(rng_list)
@@ -250,15 +296,28 @@ def accuracy(output, target, topk=(1,)):
     return res
 
 
+def create_exp_dir(path, scripts_to_save=None):
+    if not os.path.exists(path):
+        os.mkdir(path)
+    print('Experiment dir : {}'.format(path))
+
+    if scripts_to_save is not None:
+        if not os.path.exists(os.path.join(path, 'scripts')):
+            os.mkdir(os.path.join(path, 'scripts'))
+        for script in scripts_to_save:
+            dst_file = os.path.join(path, 'scripts', os.path.basename(script))
+            shutil.copyfile(script, dst_file)
+
+
 def save_checkpoint(state, iters, exp, tag=''):
     if not os.path.exists("./weights/{}".format(exp)):
         os.makedirs("./weights/{}".format(exp))
     filename = os.path.join(
-        "./weights/{}/{}checkpoint-{:05}.pth.tar".format(exp, tag, iters))
+        "./weights/{}/{}model-{:05}.th".format(exp, tag, iters))
 
     torch.save(state, filename)
     latestfilename = os.path.join(
-        "./weights/{}/{}checkpoint-latest.pth.tar".format(exp, tag))
+        "./weights/{}/{}model-latest.th".format(exp, tag))
     torch.save(state, latestfilename)
 
 
@@ -310,17 +369,17 @@ def bn_calibration_init(m):
 def retrain_bn(model, dataloader, cand, device=0):
     # from singlepathoneshot Search/tester.py
     # with torch.no_grad():
-        # print("Clear BN statistics...")
-        # for m in model.modules():
-        #     if isinstance(m, nn.BatchNorm2d):
-        #         m.running_mean = torch.zeros_like(m.running_mean)
-        #         m.running_var = torch.ones_like(m.running_var)
-        model.apply(bn_calibration_init)
+    # print("Clear BN statistics...")
+    # for m in model.modules():
+    #     if isinstance(m, nn.BatchNorm2d):
+    #         m.running_mean = torch.zeros_like(m.running_mean)
+    #         m.running_var = torch.ones_like(m.running_var)
+    model.apply(bn_calibration_init)
 
-        # print("Train BN with training set (BN sanitize)...")
-        model.train()
+    # print("Train BN with training set (BN sanitize)...")
+    model.train()
 
-        for inputs, targets in dataloader:
-            inputs, targets = inputs.to(device), targets.to(device)
-            outputs = model(inputs, cand)
-            del inputs, targets, outputs
+    for inputs, targets in dataloader:
+        inputs, targets = inputs.to(device), targets.to(device)
+        outputs = model(inputs, cand)
+        del inputs, targets, outputs
