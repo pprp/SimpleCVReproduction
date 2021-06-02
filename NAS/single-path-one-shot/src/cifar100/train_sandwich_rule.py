@@ -170,8 +170,8 @@ def main():
     archloader = ArchLoader("data/track_200.json")
 
     for epoch in range(args.epochs):
-        train(train_loader, val_loader,  optimizer, scheduler, model,
-                      archloader, criterion, soft_criterion, args, args.seed, epoch, writer)
+        train_lu_shun(train_loader, val_loader,  optimizer, scheduler, model,
+              archloader, criterion, soft_criterion, args, args.seed, epoch, writer)
 
         writer.add_scalar("lr", scheduler.get_last_lr()[0], epoch)
 
@@ -297,6 +297,7 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
     train_loader = tqdm(train_dataloader)
     train_loader.set_description(
         '[%s%04d/%04d %s%f]' % ('Epoch:', epoch + 1, args.epochs, 'lr:', scheduler.get_last_lr()[0]))
+    
     for step, (image, target) in enumerate(train_loader):
         n = image.size(0)
         image = Variable(image, requires_grad=False).cuda(
@@ -310,7 +311,6 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
             candidate_list += [archloader.generate_spos_like_batch().tolist()
                                for i in range(6)]
             candidate_list += [narrowest]
-
 
             # archloader.generate_niu_fair_batch(step)
             # 全模型来一遍
@@ -335,26 +335,30 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
                 else:
                     loss = criterion(logits, target)
 
-                # loss_reduce = reduce_tensor(loss, 0, args.world_size)
                 loss.backward()
+
+            prec1, _ = accuracy(logits, target, topk=(1, 5))
+            losses_.update(loss.data.item(), n)
+            top1_.update(prec1.data.item(), n)
+
         elif args.model_type == "original":
             logits = model(image)
             loss = criterion(logits, target)
             loss.backward()
 
-        prec1, _ = accuracy(logits, target, topk=(1, 5))
+            prec1, _ = accuracy(logits, target, topk=(1, 5))
+            losses_.update(loss.data.item(), n)
+            top1_.update(prec1.data.item(), n)
 
         if torch.cuda.device_count() > 1:
             torch.distributed.barrier()
-
             loss = reduce_mean(loss, args.nprocs)
             prec1 = reduce_mean(prec1, args.nprocs)
 
         optimizer.step()
         optimizer.zero_grad()
 
-        losses_.update(loss.data.item(), n)
-        top1_.update(prec1.data.item(), n)
+
 
         postfix = {'train_loss': '%.6f' % (
             losses_.avg), 'train_acc1': '%.6f' % top1_.avg}
@@ -366,7 +370,6 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
                               len(train_dataloader) * epoch * args.batch_size)
             writer.add_scalar("Train/acc1", top1_.avg, step +
                               len(train_dataloader) * epoch * args.batch_size)
-
 
 
 def infer(train_loader, val_loader, model, criterion,  archloader, args, epoch):

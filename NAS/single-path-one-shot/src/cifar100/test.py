@@ -42,7 +42,7 @@ def get_args():
     parser.add_argument('--workers', type=int,
                         default=3, help='num of workers')
     parser.add_argument('--weights', type=str,
-                        default="./weights/2021Y_06M_01D_17H_0193/model-latest.th", help="path for weights loading")
+                        default="./weights/2021Y_06M_01D_23H_0791/model-latest.th", help="path for weights loading")
 
     parser.add_argument('--local_rank', type=int, default=0,
                         help='local rank for distributed training')
