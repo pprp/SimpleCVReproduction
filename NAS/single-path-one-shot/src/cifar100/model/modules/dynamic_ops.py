@@ -5,7 +5,29 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 
-from config.config import SuperNetSetting
+# from config.config import SuperNetSetting
+SuperNetSetting = [
+    [4, 8, 12, 16],  # 1
+    [4, 8, 12, 16],  # 2
+    [4, 8, 12, 16],  # 3
+    [4, 8, 12, 16],  # 4
+    [4, 8, 12, 16],  # 5
+    [4, 8, 12, 16],  # 6
+    [4, 8, 12, 16],  # 7
+    [4, 8, 12, 16, 20, 24, 28, 32],  # 8
+    [4, 8, 12, 16, 20, 24, 28, 32],  # 9
+    [4, 8, 12, 16, 20, 24, 28, 32],  # 10
+    [4, 8, 12, 16, 20, 24, 28, 32],  # 11
+    [4, 8, 12, 16, 20, 24, 28, 32],  # 12
+    [4, 8, 12, 16, 20, 24, 28, 32],  # 13
+    [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64],  # 14
+    [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64],  # 15
+    [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64],  # 16
+    [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64],  # 17
+    [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64],  # 18
+    [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64],  # 19
+    [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64],  # fc
+]
 
 
 def get_same_padding(kernel_size):
@@ -25,7 +47,7 @@ def pad(tensor, max_dim):
     c = tensor.shape[1]  # channels
     if c != max_dim:
         # padd
-        tmp_shape = tensor.shape
+        tmp_shape = list(tensor.shape)
         tmp_shape[1] = max_dim - c
         pad_zero = torch.zeros(tmp_shape)
         return torch.cat([tensor, pad_zero], dim=1)
@@ -36,7 +58,7 @@ def pad(tensor, max_dim):
 
 class BaseBN(nn.Module):
     def __init__(self, indims, outdims):
-        super.__init__()
+        super().__init__()
         self.indims = indims
         self.outdims = outdims
         self.max = max(outdims)
@@ -181,19 +203,17 @@ class DynamicConv(BaseConv):
 class MaskedConv(BaseConv):
     def __init__(self, indims, outdims, layer_id, stride=1, down=False):
         super().__init__(indims, outdims, stride, down)
-        self.layer_id = layer_id
         self.conv = nn.Conv2d(self.max_in, self.max_out, self.kernel_size,
                               self.stride, get_same_padding(self.kernel_size), bias=False)
-        self.register_buffer("masks", torch.zeros([len(SuperNetSetting[layer_id]),
-                                                   SuperNetSetting[layer_id][-1], 1, 1]).cuda())
-        for i, channel in enumerate(SuperNetSetting[layer_id]):
+        self.register_buffer("masks", torch.zeros([len(outdims),
+                                                   outdims[-1], 1, 1]).cuda())
+        for i, channel in enumerate(outdims):
             self.masks[i][:channel] = 1
 
     def forward(self, x, indim, outdim):
         # 默认x是符合indim的
         x = self.conv(x)
-
-        index = SuperNetSetting[self.layer_id].index(outdim)
+        index = self.outdims.index(outdim)
         mixed_masks = self.masks[index]
 
         return x * mixed_masks
