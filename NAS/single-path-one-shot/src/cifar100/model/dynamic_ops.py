@@ -5,6 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 
+from config.config import SuperNetSetting
+
 
 def get_same_padding(kernel_size):
     if isinstance(kernel_size, tuple):
@@ -43,14 +45,54 @@ class BaseBN(nn.Module):
         raise NotImplementedError()
 
 
+class DynamicBN(BaseBN):
+    def __init__(self, indims, outdims, affine=True, track_running_stats=False):
+        super().__init__(indims, outdims)
+        self.bn = nn.BatchNorm2d(
+            self.max, affine=affine, track_running_stats=track_running_stats)
+
+    def bn_forward(self, x, bn, feature_dim):
+        if bn.num_features == feature_dim:
+            return bn(x)
+        else:
+            exponential_average_factor = 0.0
+
+            if bn.training and bn.track_running_stats:
+                if bn.num_batches_tracked is not None:
+                    bn.num_batches_tracked += 1
+                    if bn.momentum is None:  # use cumulative moving average
+                        exponential_average_factor = 1.0 / \
+                            float(bn.num_batches_tracked)
+                    else:  # use exponential moving average
+                        exponential_average_factor = bn.momentum
+
+            if bn.track_running_stats is False:
+                return F.batch_norm(
+                    x, None, None, bn.weight[:feature_dim],
+                    bn.bias[:feature_dim], bn.training or not bn.track_running_stats,
+                    exponential_average_factor, bn.eps,
+                )
+            else:
+                return F.batch_norm(
+                    x, bn.running_mean[:feature_dim], bn.running_var[:
+                                                                     feature_dim], bn.weight[:feature_dim],
+                    bn.bias[:feature_dim], bn.training or not bn.track_running_stats,
+                    exponential_average_factor, bn.eps,
+                )
+
+    def forward(self, x, indim, outdim):
+        return self.bn_forward(x, self.bn, indim)
+
+
 class IndependentBN(BaseBN):
     """SBN in MixPath"""
 
-    def __init__(self, indims, outdims):
+    def __init__(self, indims, outdims, affine=True, track_running_stats=True):
         super().__init__(indims, outdims)
         for cin in indims:
             for cout in outdims:
-                setattr(self, f"bn-{cin}-{cout}", nn.BatchNorm2d(cout))
+                setattr(
+                    self, f"bn-{cin}-{cout}", nn.BatchNorm2d(cout, affine=affine, track_running_stats=track_running_stats))
 
     def forward(self, x, indim, outdim):
         x = x[:, :outdim]
@@ -58,10 +100,11 @@ class IndependentBN(BaseBN):
 
 
 class FrontShareBN(BaseBN):
-    def __init__(self, indims, outdims):
+    def __init__(self, indims, outdims, affine=True, track_running_stats=True):
         super().__init__(indims, outdims)
         for cin in indims:
-            setattr(self, f"bn-{cin}", nn.BatchNorm2d(self.max))
+            setattr(
+                self, f"bn-{cin}", nn.BatchNorm2d(self.max, affine=affine, track_running_stats=track_running_stats))
 
     def forward(self, x, indim, outdim):
         x = getattr(self, f"bin-{indim}")(pad(x, self.max))
@@ -69,10 +112,11 @@ class FrontShareBN(BaseBN):
 
 
 class EndShareBN(BaseBN):
-    def __init__(self, indims, outdims):
+    def __init__(self, indims, outdims, affine=True, track_running_stats=True):
         super().__init__(indims, outdims)
         for cout in outdims:
-            setattr(self, f"bn-{cout}", nn.BatchNorm2d(cout))
+            setattr(self, f"bn-{cout}", nn.BatchNorm2d(cout,
+                                                       affine=affine, track_running_stats=track_running_stats))
 
     def forward(self, x, indim, outdim):
         x = x[:, :outdim]
@@ -80,14 +124,25 @@ class EndShareBN(BaseBN):
 
 
 class FullBN(BaseBN):
-    def __init__(self, indims, outdims):
+    def __init__(self, indims, outdims, affine=True, track_running_stats=True):
         super().__init__(indims, outdims)
-        self.bn = nn.BatchNorm2d(self.max)
+        self.bn = nn.BatchNorm2d(
+            self.max, affine=affine, track_running_stats=track_running_stats)
 
     def forward(self, x, indim, outdim):
         x = self.bn(pad(x, self.max))
         x = pad(x[:, :outdim], self.max)
         return x
+
+
+class MaskedBN(BaseBN):
+    def __init__(self, indims, outdims, affine=True, track_running_stats=True):
+        super().__init__(indims, outdims)
+        self.bn = nn.BatchNorm2d(
+            self.max, affine=affine, track_running_stats=track_running_stats)
+
+    def forward(self, x, indim, outdim):
+        return self.bn(x)
 
 # CONV PART
 
@@ -109,6 +164,39 @@ class BaseConv(nn.Module):
 
     def forward(self, x, indim, outdim):
         raise NotImplementedError()
+
+
+class DynamicConv(BaseConv):
+    def __init__(self, indims, outdims, stride=1, down=False):
+        super().__init__(indims, outdims, stride, down)
+        self.conv = nn.Conv2d(self.max_in, self.max_out, self.kernel_size,
+                              self.stride, bias=False)
+
+    def forward(self, x, indim, outdim):
+        filters = self.conv.weight[:outdim, :indim, :, :]
+        padding = get_same_padding(self.kernel_size)
+        return F.conv2d(x, filters, None, self.stride, padding)
+
+
+class MaskedConv(BaseConv):
+    def __init__(self, indims, outdims, layer_id, stride=1, down=False):
+        super().__init__(indims, outdims, stride, down)
+        self.layer_id = layer_id
+        self.conv = nn.Conv2d(self.max_in, self.max_out, self.kernel_size,
+                              self.stride, get_same_padding(self.kernel_size), bias=False)
+        self.register_buffer("masks", torch.zeros([len(SuperNetSetting[layer_id]),
+                                                   SuperNetSetting[layer_id][-1], 1, 1]).cuda())
+        for i, channel in enumerate(SuperNetSetting[layer_id]):
+            self.masks[i][:channel] = 1
+
+    def forward(self, x, indim, outdim):
+        # 默认x是符合indim的
+        x = self.conv(x)
+
+        index = SuperNetSetting[self.layer_id].index(outdim)
+        mixed_masks = self.masks[index]
+
+        return x * mixed_masks
 
 
 class IndependentConv(BaseConv):
@@ -188,3 +276,13 @@ class FullFC(BaseFC):
     def forward(self, x, indim):
         x = pad(x[:, :indim], self.max)
         return self.fc(x)
+
+
+class DynamicFC(BaseFC):
+    def __init__(self, indims, outdim):
+        super().__init__(indims, outdim)
+        self.fc = nn.Linear(self.max, self.outdim)
+
+    def forward(self, x, indim):
+        weight = self.fc.weight[:, :indim]
+        return F.linear(x, weight, self.fc.bias)

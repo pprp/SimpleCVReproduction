@@ -43,6 +43,7 @@ class DynamicBatchNorm2d(nn.Module):
                             float(bn.num_batches_tracked)
                     else:  # use exponential moving average
                         exponential_average_factor = bn.momentum
+                        
             if bn.track_running_stats is False:
                 return F.batch_norm(
                     x, None, None, bn.weight[:feature_dim],
