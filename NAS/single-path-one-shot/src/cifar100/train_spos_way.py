@@ -61,8 +61,6 @@ parser.add_argument('--label_smooth', type=float,
                     default=0.1, help='label smoothing')
 args = parser.parse_args()
 
-val_iters = CIFAR100_TEST_SET_SIZE // 200
-
 
 def main():
     if not torch.cuda.is_available():

@@ -3,8 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from collections import OrderedDict
+from __future__ import division, absolute_import
 
-from model.dynamic_modules import DynamicLinear, DynamicConv2d, DynamicBatchNorm2d
+from .modules.dynamic_modules import DynamicLinear, DynamicConv2d, DynamicBatchNorm2d
+
+__all__ = ['dynamic_resnet20']
 
 
 def get_configs():
@@ -49,7 +52,6 @@ class DynamicBlock(nn.Module):
                 ('bn', DynamicBatchNorm2d(max(out_channel_list)))
             ]))
 
-
         self.active_mid_channel = max(mid_channel_list)
         self.active_out_channel = max(out_channel_list)
 
@@ -65,7 +67,7 @@ class DynamicBlock(nn.Module):
         self.conv2.conv.active_out_channel = aoc
 
         self.downsample.conv.active_out_channel = aoc
-        
+
         # print("amc:", amc, "aoc:", aoc)
 
         out = self.conv1(x)

@@ -1,38 +1,32 @@
 # Universally Slimmable Networks and Improved Training Techniques
 import argparse
-import copy
 import datetime
 import functools
+import logging
 import os
-import pickle
 import random
-import shutil
 import sys
 import time
+import glob
 
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
+import yaml
 from torch import nn
 from torch.autograd import Variable
 from torch.optim import lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
-from utils.scheduler import GradualWarmupScheduler
-import torch.nn.functional as F
+
 from datasets.cifar100_dataset import get_train_loader, get_val_loader
-from model.slimmable_resnet20 import mutableResNet20
-from model.dynamic_resnet20 import dynamic_resnet20
-from model.resnet20 import resnet20
-from model.independent_resnet20 import Independent_resnet20
-from model.masked_resnet20 import masked_resnet20
-from model.sample_resnet20 import sample_resnet20
-from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLabelSmooth,
-                         DataIterator, accuracy, bn_calibration_init,
-                         reduce_mean, reduce_tensor, retrain_bn,
-                         save_checkpoint, CrossEntropyLossSoft)
+import model as mm
+from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLossSoft,
+                         accuracy, create_exp_dir, reduce_mean,
+                         save_checkpoint)
 
 print = functools.partial(print, flush=True)
 
@@ -46,7 +40,7 @@ parser.add_argument('--learning_rate', type=float,
                     default=0.1, help='init learning rate')  # 0.8
 parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
-parser.add_argument('--model-type', type=str, default="sample",
+parser.add_argument('--model-type', type=str, default="super",
                     help="type of model(sample masked dynamic independent slimmable original)")
 
 parser.add_argument('--finetune', action='store_true',
@@ -72,7 +66,54 @@ parser.add_argument('--grad_clip', type=float,
                     default=5, help='gradient clipping')
 parser.add_argument('--label_smooth', type=float,
                     default=0.1, help='label smoothing')
+parser.add_argument('--config', help="configuration file",
+                    type=str, default="configs/meta.yml")
+parser.add_argument('--save_dir', type=str,
+                    help="save exp floder name", default="exp1_sandwich")
 args = parser.parse_args()
+
+# process argparse & yaml
+if not args.config:
+    opt = vars(args)
+    args = yaml.load(open(args.config), Loader=yaml.FullLoader)
+    opt.update(args)
+    args = opt
+else:  # yaml priority is higher than args
+    opt = yaml.load(open(args.config), Loader=yaml.FullLoader)
+    opt.update(vars(args))
+    args = argparse.Namespace(**opt)
+
+print(args, type(args))
+
+args.exp_name = args.save_dir + "_" + datetime.datetime.now().strftime("%mM_%dD_%HH") + "_" + \
+    "{:04d}".format(random.randint(0, 1000))
+
+# 文件处理
+if not os.path.exists(os.path.join("exp", args.exp_name)):
+    os.makedirs(os.path.join("exp", args.exp_name))
+
+
+
+# 日志文件
+log_format = "%(asctime)s %(message)s"
+logging.basicConfig(stream=sys.stdout, level=logging.INFO,
+                    format=log_format, datefmt="%m/%d %I:%M:%S %p")
+
+fh = logging.FileHandler(os.path.join("exp", args.exp_name, 'log.txt'))
+fh.setFormatter(logging.Formatter(log_format))
+logging.getLogger().addHandler(fh)
+logging.info(args)
+
+# 配置文件
+with open(os.path.join("exp", args.exp_name, "config.yml"), "w") as f:
+    yaml.dump(args, f)
+
+# Tensorboard文件
+writer = SummaryWriter("exp/%s/runs/%s-%05d" %
+                       (args.exp_name, time.strftime("%m-%d", time.localtime()), random.randint(0, 100)))
+
+create_exp_dir(os.path.join("exp", args.exp_name),
+               scripts_to_save=glob.glob('*.py'))
 
 
 def main():
@@ -92,31 +133,10 @@ def main():
     cudnn.enabled = True
     torch.cuda.manual_seed(args.seed)
 
-    if args.local_rank == 0:
-        args.exp = datetime.datetime.now().strftime("%YY_%mM_%dD_%HH") + "_" + \
-            "{:04d}".format(random.randint(0, 1000))
-
     print('gpu device = %d' % args.gpu)
     print("args = %s", args)
 
-    if args.model_type == "dynamic":
-        model = dynamic_resnet20()
-    elif args.model_type == "masked":
-        model = masked_resnet20()
-    elif args.model_type == "sample":
-        model = sample_resnet20()
-    elif args.model_type == "independent":
-        model = Independent_resnet20()
-    elif args.model_type == "slimmable":
-        model = mutableResNet20()
-    elif args.model_type == "original":
-        model = resnet20()
-    else:
-        print("Not Implement")
-
-    # print(model)
-
-    # args.finetune = False
+    model = mm.build_model(args.model_type)
 
     if args.finetune:
         checkpoint = torch.load("./weights/2021Y_05M_31D_07H_0329/checkpoint-latest.pth.tar",
@@ -134,8 +154,6 @@ def main():
         args.world_size = torch.distributed.get_world_size()
         args.batch_size = args.batch_size // args.world_size
 
-    # criterion_smooth = CrossEntropyLabelSmooth(args.classes, args.label_smooth)
-    # criterion_smooth = criterion_smooth.cuda()
     criterion = torch.nn.CrossEntropyLoss().cuda(args.gpu)
     soft_criterion = CrossEntropyLossSoft()
 
@@ -144,22 +162,8 @@ def main():
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
 
-    # scheduler = torch.optim.lr_scheduler.LambdaLR(
-    #     optimizer, lambda step: (1.0-step/args.total_iters), last_epoch=-1)
-    # a_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-    #     optimizer, T_0=5)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, 200, eta_min=0.0005)
-    # a_scheduler = torch.optim.lr_scheduler.LambdaLR(
-    #     optimizer, lambda epoch: 1 - (epoch / args.epochs))
-    # a_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-    #                                                    milestones=[60, 120, 160], last_epoch=-1)  # !!
-    # scheduler = GradualWarmupScheduler(
-    #     optimizer, 1, total_epoch=5, after_scheduler=a_scheduler)
-
-    if args.local_rank == 0:
-        writer = SummaryWriter("./runs/%s-%05d" %
-                               (time.strftime("%m-%d", time.localtime()), random.randint(0, 100)))
 
     # Prepare data
     train_loader = get_train_loader(
@@ -171,7 +175,7 @@ def main():
 
     for epoch in range(args.epochs):
         train_lu_shun(train_loader, val_loader,  optimizer, scheduler, model,
-              archloader, criterion, soft_criterion, args, args.seed, epoch, writer)
+                      archloader, criterion, soft_criterion, args, args.seed, epoch, writer)
 
         writer.add_scalar("lr", scheduler.get_last_lr()[0], epoch)
 
@@ -187,7 +191,7 @@ def main():
                     writer.add_scalar("Val/acc1", top1_val, epoch)
 
                 save_checkpoint(
-                    {'state_dict': model.state_dict(), }, epoch, args.exp)
+                    {'state_dict': model.state_dict(), }, epoch, args.exp_name)
 
 
 def train_lu_shun(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, soft_criterion, args, seed, epoch, writer=None):
@@ -251,15 +255,6 @@ def train_lu_shun(train_dataloader, val_dataloader, optimizer, scheduler, model,
 
         optimizer.step()
 
-        if valid_running and val_dataloader is not None:
-            # 暂未开启
-            output_search = model(image)
-            loss_search = criterion(output_search, target)
-
-            arch_optimizer.zero_grad()
-            loss_search.backward()
-            arch_optimizer.step()
-
         # statistics show ....
         prec1, prec5 = accuracy(output, target, topk=(1, 5))
 
@@ -297,7 +292,7 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
     train_loader = tqdm(train_dataloader)
     train_loader.set_description(
         '[%s%04d/%04d %s%f]' % ('Epoch:', epoch + 1, args.epochs, 'lr:', scheduler.get_last_lr()[0]))
-    
+
     for step, (image, target) in enumerate(train_loader):
         n = image.size(0)
         image = Variable(image, requires_grad=False).cuda(
@@ -357,8 +352,6 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
 
         optimizer.step()
         optimizer.zero_grad()
-
-
 
         postfix = {'train_loss': '%.6f' % (
             losses_.avg), 'train_acc1': '%.6f' % top1_.avg}

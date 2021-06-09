@@ -1,0 +1,22 @@
+name: tosan
+age: 22
+skill:
+  name1: coding
+  time: 2years
+job:
+  - name2: JD
+    pay: 2k
+  - name3: HW
+    pay: 4k
+pay: ~
+testing:
+  - 1
+  - 2
+  - !!str 3
+
+test2:
+  - name: xxx
+    attr1: sunny
+    attr2: rainy
+    attr3: cloudy
+

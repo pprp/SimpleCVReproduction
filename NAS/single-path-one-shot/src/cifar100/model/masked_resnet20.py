@@ -4,7 +4,9 @@ import torch.nn.functional as F
 import torch.nn.init as init
 from collections import OrderedDict
 
-from model.masked_modules import MaskedConv2dBN
+from .modules.masked_modules import MaskedConv2dBN
+
+__all__ = ['masked_resnet20']
 
 
 def get_configs():

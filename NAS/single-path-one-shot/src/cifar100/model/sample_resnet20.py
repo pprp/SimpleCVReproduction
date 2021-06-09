@@ -10,7 +10,7 @@ from itertools import combinations
 
 from torch.autograd import Variable
 
-__all__ = ['ResNet', 'resnet20']
+__all__ = ['sample_resnet20']
 
 SuperNetSetting = [
     [4, 8, 12, 16],  # 1
@@ -190,7 +190,7 @@ class ResNet(nn.Module):
         # self.linear = nn.Linear(self.len_list[-2], num_classes)
 
         self.apply(_weights_init)
-   
+
     def alpha_hold(self):
         if not hasattr(self, 'pre_alphas'):
             self.pre_alphas = []

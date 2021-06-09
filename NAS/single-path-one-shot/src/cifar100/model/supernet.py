@@ -4,34 +4,12 @@ import torch.nn.functional as F
 import torch.nn.init as init
 # from config.config import SuperNetSetting
 
-from modules.dynamic_ops import *
+from .modules.dynamic_ops import *
 
-SuperNetSetting = [
-    [4, 8, 12, 16],  # 1
-    [4, 8, 12, 16],  # 2
-    [4, 8, 12, 16],  # 3
-    [4, 8, 12, 16],  # 4
-    [4, 8, 12, 16],  # 5
-    [4, 8, 12, 16],  # 6
-    [4, 8, 12, 16],  # 7
-    [4, 8, 12, 16, 20, 24, 28, 32],  # 8
-    [4, 8, 12, 16, 20, 24, 28, 32],  # 9
-    [4, 8, 12, 16, 20, 24, 28, 32],  # 10
-    [4, 8, 12, 16, 20, 24, 28, 32],  # 11
-    [4, 8, 12, 16, 20, 24, 28, 32],  # 12
-    [4, 8, 12, 16, 20, 24, 28, 32],  # 13
-    [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64],  # 14
-    [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64],  # 15
-    [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64],  # 16
-    [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64],  # 17
-    [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64],  # 18
-    [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64],  # 19
-    [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64],  # fc
-]
-
+__all__ = ['SuperNet']
 
 class SuperNet(nn.Module):
-    def __init__(self, conv, bn, fc, config=SuperNetSetting):
+    def __init__(self, conv=FullConv, bn=FullBN, fc=FullFC, config=SuperNetSetting):
         super().__init__()
         self.bn_cls = bn
         self.conv_cls = conv

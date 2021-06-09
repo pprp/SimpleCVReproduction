@@ -309,15 +309,15 @@ def create_exp_dir(path, scripts_to_save=None):
             shutil.copyfile(script, dst_file)
 
 
-def save_checkpoint(state, iters, exp, tag=''):
-    if not os.path.exists("./weights/{}".format(exp)):
-        os.makedirs("./weights/{}".format(exp))
+def save_checkpoint(state, iters, exp_name, tag=''):
+    if not os.path.exists("exp/{}/weights".format(exp_name)):
+        os.makedirs("exp/{}/weights".format(exp_name))
     filename = os.path.join(
-        "./weights/{}/{}model-{:05}.th".format(exp, tag, iters))
+        "exp/{}/weights/{}model-{:05}.th".format(exp_name, tag, iters))
 
     torch.save(state, filename)
     latestfilename = os.path.join(
-        "./weights/{}/{}model-latest.th".format(exp, tag))
+        "exp/{}/weights/{}model-latest.th".format(exp_name, tag))
     torch.save(state, latestfilename)
 
 
