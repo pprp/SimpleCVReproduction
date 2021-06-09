@@ -15,7 +15,9 @@ __model_factory = {
     'original': resnet20,
     'sample': sample_resnet20,
     'slimmable': slimmable_resnet20,
+    'super': SuperNet
 }
+
 
 def show_available_models():
     """Displays available models
@@ -23,7 +25,8 @@ def show_available_models():
     """
     print(list(__model_factory.keys()))
 
-def build_model(name, num_classes):
+
+def build_model(name, num_classes=100):
     avai_models = list(__model_factory.keys())
     if name not in avai_models:
         raise KeyError(

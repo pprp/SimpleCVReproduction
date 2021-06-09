@@ -40,7 +40,7 @@ parser.add_argument('--learning_rate', type=float,
                     default=0.1, help='init learning rate')  # 0.8
 parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
-parser.add_argument('--model-type', type=str, default="super",
+parser.add_argument('--model-type', type=str, default="sample",
                     help="type of model(sample masked dynamic independent slimmable original)")
 
 parser.add_argument('--finetune', action='store_true',
@@ -83,15 +83,12 @@ else:  # yaml priority is higher than args
     opt.update(vars(args))
     args = argparse.Namespace(**opt)
 
-print(args, type(args))
-
 args.exp_name = args.save_dir + "_" + datetime.datetime.now().strftime("%mM_%dD_%HH") + "_" + \
     "{:04d}".format(random.randint(0, 1000))
 
 # 文件处理
 if not os.path.exists(os.path.join("exp", args.exp_name)):
     os.makedirs(os.path.join("exp", args.exp_name))
-
 
 
 # 日志文件
@@ -121,7 +118,6 @@ def main():
         print('no gpu device available')
         sys.exit(1)
 
-    writer = None
     num_gpus = torch.cuda.device_count()
     np.random.seed(args.seed)
     args.gpu = args.local_rank % num_gpus

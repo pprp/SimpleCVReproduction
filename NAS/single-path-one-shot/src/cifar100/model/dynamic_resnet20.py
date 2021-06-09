@@ -1,11 +1,14 @@
+from __future__ import absolute_import, division
+
+from collections import OrderedDict
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
-from collections import OrderedDict
-from __future__ import division, absolute_import
 
-from .modules.dynamic_modules import DynamicLinear, DynamicConv2d, DynamicBatchNorm2d
+from .modules.dynamic_modules import (DynamicBatchNorm2d, DynamicConv2d,
+                                      DynamicLinear)
 
 __all__ = ['dynamic_resnet20']
 

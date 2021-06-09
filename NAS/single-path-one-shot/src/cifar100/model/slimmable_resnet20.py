@@ -323,14 +323,14 @@ class MutableModel(nn.Module):
         # print(self.tb)
 
 
-def mutableResNet20():
+def slimmable_resnet20():
     return MutableModel(arc_representation,
                         MutableBlock,
                         [3, 3, 3])
 
 
 if __name__ == "__main__":
-    model = mutableResNet20()
+    model = slimmable_resnet20()
 
     input = torch.zeros(16, 3, 32, 32)
     output = model(input, [int(item) for item in arc_representation.split('-')])

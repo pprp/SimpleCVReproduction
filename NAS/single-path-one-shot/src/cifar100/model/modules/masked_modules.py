@@ -6,6 +6,8 @@ import torch.nn.functional as F
 import torch.nn.init as init
 from torch.utils.tensorboard.writer import SummaryWriter
 
+__all__ = ["MaskedConv2dBN"]
+
 SuperNetSetting = [
     [4, 8, 12, 16],  # 1
     [4, 8, 12, 16],  # 2
