@@ -115,7 +115,7 @@ create_exp_dir(os.path.join("exp", args.exp_name),
 
 def main():
     if not torch.cuda.is_available():
-        print('no gpu device available')
+        logging.info('no gpu device available')
         sys.exit(1)
 
     num_gpus = torch.cuda.device_count()
@@ -129,8 +129,7 @@ def main():
     cudnn.enabled = True
     torch.cuda.manual_seed(args.seed)
 
-    print('gpu device = %d' % args.gpu)
-    print("args = %s", args)
+    logging.info('gpu device = %d' % args.gpu)
 
     model = mm.build_model(args.model_type)
 
@@ -371,7 +370,7 @@ def infer(train_loader, val_loader, model, criterion,  archloader, args, epoch):
     # .generate_width_to_narrow(epoch, args.epochs)
     fair_arc_list = archloader.generate_spos_like_batch().tolist()
 
-    print('{} |=> Test rng = {}'.format(now, fair_arc_list))  # 只测试最后一个模型
+    logging.info('{} |=> Test rng = {}'.format(now, fair_arc_list))  # 只测试最后一个模型
 
     # if args.model_type == "dynamic":
     #     # BN calibration
@@ -403,7 +402,7 @@ def infer(train_loader, val_loader, model, criterion,  archloader, args, epoch):
 
         now = time.strftime('%Y-%m-%d %H:%M:%S',
                             time.localtime(time.time()))
-        print('{} |=> valid: step={}, loss={:.2f}, val_acc1={:.2f}, datatime={:.2f}'.format(
+        logging.info('{} |=> valid: step={}, loss={:.2f}, val_acc1={:.2f}, datatime={:.2f}'.format(
             now, step, objs_.avg, top1_.avg, datatime))
 
     return top1_.avg, objs_.avg
