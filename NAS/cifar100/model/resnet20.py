@@ -9,7 +9,7 @@ __all__ = ['ResNet', 'resnet20']
 
 
 def _weights_init(m):
-    classname = m.__class__.__name__
+    # classname = m.__class__.__name__
     # print(classname)
     if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
         init.kaiming_normal_(m.weight)

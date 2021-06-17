@@ -2,27 +2,54 @@ from __future__ import absolute_import
 
 import torch
 
+from .densenet import *
+from .dla import *
 from .dynamic_resnet20 import *
+from .efficientnetb0 import *
+from .googlenet import *
+from .lenet import *
 from .masked_resnet20 import *
+from .mobilenet import *
+from .mobilenetv2 import *
+from .pnasnet import *
+from .preact_resnet import *
+from .regnet import *
+from .resnet import *
 from .resnet20 import *
+from .resnext import *
 from .sample_resnet20 import *
+from .senet import *
+from .shufflenet import *
+from .shufflenetv2 import *
 from .slimmable_resnet20 import *
 from .supernet import *
-from .densenet import *
-from .senet import *
-from .googlenet import *
+from .vgg import *
 
 __model_factory = {
     'dynamic': dynamic_resnet20,
     'masked': masked_resnet20,
-    'original': resnet20,
+    'resnet20': resnet20,
     'sample': sample_resnet20,
     'slimmable': slimmable_resnet20,
     'super': SuperNet,
     'densenet': densenet_cifar,
     'senet': senet18_cifar,
     'googlenet': GoogLeNet,
-    
+    'dla': DLA,
+    'shufflenet': ShuffleNetG2,
+    'shufflenetv2': ShuffleNetV2,
+    'resnet18': ResNet18,
+    'resnet34': ResNet34,
+    'resnet50': ResNet50,
+    'efficientnetb0': EfficientNetB0,
+    'lenet': LeNet,
+    'mobilenet': MobileNet,
+    'mobilenetv2': MobileNetV2,
+    'pnasnet': PNASNetB,
+    'preact_resnet': PreActResNet18,
+    'regnet': RegNetX_200MF,
+    'resnext': ResNeXt29_2x64d,
+    'vgg': vgg11
 }
 
 
