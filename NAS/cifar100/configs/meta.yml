@@ -24,6 +24,8 @@ SuperNetSetting: # 超网配置
 config: configs/meta.yml
 track_file: Track1_200_archs.json
 save_dir: record
+dataset: cifar100
+# support cifar100 or cifar10
 
 epochs: 200
 batch_size: 2048

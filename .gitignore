@@ -70,3 +70,4 @@ NAS/nni/checkpoints/*
 NAS/ofa_cifar10/data/*
 NAS/cvpr21_nas_track1/data/cifar-100-python/*
 NAS/cvpr21_nas_track1/Track1_Submit/data/cifar-100-python/*
+NAS/cifar100/data/cifar-100-python/*

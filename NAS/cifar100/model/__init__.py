@@ -8,6 +8,9 @@ from .resnet20 import *
 from .sample_resnet20 import *
 from .slimmable_resnet20 import *
 from .supernet import *
+from .densenet import *
+from .senet import *
+from .googlenet import *
 
 __model_factory = {
     'dynamic': dynamic_resnet20,
@@ -15,7 +18,11 @@ __model_factory = {
     'original': resnet20,
     'sample': sample_resnet20,
     'slimmable': slimmable_resnet20,
-    'super': SuperNet
+    'super': SuperNet,
+    'densenet': densenet_cifar,
+    'senet': senet18_cifar,
+    'googlenet': GoogLeNet,
+    
 }
 
 
@@ -32,4 +39,4 @@ def build_model(name, num_classes=100):
         raise KeyError(
             'Unknown model: {}. Must be one of {}'.format(name, avai_models)
         )
-    return __model_factory[name]()
+    return __model_factory[name](num_classes=num_classes)

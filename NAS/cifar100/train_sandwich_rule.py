@@ -47,6 +47,7 @@ parser.add_argument('--finetune', action='store_true',
                     help='finetune model with distill')
 parser.add_argument('--distill', action="store_true",
                     help="finetune model with track_200.json")
+parser.add_argument('--dataset', type=str, default="cifar10" , help="training dataset cifar10 or cifar100")
 
 # hyper parameter
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
