@@ -126,5 +126,3 @@ def test():
     net = senet18_cifar()
     y = net(torch.randn(1, 3, 32, 32))
     print(y.size())
-
-# test()

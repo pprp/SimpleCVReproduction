@@ -20,7 +20,7 @@ from torch.optim import lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from datasets.cifar100_dataset import get_train_loader, get_val_loader
+from datasets.dataset import get_train_loader, get_val_loader
 # from model.slimmable_resnet20 import mutableResNet20
 from model.dynamic_resnet20 import dynamic_resnet20
 from model.resnet20 import resnet20

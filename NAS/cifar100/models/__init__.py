@@ -1,7 +1,5 @@
 from __future__ import absolute_import
 
-import torch
-
 from .densenet import *
 from .dla import *
 from .dynamic_resnet20 import *

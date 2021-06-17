@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 from torchvision import transforms as T
-from torchvision.datasets.cifar import CIFAR100, CIFAR10
 from torchvision.transforms import transforms
 
 CIFAR10_MEAN = [0.4914, 0.4822, 0.4465]
@@ -33,3 +32,56 @@ class Cutout(object):
 
         return img
 
+
+class DatasetTransforms:
+    def __init__(self, clss, cutout=0):
+        if clss == 'cifar10':
+            self.mean = CIFAR10_MEAN
+            self.std = CIFAR10_STD
+        elif clss == 'cifar100':
+            self.mean = CIFAR100_MEAN
+            self.std = CIFAR100_STD
+        else:
+            print("Not Support %s dataset." % clss)
+        self.cutout = 0
+
+    def _get_cutout(self):
+        if self.cutout == 0:
+            return None
+        else:
+            return Cutout(self.cutout)
+
+    def _get_default_transforms(self):
+        default_configure = T.Compose([
+            T.RandomCrop(32, 4),
+            T.RandomHorizontalFlip(),
+            T.RandomResizedCrop((32, 32)),  # for cifar10 or cifar100
+            T.RandomRotation(15)
+        ])
+        return default_configure
+
+    def get_train_transforms(self):
+        default_conf = self._get_default_transforms()
+        cutout = self._get_cutout()
+        if cutout is None:
+            train_transform = T.Compose([default_conf,
+                                         T.ToTensor(),
+                                         T.Normalize(self.mean, self.std)
+                                         ])
+        else:
+
+            train_transform = T.Compose([default_conf,
+                                         T.ToTensor(),
+                                         cutout,
+                                         T.Normalize(self.mean, self.std)
+                                         ])
+
+        return train_transform
+
+    def get_val_transform(self):
+        val_transform = T.Compose([
+            T.ToTensor(),
+            T.Normalize(self.mean, self.std)
+        ])
+
+        return val_transform

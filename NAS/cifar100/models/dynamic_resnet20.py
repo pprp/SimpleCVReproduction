@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 
-from .modules.dynamic_modules import (DynamicBatchNorm2d, DynamicConv2d,
+from .modules.dynamic_modules import (DynamicConv2d, DynamicBatchNorm2d,
                                       DynamicLinear)
 
 __all__ = ['dynamic_resnet20']

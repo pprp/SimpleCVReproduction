@@ -12,19 +12,14 @@ import time
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import yaml
-from torch import nn
 from torch.autograd import Variable
-from torch.optim import lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-import model as mm
-from datasets.dataset import get_train_loader, get_val_loader
-from utils.utils import (ArchLoader, AvgrageMeter, CrossEntropyLossSoft,
+import models
+from datasets.dataset import get_train_loader, get_val_loader, ArchLoader
+from utils.utils import (AvgrageMeter, CrossEntropyLossSoft,
                          accuracy, create_exp_dir, reduce_mean,
                          save_checkpoint)
 
@@ -34,13 +29,13 @@ parser = argparse.ArgumentParser("ResNet20-cifar100")
 
 parser.add_argument('--local_rank', type=int, default=0,
                     help='local rank for distributed training')
-parser.add_argument('--batch_size', type=int, default=2048,
+parser.add_argument('--batch_size', type=int, default=128,
                     help='batch size')  # 8192
 parser.add_argument('--learning_rate', type=float,
                     default=0.1, help='init learning rate')  # 0.8
 parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
-parser.add_argument('--model-type', type=str, default="sample",
+parser.add_argument('--model-type', type=str, default="densenet",
                     help="type of model(sample masked dynamic independent slimmable original)")
 
 parser.add_argument('--finetune', action='store_true',
@@ -71,7 +66,7 @@ parser.add_argument('--label_smooth', type=float,
 parser.add_argument('--config', help="configuration file",
                     type=str, default="configs/meta.yml")
 parser.add_argument('--save_dir', type=str,
-                    help="save exp floder name", default="exp1_sandwich")
+                    help="save exp floder name", default="densenet")
 args = parser.parse_args()
 
 # process argparse & yaml
@@ -133,7 +128,7 @@ def main():
 
     logging.info('gpu device = %d' % args.gpu)
 
-    model = mm.build_model(args.model_type)
+    model = models.build_model(args.model_type)
 
     if args.finetune:
         checkpoint = torch.load("./weights/2021Y_05M_31D_07H_0329/checkpoint-latest.pth.tar",
@@ -164,21 +159,22 @@ def main():
 
     # Prepare data
     train_loader = get_train_loader(
-        args.batch_size, args.local_rank, args.num_workers)
-    # 原来跟train batch size一样，现在修改小一点 ，
-    val_loader = get_val_loader(args.batch_size, args.num_workers)
+        args.batch_size, args.num_workers, args.dataset, cutout=0)
+
+    val_loader = get_val_loader(
+        args.batch_size, args.num_workers, args.dataset)
 
     archloader = ArchLoader("data/track_200.json")
 
     for epoch in range(args.epochs):
-        train_lu_shun(train_loader, val_loader,  optimizer, scheduler, model,
-                      archloader, criterion, soft_criterion, args, args.seed, epoch, writer)
+        train(train_loader, val_loader,  optimizer, scheduler, model,
+              archloader, criterion, soft_criterion, args, args.seed, epoch, writer)
 
         writer.add_scalar("lr", scheduler.get_last_lr()[0], epoch)
 
         scheduler.step()
         if (epoch + 1) % args.report_freq == 0:
-            top1_val, objs_val = infer(train_loader, val_loader, model, criterion,
+            top1_val, objs_val = valid(train_loader, val_loader, model, criterion,
                                        archloader, args, epoch)
 
             if args.local_rank == 0:
@@ -281,10 +277,6 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
     inplace_distillation = True
 
     model.train()
-    widest = [16, 16, 16, 16, 16, 16, 16, 32, 32,
-              32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64]
-    narrowest = [4,  4,  4, 4,  4,  4,  4,  4, 4,
-                 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
 
     train_loader = tqdm(train_dataloader)
     train_loader.set_description(
@@ -297,50 +289,13 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
         target = Variable(target, requires_grad=False).cuda(
             args.gpu, non_blocking=True)
 
-        if args.model_type in ["dynamic", "independent", "slimmable"]:
-            # sandwich rule
-            candidate_list = []
-            candidate_list += [archloader.generate_spos_like_batch().tolist()
-                               for i in range(6)]
-            candidate_list += [narrowest]
+        logits = model(image)
+        loss = criterion(logits, target)
+        loss.backward()
 
-            # archloader.generate_niu_fair_batch(step)
-            # 全模型来一遍
-            soft_target = model(image, widest)
-            soft_loss = criterion(soft_target, target)
-            soft_loss.backward()
-
-            # 采样几个子网来一遍
-            for arc in candidate_list:
-                logits = model(image, arc)
-                # loss = soft_criterion(logits, soft_target.cuda(
-                #     args.gpu, non_blocking=True))
-                if inplace_distillation:
-                    T = 1  # temperature in knowledge distillation 2 10 20
-
-                    soft_target = torch.nn.functional.softmax(
-                        soft_target/T, dim=1).detach()
-
-                    loss = 0.5 * \
-                        torch.mean(soft_criterion(logits, soft_target)
-                                   ) + 0.5 * criterion(logits, target)
-                else:
-                    loss = criterion(logits, target)
-
-                loss.backward()
-
-            prec1, _ = accuracy(logits, target, topk=(1, 5))
-            losses_.update(loss.data.item(), n)
-            top1_.update(prec1.data.item(), n)
-
-        elif args.model_type == "original":
-            logits = model(image)
-            loss = criterion(logits, target)
-            loss.backward()
-
-            prec1, _ = accuracy(logits, target, topk=(1, 5))
-            losses_.update(loss.data.item(), n)
-            top1_.update(prec1.data.item(), n)
+        prec1, _ = accuracy(logits, target, topk=(1, 5))
+        losses_.update(loss.data.item(), n)
+        top1_.update(prec1.data.item(), n)
 
         if torch.cuda.device_count() > 1:
             torch.distributed.barrier()
@@ -360,6 +315,9 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
                               len(train_dataloader) * epoch * args.batch_size)
             writer.add_scalar("Train/acc1", top1_.avg, step +
                               len(train_dataloader) * epoch * args.batch_size)
+
+        logging.info('{} |=> Train loss = {} Train acc = {}'.format(
+            losses_.avg, top1_.avg))
 
 
 def infer(train_loader, val_loader, model, criterion,  archloader, args, epoch):
@@ -389,6 +347,44 @@ def infer(train_loader, val_loader, model, criterion,  archloader, args, epoch):
                 args.local_rank, non_blocking=True)
 
             logits = model(image, fair_arc_list)
+            loss = criterion(logits, target)
+
+            top1, _ = accuracy(logits, target, topk=(1, 5))
+
+            if torch.cuda.device_count() > 1:
+                torch.distributed.barrier()
+                loss = reduce_mean(loss, args.nprocs)
+                top1 = reduce_mean(top1, image.size(0))
+                top5 = reduce_mean(top5, image.size(0))
+
+            n = image.size(0)
+            objs_.update(loss.data.item(), n)
+            top1_.update(top1.data.item(), n)
+
+        now = time.strftime('%Y-%m-%d %H:%M:%S',
+                            time.localtime(time.time()))
+        logging.info('{} |=> valid: step={}, loss={:.2f}, val_acc1={:.2f}, datatime={:.2f}'.format(
+            now, step, objs_.avg, top1_.avg, datatime))
+
+    return top1_.avg, objs_.avg
+
+
+def valid(train_loader, val_loader, model, criterion,  archloader, args, epoch):
+    objs_, top1_ = AvgrageMeter(), AvgrageMeter()
+
+    model.eval()
+    now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+
+    with torch.no_grad():
+        for step, (image, target) in enumerate(val_loader):
+            t0 = time.time()
+            datatime = time.time() - t0
+            image = Variable(image, requires_grad=False).cuda(
+                args.local_rank, non_blocking=True)
+            target = Variable(target, requires_grad=False).cuda(
+                args.local_rank, non_blocking=True)
+
+            logits = model(image)
             loss = criterion(logits, target)
 
             top1, _ = accuracy(logits, target, topk=(1, 5))
