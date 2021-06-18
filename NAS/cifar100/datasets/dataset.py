@@ -176,7 +176,7 @@ def get_train_loader(batch_size, num_workers, clss='cifar10', cutout=0):
     # 3. get dataloader
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, num_workers=num_workers, pin_memory=True, batch_size=batch_size, drop_last=True)
+        train_dataset, num_workers=num_workers, pin_memory=True, batch_size=batch_size, drop_last=True, shuffle=True)
 
     return train_loader
 

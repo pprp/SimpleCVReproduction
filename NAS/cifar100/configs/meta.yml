@@ -27,11 +27,11 @@ save_dir: record
 dataset: cifar100
 # support cifar100 or cifar10
 
-epochs: 200
+epochs: 300
 batch_size: 2048
-learning_rate: 0.1 
+learning_rate: 0.1
 num_workers: 3
-model_type: sample
+model_type: dla
 finetune: false 
 distill: false
 
@@ -41,7 +41,6 @@ seed: 0
 
 report_freq: 2
 gpu: 0
-classes: 100
 
 # 算法细节
 sandwich_N: 3

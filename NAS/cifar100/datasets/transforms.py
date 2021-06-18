@@ -33,6 +33,8 @@ class Cutout(object):
         return img
 
 
+
+
 class DatasetTransforms:
     def __init__(self, clss, cutout=0):
         if clss == 'cifar10':
@@ -55,8 +57,8 @@ class DatasetTransforms:
         default_configure = T.Compose([
             T.RandomCrop(32, 4),
             T.RandomHorizontalFlip(),
-            T.RandomResizedCrop((32, 32)),  # for cifar10 or cifar100
-            T.RandomRotation(15)
+            # T.RandomResizedCrop((32, 32)),  # for cifar10 or cifar100
+            # T.RandomRotation(15)
         ])
         return default_configure
 

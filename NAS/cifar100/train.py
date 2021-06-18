@@ -25,17 +25,17 @@ from utils.utils import (AvgrageMeter, CrossEntropyLossSoft,
 
 print = functools.partial(print, flush=True)
 
-parser = argparse.ArgumentParser("ResNet20-cifar100")
+parser = argparse.ArgumentParser("cifar")
 
 parser.add_argument('--local_rank', type=int, default=0,
                     help='local rank for distributed training')
-parser.add_argument('--batch_size', type=int, default=128,
+parser.add_argument('--batch_size', type=int, default=256,
                     help='batch size')  # 8192
 parser.add_argument('--learning_rate', type=float,
                     default=0.1, help='init learning rate')  # 0.8
 parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
-parser.add_argument('--model-type', type=str, default="densenet",
+parser.add_argument('--model-type', type=str, default="resnet50",
                     help="type of model(sample masked dynamic independent slimmable original)")
 
 parser.add_argument('--finetune', action='store_true',
@@ -51,9 +51,9 @@ parser.add_argument('--weight_decay', type=float,
                     default=5e-4, help='weight decay')
 
 parser.add_argument('--report_freq', type=float,
-                    default=2, help='report frequency')
+                    default=5, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
-parser.add_argument('--epochs', type=int, default=200,
+parser.add_argument('--epochs', type=int, default=300,
                     help='num of training epochs')
 
 parser.add_argument('--classes', type=int, default=100,
@@ -66,7 +66,7 @@ parser.add_argument('--label_smooth', type=float,
 parser.add_argument('--config', help="configuration file",
                     type=str, default="configs/meta.yml")
 parser.add_argument('--save_dir', type=str,
-                    help="save exp floder name", default="densenet")
+                    help="save exp floder name", default="resnet50")
 args = parser.parse_args()
 
 # process argparse & yaml
@@ -155,7 +155,7 @@ def main():
                                 weight_decay=args.weight_decay)
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, 200, eta_min=0.0005)
+        optimizer, 300, eta_min=0.0005)
 
     # Prepare data
     train_loader = get_train_loader(
@@ -316,8 +316,11 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
             writer.add_scalar("Train/acc1", top1_.avg, step +
                               len(train_dataloader) * epoch * args.batch_size)
 
-        logging.info('{} |=> Train loss = {} Train acc = {}'.format(
-            losses_.avg, top1_.avg))
+        now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+
+        if step % 10 == 0:
+            logging.info('{} |=> Train loss = {} Train acc = {}'.format(now,
+                                                                        losses_.avg, top1_.avg))
 
 
 def infer(train_loader, val_loader, model, criterion,  archloader, args, epoch):

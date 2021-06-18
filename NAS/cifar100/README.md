@@ -14,6 +14,7 @@
 - [ ] experimental results on cifar100 and cifar10
 - [ ] distributed data parrallel to support
 - [ ] support transformer models
+- [ ] support differenet datasets such as tiny imagenet
 
 ## Get Started
 
@@ -26,8 +27,28 @@
 Training Details:
 
 - total epoch: 300 
-- lr scheduler: 
-- weight decay: 
+- lr scheduler: CosineAnnealingLR
+- weight decay: 5e-4
+
+### CIFAR10
+
+| Network        | Params(M) | Train loss | Train top1 | Val loss | Val top1 | Hyper              | GPU(M) |
+| -------------- | --------- | ---------- | ---------- | -------- | -------- | ------------------ | ------ |
+| densenet_cifar | 4.4       | 0.00156    | 99.99%     | 0.24     | 94.83%   | 0.1/256/w/o cutout | 7303   |
+| dla            | 63        | 0.00164    | 99.99%     | 0.20     | 95.57%   | 0.1/256/w/o cutout | 5555   |
+|                |           |            |            |          |          |                    |        |
+|                |           |            |            |          |          |                    |        |
+|                |           |            |            |          |          |                    |        |
+|                |           |            |            |          |          |                    |        |
+|                |           |            |            |          |          |                    |        |
+|                |           |            |            |          |          |                    |        |
+|                |           |            |            |          |          |                    |        |
+
+
+
+
+
+### CIFAR100
 
 | dataset  | network            | params | top1 err | top5 err | epoch(lr = 0.1) | epoch(lr = 0.02) | epoch(lr = 0.004) | epoch(lr = 0.0008) | total epoch |
 | -------- | ------------------ | ------ | -------- | -------- | --------------- | ---------------- | ----------------- | ------------------ | ----------- |
