@@ -1,4 +1,7 @@
 from __future__ import absolute_import
+from models.xception import xception
+from models.stochasticdepth import stochastic_depth_resnet101, stochastic_depth_resnet152, stochastic_depth_resnet18, stochastic_depth_resnet34, stochastic_depth_resnet50
+from models.squeezenet import squeezenet
 
 from .densenet import *
 from .dla import *
@@ -22,6 +25,17 @@ from .shufflenetv2 import *
 from .slimmable_resnet20 import *
 from .supernet import *
 from .vgg import *
+from .attention import *
+from .inceptionv3 import *
+from .inceptionv4 import *
+from .nasnet import *
+from .rir import *
+from .stochasticdepth import *
+from .wideresidual import * 
+from .xception import * 
+
+
+
 
 __model_factory = {
     'dynamic': dynamic_resnet20,
@@ -47,7 +61,22 @@ __model_factory = {
     'preact_resnet': PreActResNet18,
     'regnet': RegNetX_200MF,
     'resnext': ResNeXt29_2x64d,
-    'vgg': vgg11
+    'vgg': vgg11,
+    'attention56': attention56,
+    'attention92': attention92,
+    'inceptionv3': inceptionv3,
+    'inceptionv4': inceptionv4,
+    'inception_resnet_v2': inception_resnet_v2,
+    'nasnet': nasnet,
+    'rir': resnet_in_resnet,
+    'squeezenet': squeezenet,
+    'stochastic_depth_resnet18': stochastic_depth_resnet18,
+    'stochastic_depth_resnet34': stochastic_depth_resnet34,
+    'stochastic_depth_resnet50': stochastic_depth_resnet50,
+    'stochastic_depth_resnet101': stochastic_depth_resnet101,
+    'stochastic_depth_resnet152': stochastic_depth_resnet152,
+    'wideresnet':wideresnet,
+    'xception': xception
 }
 
 

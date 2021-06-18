@@ -35,7 +35,7 @@ parser.add_argument('--learning_rate', type=float,
                     default=0.1, help='init learning rate')  # 0.8
 parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
-parser.add_argument('--model-type', type=str, default="resnet50",
+parser.add_argument('--model-type', type=str, default="attention56",
                     help="type of model(sample masked dynamic independent slimmable original)")
 
 parser.add_argument('--finetune', action='store_true',
@@ -66,7 +66,7 @@ parser.add_argument('--label_smooth', type=float,
 parser.add_argument('--config', help="configuration file",
                     type=str, default="configs/meta.yml")
 parser.add_argument('--save_dir', type=str,
-                    help="save exp floder name", default="resnet50")
+                    help="save exp floder name", default="attention56")
 args = parser.parse_args()
 
 # process argparse & yaml

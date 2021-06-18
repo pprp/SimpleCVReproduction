@@ -1,0 +1,4 @@
+#* linguist-vendored
+#*.py linguist-vendored=false
+# https://stackoverflow.com/questions/34713765/github-changes-repository-to-wrong-language
+miscs/* linguist-vendored
