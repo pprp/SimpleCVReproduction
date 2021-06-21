@@ -32,8 +32,13 @@ batch_size: 2048
 learning_rate: 0.1
 num_workers: 3
 model_type: dla
-finetune: false 
+finetune: false
 distill: false
+
+# data augmentation
+cutout: 0.5
+mixup: true
+mixup_alpha: 0.4
 
 momentum: 0.9
 weight_decay: 0.0005
@@ -44,6 +49,3 @@ gpu: 0
 
 # 算法细节
 sandwich_N: 3
-
-
-

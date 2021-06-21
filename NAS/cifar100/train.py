@@ -19,9 +19,10 @@ from tqdm import tqdm
 
 import models
 from datasets.dataset import get_train_loader, get_val_loader, ArchLoader
+from datasets.transforms import mixup_data
 from utils.utils import (AvgrageMeter, CrossEntropyLossSoft,
                          accuracy, create_exp_dir, reduce_mean,
-                         save_checkpoint)
+                         save_checkpoint, mixup_criterion, mixup_accuracy)
 
 print = functools.partial(print, flush=True)
 
@@ -50,6 +51,9 @@ parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float,
                     default=5e-4, help='weight decay')
 parser.add_argument('--cutout', type=float, default=0, help='cutout rate')
+parser.add_argument('--mixup', action='store_true', help="use mixup or not")
+parser.add_argument('--mixup_alpha', type=float,
+                    default=0.4, help="alpha in mixup")
 
 parser.add_argument('--report_freq', type=float,
                     default=25, help='report frequency')
@@ -67,7 +71,7 @@ parser.add_argument('--label_smooth', type=float,
 parser.add_argument('--config', help="configuration file",
                     type=str, default="configs/meta.yml")
 parser.add_argument('--save_dir', type=str,
-                    help="save exp floder name", default="resnet50_cutout")
+                    help="save exp floder name", default="resnet50_mixup")
 args = parser.parse_args()
 
 # process argparse & yaml
@@ -119,6 +123,7 @@ def main():
     num_gpus = torch.cuda.device_count()
     np.random.seed(args.seed)
     args.gpu = args.local_rank % num_gpus
+    args.device = torch.device('cuda')
     args.nprocs = num_gpus
     torch.cuda.set_device(args.gpu)
     cudnn.benchmark = True
@@ -290,13 +295,24 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
         target = Variable(target, requires_grad=False).cuda(
             args.gpu, non_blocking=True)
 
-        logits = model(image)
-        loss = criterion(logits, target)
-        loss.backward()
+        if args.mixup:
+            images, targets_a, targets_b, lam = mixup_data(
+                image, target, args.mixup_alpha, args.device)
+            logits = model(images)
+            loss = mixup_criterion(
+                criterion, logits, targets_a, targets_b, lam)
+            prec1 = mixup_accuracy(
+                logits, targets_a, targets_b, lam, topk=(1,))
+            top1_.update(prec1, n)
 
-        prec1, _ = accuracy(logits, target, topk=(1, 5))
+        else:
+            logits = model(image)
+            loss = criterion(logits, target)
+            loss.backward()
+            prec1 = accuracy(logits, target, topk=(1,))[0]
+            top1_.update(prec1.data.item(), n)
+
         losses_.update(loss.data.item(), n)
-        top1_.update(prec1.data.item(), n)
 
         if torch.cuda.device_count() > 1:
             torch.distributed.barrier()

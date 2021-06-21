@@ -8,6 +8,10 @@ import numpy as np
 import shutil
 
 
+def mixup_criterion(criterion, pred, y_a, y_b, lam):
+    return lam * criterion(pred, y_a) + (1-lam) * criterion(pred, y_b)
+
+
 class Cutout(object):
     def __init__(self, length):
         self.length = length
@@ -157,6 +161,21 @@ class AvgrageMeter(object):
         self.sum += val * n
         self.cnt += n
         self.avg = self.sum / self.cnt
+
+
+def mixup_accuracy(output, target_a, target_b, lam, topk=(1,)):
+    maxk = max(topk)
+    batch_size = target_a.size(0)
+
+    _, pred = output.topk(maxk, 1, True, True)
+    pred = pred.t()
+
+    correct = lam * pred.eq(target_a).sum().item() + \
+        (1-lam) * pred.eq(target_b).sum().item()
+
+    res = correct * 100.0 / batch_size
+
+    return res
 
 
 def accuracy(output, target, topk=(1,)):

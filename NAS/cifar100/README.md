@@ -43,9 +43,9 @@ Training Details:
 | resnet50        | 91        | 0.00105    | 100.0%     | 0.19     | 95.74%   | 0.1/256/w/o cutout  | 10895  |
 | attention52     | 214       | 0.00109    | 99.99%     | 0.49     | 90.62%   | 0.01/256/w/o cutout | 5691   |
 | dpn26           | 45        | 0.00195    | 100.0%     | 0.16     | 95.43%   | 0.1/256/w/o cutout  | 10260  |
-| resnet50_cutout | 91        |            |            |          |          | 0.1/128/ cutout=0.5 | 10895  |
-| efficientnetb0  |           | 0.02396    | 99.32%     | 0.35     | 91.52%   | 0.1/128/w/o cutout  | 3961   |
-|                 |           |            |            |          |          |                     |        |
+| resnet50_cutout | 91        | 0.00103    | 100.0%     | 0.18     | 95.87%   | 0.1/128/ cutout=0.5 | 10895  |
+| efficientnetb0  | 15        | 0.02396    | 99.32%     | 0.35     | 91.52%   | 0.1/128/w/o cutout  | 3961   |
+| googlenet       |           |            |            |          |          | 0.1/128/w/o cutout  | 7689   |
 |                 |           |            |            |          |          |                     |        |
 
 
@@ -100,8 +100,9 @@ Training Details:
 
 
 
-
 ## Thanks
+
+很好的参考：https://github.com/BIGBALLON/CIFAR-ZOO/
 
 https://github.com/KaiyangZhou/deep-person-reid
 

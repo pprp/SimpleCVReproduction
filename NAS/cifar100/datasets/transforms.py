@@ -10,6 +10,7 @@ CIFAR100_MEAN = [0.5071, 0.4865, 0.4409]
 CIFAR100_STD = [0.1942, 0.1918, 0.1958]
 
 
+# cutout
 class Cutout(object):
     def __init__(self, length):
         self.length = length
@@ -32,7 +33,24 @@ class Cutout(object):
 
         return img
 
+# mixup
 
+
+def mixup_data(x, y, alpha, device):
+    """return mixed inputs"""
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1
+
+    bs = x.size()[0]
+    index = torch.randperm(bs).to(device)
+
+    mixed_x = lam * x + (1-lam) * x[index, :]
+
+    y_a, y_b = y, y[index]
+
+    return mixed_x, y_a, y_b, lam
 
 
 class DatasetTransforms:
