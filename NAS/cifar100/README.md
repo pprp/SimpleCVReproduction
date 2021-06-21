@@ -7,10 +7,14 @@
 - [x] support channel search for resnet20
 - [x] support artificial design model such as resnet, densenet, mobilenet,shufflenet,DLA,DPN etc. 
 - [ ] support automl models such as regnet, pnasnet
-- [ ] support tricks
+- [ ] support data augmentation tricks:
 	- [ ] Cutout
 	- [ ] AutoAugmentation
 	- [ ] Shake-Shake
+	- [ ] Mixup
+	- [ ] random erasing
+	- [ ] auto-augment
+	- [ ] rand-augment
 - [ ] experimental results on cifar100 and cifar10
 - [ ] distributed data parrallel to support
 - [ ] support transformer models
@@ -32,17 +36,17 @@ Training Details:
 
 ### CIFAR10
 
-| Network        | Params(M) | Train loss | Train top1 | Val loss | Val top1 | Hyper              | GPU(M) |
-| -------------- | --------- | ---------- | ---------- | -------- | -------- | ------------------ | ------ |
-| densenet_cifar | 4.4       | 0.00156    | 99.99%     | 0.24     | 94.83%   | 0.1/256/w/o cutout | 7303   |
-| dla            | 63        | 0.00164    | 99.99%     | 0.20     | 95.57%   | 0.1/256/w/o cutout | 5555   |
-| resnet50       | 91        | 0.00105    | 100.0%     | 0.19     | 95.74%   | 0.1/256/w/o cutout | 10895  |
-| attention52    |           |            |            |          |          |                    | 5691   |
-|                |           |            |            |          |          |                    |        |
-|                |           |            |            |          |          |                    |        |
-|                |           |            |            |          |          |                    |        |
-|                |           |            |            |          |          |                    |        |
-|                |           |            |            |          |          |                    |        |
+| Network         | Params(M) | Train loss | Train top1 | Val loss | Val top1 | Hyper               | GPU(M) |
+| --------------- | --------- | ---------- | ---------- | -------- | -------- | ------------------- | ------ |
+| densenet_cifar  | 4.4       | 0.00156    | 99.99%     | 0.24     | 94.83%   | 0.1/256/w/o cutout  | 7303   |
+| dla             | 63        | 0.00164    | 99.99%     | 0.20     | 95.57%   | 0.1/256/w/o cutout  | 5555   |
+| resnet50        | 91        | 0.00105    | 100.0%     | 0.19     | 95.74%   | 0.1/256/w/o cutout  | 10895  |
+| attention52     | 214       | 0.00109    | 99.99%     | 0.49     | 90.62%   | 0.01/256/w/o cutout | 5691   |
+| dpn26           | 45        | 0.00195    | 100.0%     | 0.16     | 95.43%   | 0.1/256/w/o cutout  | 10260  |
+| resnet50_cutout | 91        |            |            |          |          | 0.1/128/ cutout=0.5 | 10895  |
+| efficientnetb0  |           | 0.02396    | 99.32%     | 0.35     | 91.52%   | 0.1/128/w/o cutout  | 3961   |
+|                 |           |            |            |          |          |                     |        |
+|                 |           |            |            |          |          |                     |        |
 
 
 

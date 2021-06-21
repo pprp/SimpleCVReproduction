@@ -29,13 +29,13 @@ parser = argparse.ArgumentParser("cifar")
 
 parser.add_argument('--local_rank', type=int, default=0,
                     help='local rank for distributed training')
-parser.add_argument('--batch_size', type=int, default=256,
+parser.add_argument('--batch_size', type=int, default=128,
                     help='batch size')  # 8192
 parser.add_argument('--learning_rate', type=float,
                     default=0.1, help='init learning rate')  # 0.8
 parser.add_argument('--num_workers', type=int,
                     default=3, help='num of workers')
-parser.add_argument('--model-type', type=str, default="attention56",
+parser.add_argument('--model-type', type=str, default="resnet50",
                     help="type of model(sample masked dynamic independent slimmable original)")
 
 parser.add_argument('--finetune', action='store_true',
@@ -49,14 +49,15 @@ parser.add_argument('--dataset', type=str, default="cifar10",
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float,
                     default=5e-4, help='weight decay')
+parser.add_argument('--cutout', type=float, default=0, help='cutout rate')
 
 parser.add_argument('--report_freq', type=float,
-                    default=5, help='report frequency')
+                    default=25, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
 parser.add_argument('--epochs', type=int, default=300,
                     help='num of training epochs')
 
-parser.add_argument('--classes', type=int, default=100,
+parser.add_argument('--classes', type=int, default=10,
                     help='number of classes')
 parser.add_argument('--seed', type=int, default=0, help='random seed')
 parser.add_argument('--grad_clip', type=float,
@@ -66,7 +67,7 @@ parser.add_argument('--label_smooth', type=float,
 parser.add_argument('--config', help="configuration file",
                     type=str, default="configs/meta.yml")
 parser.add_argument('--save_dir', type=str,
-                    help="save exp floder name", default="attention56")
+                    help="save exp floder name", default="resnet50_cutout")
 args = parser.parse_args()
 
 # process argparse & yaml
@@ -128,7 +129,7 @@ def main():
 
     logging.info('gpu device = %d' % args.gpu)
 
-    model = models.build_model(args.model_type)
+    model = models.build_model(args.model_type, num_classes=args.classes)
 
     if args.finetune:
         checkpoint = torch.load("./weights/2021Y_05M_31D_07H_0329/checkpoint-latest.pth.tar",
@@ -159,7 +160,7 @@ def main():
 
     # Prepare data
     train_loader = get_train_loader(
-        args.batch_size, args.num_workers, args.dataset, cutout=0)
+        args.batch_size, args.num_workers, args.dataset, cutout=args.cutout)
 
     val_loader = get_val_loader(
         args.batch_size, args.num_workers, args.dataset)

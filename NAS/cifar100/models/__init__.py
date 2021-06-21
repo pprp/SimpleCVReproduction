@@ -1,41 +1,44 @@
 from __future__ import absolute_import
-from models.xception import xception
-from models.stochasticdepth import stochastic_depth_resnet101, stochastic_depth_resnet152, stochastic_depth_resnet18, stochastic_depth_resnet34, stochastic_depth_resnet50
-from models.squeezenet import squeezenet
 
+from models.squeezenet import squeezenet
+from models.stochasticdepth import (stochastic_depth_resnet18,
+                                    stochastic_depth_resnet34,
+                                    stochastic_depth_resnet50,
+                                    stochastic_depth_resnet101,
+                                    stochastic_depth_resnet152)
+from models.xception import xception
+
+from .attention import *
 from .densenet import *
 from .dla import *
 from .dynamic_resnet20 import *
 from .efficientnetb0 import *
 from .googlenet import *
+from .inceptionv3 import *
+from .inceptionv4 import *
 from .lenet import *
 from .masked_resnet20 import *
 from .mobilenet import *
 from .mobilenetv2 import *
+from .nasnet import *
 from .pnasnet import *
 from .preact_resnet import *
 from .regnet import *
 from .resnet import *
 from .resnet20 import *
 from .resnext import *
+from .rir import *
 from .sample_resnet20 import *
 from .senet import *
 from .shufflenet import *
 from .shufflenetv2 import *
 from .slimmable_resnet20 import *
+from .stochasticdepth import *
 from .supernet import *
 from .vgg import *
-from .attention import *
-from .inceptionv3 import *
-from .inceptionv4 import *
-from .nasnet import *
-from .rir import *
-from .stochasticdepth import *
-from .wideresidual import * 
-from .xception import * 
-
-
-
+from .wideresidual import *
+from .xception import *
+from .dpn import DPN26
 
 __model_factory = {
     'dynamic': dynamic_resnet20,
@@ -76,7 +79,8 @@ __model_factory = {
     'stochastic_depth_resnet101': stochastic_depth_resnet101,
     'stochastic_depth_resnet152': stochastic_depth_resnet152,
     'wideresnet':wideresnet,
-    'xception': xception
+    'xception': xception,
+    'dpn':DPN26
 }
 
 
