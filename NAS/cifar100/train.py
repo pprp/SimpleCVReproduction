@@ -53,10 +53,10 @@ parser.add_argument('--weight_decay', type=float,
 parser.add_argument('--cutout', type=float, default=0, help='cutout rate')
 parser.add_argument('--mixup', action='store_true', help="use mixup or not")
 parser.add_argument('--mixup_alpha', type=float,
-                    default=0.4, help="alpha in mixup")
+                    default=1., help="alpha in mixup")
 
 parser.add_argument('--report_freq', type=float,
-                    default=25, help='report frequency')
+                    default=100, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
 parser.add_argument('--epochs', type=int, default=300,
                     help='num of training epochs')
@@ -179,10 +179,9 @@ def main():
         writer.add_scalar("lr", scheduler.get_last_lr()[0], epoch)
 
         scheduler.step()
-        if (epoch + 1) % args.report_freq == 0:
+        if (epoch + 1) % 2 == 0:
             top1_val, objs_val = valid(train_loader, val_loader, model, criterion,
                                        archloader, args, epoch)
-
             if args.local_rank == 0:
                 # model
                 if writer is not None:
@@ -296,11 +295,17 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
             args.gpu, non_blocking=True)
 
         if args.mixup:
-            images, targets_a, targets_b, lam = mixup_data(
-                image, target, args.mixup_alpha, args.device)
-            logits = model(images)
+            inputs, targets_a, targets_b, lam = mixup_data(
+                image, target, args.mixup_alpha)
+
+            inputs, targets_a, targets_b = map(
+                Variable, (inputs, targets_a, targets_b))
+
+            logits = model(inputs)
+
             loss = mixup_criterion(
                 criterion, logits, targets_a, targets_b, lam)
+
             prec1 = mixup_accuracy(
                 logits, targets_a, targets_b, lam, topk=(1,))
             top1_.update(prec1, n)
@@ -308,7 +313,6 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
         else:
             logits = model(image)
             loss = criterion(logits, target)
-            loss.backward()
             prec1 = accuracy(logits, target, topk=(1,))[0]
             top1_.update(prec1.data.item(), n)
 
@@ -319,15 +323,16 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
             loss = reduce_mean(loss, args.nprocs)
             prec1 = reduce_mean(prec1, args.nprocs)
 
-        optimizer.step()
         optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
         postfix = {'train_loss': '%.6f' % (
             losses_.avg), 'train_acc1': '%.6f' % top1_.avg}
 
         train_loader.set_postfix(log=postfix)
 
-        if args.local_rank == 0 and step % 10 == 0 and writer is not None:
+        if args.local_rank == 0 and step % args.report_freq == 0 and writer is not None:
             writer.add_scalar("Train/loss", losses_.avg, step +
                               len(train_dataloader) * epoch * args.batch_size)
             writer.add_scalar("Train/acc1", top1_.avg, step +
@@ -335,7 +340,7 @@ def train(train_dataloader, val_dataloader, optimizer, scheduler, model, archloa
 
         now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
 
-        if step % 10 == 0:
+        if step % args.report_freq == 0:
             logging.info('{} |=> Train loss = {} Train acc = {}'.format(now,
                                                                         losses_.avg, top1_.avg))
 

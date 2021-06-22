@@ -164,14 +164,11 @@ class AvgrageMeter(object):
 
 
 def mixup_accuracy(output, target_a, target_b, lam, topk=(1,)):
-    maxk = max(topk)
     batch_size = target_a.size(0)
+    _, pred = torch.max(output.data, 1)
 
-    _, pred = output.topk(maxk, 1, True, True)
-    pred = pred.t()
-
-    correct = lam * pred.eq(target_a).sum().item() + \
-        (1-lam) * pred.eq(target_b).sum().item()
+    correct = lam * pred.eq(target_a).cpu().sum().float() + \
+        (1-lam) * pred.eq(target_b).cpu().sum().float()
 
     res = correct * 100.0 / batch_size
 

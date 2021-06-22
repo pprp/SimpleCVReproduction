@@ -36,7 +36,7 @@ class Cutout(object):
 # mixup
 
 
-def mixup_data(x, y, alpha, device):
+def mixup_data(x, y, alpha=1.0):
     """return mixed inputs"""
     if alpha > 0:
         lam = np.random.beta(alpha, alpha)
@@ -44,7 +44,8 @@ def mixup_data(x, y, alpha, device):
         lam = 1
 
     bs = x.size()[0]
-    index = torch.randperm(bs).to(device)
+    
+    index = torch.randperm(bs).cuda()
 
     mixed_x = lam * x + (1-lam) * x[index, :]
 
