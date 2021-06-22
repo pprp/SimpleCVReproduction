@@ -1,11 +1,12 @@
+import json
+import logging
 import os
 import re
+import shutil
+
+import numpy as np
 import torch
 import torch.nn as nn
-import random
-import json
-import numpy as np
-import shutil
 
 
 def mixup_criterion(criterion, pred, y_a, y_b, lam):
@@ -203,8 +204,32 @@ def create_exp_dir(path, scripts_to_save=None):
             dst_file = os.path.join(path, 'scripts', os.path.basename(script))
             shutil.copyfile(script, dst_file)
 
+def load_checkpoint(path, model, optimizer=None):
+    """path: weight path
+       model: model object
+    """
+    if os.path.isfile(path):
+        logging.info("=== loading checkpoint '{}' ===".format(path))
+
+        checkpoint = torch.load(path)
+        model.load_state_dict(checkpoint["state_dict"], strict=False)
+
+        if optimizer is not None:
+            prec = checkpoint["prec"]
+            last_epoch = checkpoint["last_epoch"]
+            optimizer.load_state_dict(checkpoint["optimizer"])
+            logging.info(
+                "=== done. also loaded optimizer from "
+                + "checkpoint '{}' (epoch {}) ===".format(path, last_epoch + 1)
+            )
+            return prec, last_epoch
+
+
 
 def save_checkpoint(state, iters, exp_name, tag=''):
+    '''
+    state = state_dict, best_prec, last_epoch, optimizer.state_dict()
+    '''
     if not os.path.exists("exp/{}/weights".format(exp_name)):
         os.makedirs("exp/{}/weights".format(exp_name))
     filename = os.path.join(

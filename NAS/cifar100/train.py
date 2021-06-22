@@ -22,7 +22,7 @@ from datasets.dataset import get_train_loader, get_val_loader, ArchLoader
 from datasets.transforms import mixup_data
 from utils.utils import (AvgrageMeter, CrossEntropyLossSoft,
                          accuracy, create_exp_dir, reduce_mean,
-                         save_checkpoint, mixup_criterion, mixup_accuracy)
+                         save_checkpoint, mixup_criterion, mixup_accuracy, load_checkpoint)
 
 print = functools.partial(print, flush=True)
 
@@ -54,6 +54,8 @@ parser.add_argument('--cutout', type=float, default=0, help='cutout rate')
 parser.add_argument('--mixup', action='store_true', help="use mixup or not")
 parser.add_argument('--mixup_alpha', type=float,
                     default=1., help="alpha in mixup")
+parser.add_argument('--resume', type=str, default='',
+                    help='path of resume weights. (model-latest.th)')
 
 parser.add_argument('--report_freq', type=float,
                     default=100, help='report frequency')
@@ -136,21 +138,7 @@ def main():
 
     model = models.build_model(args.model_type, num_classes=args.classes)
 
-    if args.finetune:
-        checkpoint = torch.load("./weights/2021Y_05M_31D_07H_0329/checkpoint-latest.pth.tar",
-                                map_location=None)
-        model.load_state_dict(checkpoint['state_dict'])
-
     model = model.cuda(args.gpu)
-
-    if num_gpus > 1:
-        torch.distributed.init_process_group(
-            backend='nccl', init_method='env://')
-        model = torch.nn.parallel.DistributedDataParallel(
-            model, device_ids=[args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
-
-        args.world_size = torch.distributed.get_world_size()
-        args.batch_size = args.batch_size // args.world_size
 
     criterion = torch.nn.CrossEntropyLoss().cuda(args.gpu)
     soft_criterion = CrossEntropyLossSoft()
@@ -162,6 +150,20 @@ def main():
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, 300, eta_min=0.0005)
+
+    if args.resume != '':
+        load_checkpoint(args.resume, model, optimizer=optimizer)
+
+    if num_gpus > 1:
+        torch.distributed.init_process_group(
+            backend='nccl', init_method='env://')
+        model = torch.nn.parallel.DistributedDataParallel(
+            model, device_ids=[args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
+
+        args.world_size = torch.distributed.get_world_size()
+        args.batch_size = args.batch_size // args.world_size
+
+
 
     # Prepare data
     train_loader = get_train_loader(
@@ -189,7 +191,11 @@ def main():
                     writer.add_scalar("Val/acc1", top1_val, epoch)
 
                 save_checkpoint(
-                    {'state_dict': model.state_dict(), }, epoch, args.exp_name)
+                    {'state_dict': model.state_dict(),
+                     'prec': top1_val,
+                     'last_epoch': epoch,
+                     'optimizer': optimizer.state_dict()
+                     }, epoch, args.exp_name)
 
 
 def train_lu_shun(train_dataloader, val_dataloader, optimizer, scheduler, model, archloader, criterion, soft_criterion, args, seed, epoch, writer=None):
