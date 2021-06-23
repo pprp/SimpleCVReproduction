@@ -56,6 +56,8 @@ parser.add_argument('--mixup_alpha', type=float,
                     default=1., help="alpha in mixup")
 parser.add_argument('--resume', type=str, default='',
                     help='path of resume weights. (model-latest.th)')
+parser.add_argument('--autoaug', action='store_true',
+                    help='use autoaugmentation')
 
 parser.add_argument('--report_freq', type=float,
                     default=100, help='report frequency')
@@ -73,7 +75,7 @@ parser.add_argument('--label_smooth', type=float,
 parser.add_argument('--config', help="configuration file",
                     type=str, default="configs/meta.yml")
 parser.add_argument('--save_dir', type=str,
-                    help="save exp floder name", default="resnet50_mixup")
+                    help="save exp floder name", default="resnet50_autoaug")
 args = parser.parse_args()
 
 # process argparse & yaml
@@ -162,8 +164,6 @@ def main():
 
         args.world_size = torch.distributed.get_world_size()
         args.batch_size = args.batch_size // args.world_size
-
-
 
     # Prepare data
     train_loader = get_train_loader(

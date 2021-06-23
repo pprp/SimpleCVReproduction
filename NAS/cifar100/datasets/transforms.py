@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torchvision import transforms as T
+from datasets.autoaugmentation import CIFAR10Policy
 from torchvision.transforms import transforms
 
 CIFAR10_MEAN = [0.4914, 0.4822, 0.4465]
@@ -81,16 +82,16 @@ class DatasetTransforms:
         ])
         return default_configure
 
-    def get_train_transforms(self):
+    def get_train_transforms(self, autoaug=False):
         default_conf = self._get_default_transforms()
         cutout = self._get_cutout()
         if cutout is None:
             train_transform = T.Compose([default_conf,
+                                         CIFAR10Policy(),
                                          T.ToTensor(),
                                          T.Normalize(self.mean, self.std)
                                          ])
         else:
-
             train_transform = T.Compose([default_conf,
                                          T.ToTensor(),
                                          cutout,

@@ -36,21 +36,26 @@ Training Details:
 
 ### CIFAR10
 
-| Network             | Params(M) | Train loss | Train top1 | Val loss | Val top1 | Hyper               | GPU(M) |
-| ------------------- | --------- | ---------- | ---------- | -------- | -------- | ------------------- | ------ |
-| densenet_cifar      | 4.4       | 0.00156    | 99.99%     | 0.24     | 94.83%   | 0.1/256/w/o cutout  | 7303   |
-| dla                 | 63        | 0.00164    | 99.99%     | 0.20     | 95.57%   | 0.1/256/w/o cutout  | 5555   |
-| resnet50            | 91        | 0.00105    | 100.0%     | 0.19     | 95.74%   | 0.1/256/w/o cutout  | 10895  |
-| attention52         | 214       | 0.00109    | 99.99%     | 0.49     | 90.62%   | 0.01/256/w/o cutout | 5691   |
-| dpn26               | 45        | 0.00195    | 100.0%     | 0.16     | 95.43%   | 0.1/256/w/o cutout  | 10260  |
-| resnet50_cutout     | 91        | 0.00103    | 100.0%     | 0.18     | 95.87%   | 0.1/128/ cutout=0.5 | 10895  |
-| efficientnetb0      | 15        | 0.02396    | 99.32%     | 0.35     | 91.52%   | 0.1/128/w/o cutout  | 3961   |
-| googlenet           | 25        | 0.00216    | 100.0%     | 0.17     | 95.18%   | 0.1/128/w/o cutout  | 7689   |
-| inceptionv3         |           |            |            |          |          | 0.1/128/w/o cutout  | 8053   |
-| inceptionv4         |           |            |            |          |          |                     |        |
-| inception_resnet_v2 |           |            |            |          |          |                     |        |
+| Network               | Params(M) | Train loss | Train top1  | Val loss | Val top1 | Hyper                       | GPU(M) |
+| --------------------- | --------- | ---------- | ----------- | -------- | -------- | --------------------------- | ------ |
+| densenet_cifar        | 4.4       | 0.00156    | 99.99%      | 0.24     | 94.83%   | 0.1/256/w/o cutout          | 7303   |
+| dla                   | 63        | 0.00164    | 99.99%      | 0.20     | 95.57%   | 0.1/256/w/o cutout          | 5555   |
+| resnet50              | 91        | 0.00105    | 100.0%      | 0.19     | 95.74%   | 0.1/256/w/o cutout          | 10895  |
+| attention52           | 214       | 0.00109    | 99.99%      | 0.49     | 90.62%   | 0.01/256/w/o cutout         | 5691   |
+| dpn26                 | 45        | 0.00195    | 100.0%      | 0.16     | 95.43%   | 0.1/256/w/o cutout          | 10260  |
+| resnet50_cutout       | 91        | 0.00103    | 100.0%      | 0.18     | 95.87%   | 0.1/128/ cutout=0.5         | 10895  |
+| efficientnetb0        | 15        | 0.02396    | 99.32%      | 0.35     | 91.52%   | 0.1/128/w/o cutout          | 3961   |
+| googlenet             | 25        | 0.00216    | 100.0%      | 0.17     | 95.18%   | 0.1/128/w/o cutout          | 7689   |
+| inceptionv3           | 86        | 0.00183    | 100.0%      | 0.19     | 95.27%   | 0.1/128/w/o cutout          | 8053   |
+| inceptionv4           |           |            |             |          |          | 0.1/64/w/o cutout           |        |
+| inception_resnet_v2   |           |            |             |          |          |                             |        |
+| resnet50_mixup        | 91        | 0.68908    | 76.88%      | 0.26     | 96.44%   | 0.1/128/w/o cutout/ w mixup | 10895  |
+| resnet50_cutout_mixup | 91        | 0.69914    | 76.15%      | 0.26     | 96.44%   | 0.1/128/cutout=0.5 /w mixup | 10895  |
+| resnet50_autoaug      | 91        | waiting... | rerun above |          |          |                             |        |
 
 
+
+python train.py 
 
 
 
