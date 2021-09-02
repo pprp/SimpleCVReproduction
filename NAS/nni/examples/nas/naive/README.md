@@ -1,1 +1,0 @@
-This is a naive example that demonstrates how to use NNI interface to implement a NAS search space.
