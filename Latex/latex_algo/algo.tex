@@ -1,0 +1,95 @@
+
+\documentclass{article}
+
+\usepackage[UTF8]{ctex}
+
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{subfigure}
+\usepackage{overpic}
+
+\usepackage{enumitem}
+\setenumerate[1]{itemsep=0pt,partopsep=0pt,parsep=\parskip,topsep=5pt}
+\setitemize[1]{itemsep=0pt,partopsep=0pt,parsep=\parskip,topsep=5pt}
+\setdescription{itemsep=0pt,partopsep=0pt,parsep=\parskip,topsep=5pt}
+\usepackage{algorithm2e}
+
+\usepackage[pagebackref=true,breaklinks=true,colorlinks,bookmarks=false]{hyperref}
+
+
+%\cvprfinalcopy % *** Uncomment this line for the final submission
+
+\def\cvprPaperID{159} % *** Enter the CVPR Paper ID here
+\def\confYear{CVPR 2020}
+\def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
+
+
+\begin{document}
+
+\IncMargin{1em}
+\begin{algorithm}
+    \SetKwData{Left}{left}\SetKwData{This}{this}\SetKwData{Up}{up} \SetKwFunction{Union}{Union}\SetKwFunction{FindCompress}{FindCompress} \SetKwInOut{Input}{input}\SetKwInOut{Output}{output}
+
+    \Input{$\mathcal{P}_{0}, \mathfrak{f}, n_{g e n}, n_{p c}, n_{a c}$}
+    \Output{Population P}
+    \BlankLine
+
+    \emph{$\mathcal{P} \leftarrow \mathcal{P}_0$}\;
+    \For{$i\leftarrow 1$ \KwTo $n_{gen}$}{
+        $p_{KDE}\leftarrow$ KDE(\{$f_{cheap}(N)|N \in \mathcal{P}$\}) \;
+        Compute parent distribution $p_{\mathcal{P}}$ \;
+        % $p_{KDE}\leftarrow$ KDE(\{$f_{cheap}(N)|N \in \mathcal{P}$\}) \;
+        $N_{pc}^{c}\leftarrow$ GenerateChildren($\mathcal{P},p_{\mathcal{P}},n_{pc}$) \; 
+        Compute Children Distribution $p_child$ \;
+        $N_{ac}^{c}\leftarrow$ AcceptSubSet($N_{pc}^{c},p_{child},n_{ac}$) \;
+        Evaluate $f_{exp} for N^c \in N_{ac}^c$ \;
+        $\mathcal{P}$ $\leftarrow$ ParetoFront($\mathcal{P}$ $\cup N_{ac}^c$,f)
+    }
+    \KwRet{$\mathcal{P}$}
+    % \nl\KwRet{$e$}
+    \caption{disjoint decomposition}
+\end{algorithm}
+\DecMargin{1em}
+
+
+\IncMargin{1em}
+\begin{algorithm}
+    \SetKwData{Left}{left}\SetKwData{This}{this}\SetKwData{Up}{up} \SetKwFunction{Union}{Union}\SetKwFunction{FindCompress}{FindCompress} \SetKwInOut{Input}{input}\SetKwInOut{Output}{output}
+
+    \For{each p $\in$ P}{
+        $S_p=\emptyset$ \;
+        $n_p=0$\;
+        \For{each q $\in$ P}{
+            \uIf{p $\prec$ q}{$S_p=S_p\cup \{q\}$}
+            \uElseIf{q $\prec$ p}{$n_p=n_p+1$}
+            \Else{
+                Do Nothing\;
+            }
+        }
+        \If{$n_p=0$}{$p_{rank}=1$\;$\mathcal{F}_1=\mathcal{F}_1\cup \{p\}$}
+    }
+    $i=1$\;
+    \While{$\mathcal{F}_i\neq \emptyset$}{
+        $\mathcal{Q}=\emptyset$ \;
+        \ForEach{$p \in \mathcal{F}_i$}{
+            \ForEach{$q \in \mathcal{S}_p$}{
+                $n_q=n_q-1$ \;
+                \If{$n_q=0$}{
+                    $q_{rank}=i+1$\;
+                    $\mathcal{Q}=\mathcal{Q}\cup \{q\}$
+                }
+            }
+        }
+        i = i+1\;
+        $\mathcal{F}_i=\mathcal{Q}$
+    }
+
+    % \nl\KwRet{$e$}
+    \caption{disjoint decomposition}
+\end{algorithm}
+\DecMargin{1em}
+
+\end{document}
