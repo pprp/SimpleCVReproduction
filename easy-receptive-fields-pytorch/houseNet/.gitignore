@@ -1,0 +1,8 @@
+# Python
+__pycache__/
+
+# PyCharm
+*.idea/
+
+# Local config file
+config.ini
