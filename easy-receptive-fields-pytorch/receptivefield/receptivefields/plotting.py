@@ -50,6 +50,39 @@ def _plot_rect(
     )
     plt.scatter([rect.y], [rect.x], s=size, c=color)
 
+def plot_gradient_field_self(
+    receptive_field_grad: np.ndarray,
+    image: np.ndarray = None,
+    axis: Optional[Any] = None,
+    **plot_params
+) -> None:
+    """
+    Plot gradient map from gradient tensor.
+
+    :param receptive_field_grad: numpy tensor of shape [N, W, H, C]
+    :param image: optional image of shape [W, H, 3]
+    :param axis: a matplotlib axis object as returned by the e.g. plt.subplot
+        function. If not None then axis is used for visualizations otherwise
+        default figure is created.
+    :param plot_params: additional plot params: figsize=(5, 5)
+    """
+    receptive_field = estimate_rf_from_gradient(receptive_field_grad)
+
+    receptive_field_grad = np.array(receptive_field_grad).sum(0).mean(-1)
+    receptive_field_grad /= receptive_field_grad.max()
+    receptive_field_grad += (np.abs(receptive_field_grad) > 0) * 0.2
+
+    if image is not None:
+        receptive_field_grad = np.expand_dims(receptive_field_grad, -1)
+        receptive_field_grad = 255 / 2 * (receptive_field_grad + 1) + image * 0.5
+        receptive_field_grad = receptive_field_grad.astype("uint8")
+
+    # if axis is None:
+    #     figsize = plot_params.get("figsize", (5, 5))
+    #     plt.figure(figsize=figsize)
+    #     axis = plt.subplot(111)
+       
+    return receptive_field_grad
 
 def plot_gradient_field(
     receptive_field_grad: np.ndarray,
@@ -108,6 +141,8 @@ def plot_gradient_field(
     )
     axis.set_aspect("equal")
     plt.tight_layout()
+    
+    return receptive_field_grad
 
 
 def plot_receptive_grid(

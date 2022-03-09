@@ -5,7 +5,7 @@ import numpy as np
 
 from receptivefields.common import estimate_rf_from_gradients
 from receptivefields.logging import get_logger
-from receptivefields.plotting import plot_receptive_grid, plot_gradient_field
+from receptivefields.plotting import plot_receptive_grid, plot_gradient_field, plot_gradient_field_self
 from receptivefields.types import (
     ImageShape,
     GridPoint,
@@ -143,7 +143,8 @@ class ReceptiveField(metaclass=ABCMeta):
 
     def _check(self):
         if not self._built:
-            raise Exception("Receptive field not computed. Run compute function.")
+            raise Exception(
+                "Receptive field not computed. Run compute function.")
 
     def compute(self, *args, **kwargs) -> List[FeatureMapDescription]:
         """
@@ -263,13 +264,36 @@ class ReceptiveField(metaclass=ABCMeta):
         """
         points = [GridPoint(0, 0)] * self.num_feature_maps
         points[fm_id] = GridPoint(*point)
-        receptive_field_grads = self._get_gradient_from_grid_points(points=points)
+        receptive_field_grads = self._get_gradient_from_grid_points(
+            points=points)
 
         plot_gradient_field(
             receptive_field_grad=receptive_field_grads[fm_id],
             image=image,
             **plot_params,
         )
+
+    def plot_gradient_self(
+        self,
+        fm_id: int,
+        point: GridPoint,
+        image: Optional[np.ndarray] = None,
+        title: str = "receptive field",
+        **plot_params,
+    ) -> None:
+        points = [GridPoint(0, 0)] * self.num_feature_maps
+        points[fm_id] = GridPoint(*point)
+        receptive_field_grads = self._get_gradient_from_grid_points(
+            points=points)
+
+        grad_img = plot_gradient_field_self(
+            receptive_field_grad=receptive_field_grads[fm_id],
+            image=image,
+            **plot_params,
+        )
+        plt.title(title)
+        plt.imshow(grad_img, cmap="hot")
+        plt.imsave(f"results/{title}.png", grad_img, cmap="hot")
 
     def plot_rf_grid(
         self,

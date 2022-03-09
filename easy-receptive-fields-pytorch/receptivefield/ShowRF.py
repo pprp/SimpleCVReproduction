@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from receptivefield.pytorch import PytorchReceptiveField
+from receptivefields.pytorch import PytorchReceptiveField
 import matplotlib.pyplot as plt 
 import cv2 
 

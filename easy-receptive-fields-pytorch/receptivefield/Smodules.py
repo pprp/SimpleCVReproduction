@@ -125,9 +125,11 @@ class _ASPP(nn.Module):
                 _ConvBnReLU(in_ch, out_ch, 3, 1, padding=rate, dilation=rate),
             )
         self.stages.add_module("imagepool", _ImagePool(in_ch, out_ch))
+        self.conv1x1 = nn.Conv2d(in_ch * 5, out_ch, kernel_size=1, stride=1,padding=0)
 
     def forward(self, x):
-        return torch.cat([stage(x) for stage in self.stages.children()], dim=1)
+        x = torch.cat([stage(x) for stage in self.stages.children()], dim=1)
+        return self.conv1x1(x)
 
 
 class BasicConv(nn.Module):
@@ -301,6 +303,16 @@ class DeformConv2D(nn.Module):
         return x_offset
 
 
+class DCN(nn.Module):
+    def __init__(self, inplanes, outplanes):
+        super(DCN,self).__init__()
+        self.offsets = nn.Conv2d(inplanes, 9, kernel_size=3,padding=1)
+        self.dcn = DeformConv2D(inplanes, outplanes, kernel_size=3,padding=1)
+    
+    def forward(self, x):
+        offset = self.offsets(x)
+        return self.dcn(x, offset)
+
 class BasicRFB(nn.Module):
     '''
     [rfb]
@@ -396,7 +408,7 @@ class BasicBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(inplanes)
         self.downsample = lambda x: x
         self.stride = stride
-        self.plugin = plugin(inplanes)
+        self.plugin = plugin(inplanes, inplanes)
 
     def forward(self, x):
         residual = self.downsample(x)
