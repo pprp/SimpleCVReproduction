@@ -10,10 +10,10 @@ from tensorflow.keras.models import Model
 import tensorflow.keras.layers as layers
 
 
-from receptivefield.base import ReceptiveField
-from receptivefield.common import scaled_constant
-from receptivefield.logging import get_logger
-from receptivefield.types import ImageShape, GridPoint, GridShape, FeatureMapDescription
+from receptivefields.base import ReceptiveField
+from receptivefields.common import scaled_constant
+from receptivefields.logging import get_logger
+from receptivefields.types import ImageShape, GridPoint, GridShape, FeatureMapDescription
 
 
 _logger = get_logger()

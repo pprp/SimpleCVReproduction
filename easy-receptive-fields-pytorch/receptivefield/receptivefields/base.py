@@ -3,10 +3,10 @@ from typing import Tuple, Callable, Any, Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
 
-from receptivefield.common import estimate_rf_from_gradients
-from receptivefield.logging import get_logger
-from receptivefield.plotting import plot_receptive_grid, plot_gradient_field
-from receptivefield.types import (
+from receptivefields.common import estimate_rf_from_gradients
+from receptivefields.logging import get_logger
+from receptivefields.plotting import plot_receptive_grid, plot_gradient_field
+from receptivefields.types import (
     ImageShape,
     GridPoint,
     GridShape,

@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from receptivefield.common import estimate_rf_from_gradient
-from receptivefield.image import get_default_image
-from receptivefield.types import (
+from receptivefields.common import estimate_rf_from_gradient
+from receptivefields.image import get_default_image
+from receptivefields.types import (
     ImageShape,
     GridPoint,
     GridShape,
@@ -84,7 +84,7 @@ def plot_gradient_field(
         axis = plt.subplot(111)
 
     plt.title("Normalized gradient map")
-    im = plt.imshow(receptive_field_grad, cmap="coolwarm")
+    im = plt.imshow(receptive_field_grad, cmap="Greys_r")
     plt.xlabel("x")
     plt.ylabel("y")
 
@@ -166,7 +166,7 @@ def plot_receptive_grid(
                     alpha=0.9,
                     fill=False,
                     edgecolor="gray",
-                    linewidth=1,
+                    linewidth=0.3,
                 )
             )
 

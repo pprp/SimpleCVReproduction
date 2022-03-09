@@ -4,7 +4,7 @@ from typing import Union, List
 import numpy
 from PIL import Image
 
-from receptivefield.types import ImageShape
+from receptivefields.types import ImageShape
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -16,7 +16,7 @@ def get_default_images() -> List[str]:
 
     :return: list of available names
     """
-    images = os.listdir(os.path.join(dir_path, "resources"))
+    images = os.listdir(os.path.join(r"E:\GitHub\SimpleCVReproduction\easy-receptive-fields-pytorch\receptivefield\receptivefield", "resources"))
     return [im.replace(".jpg", "") for im in images if "jpg" in im]
 
 
@@ -28,7 +28,7 @@ def _get_default_image_path(name: str) -> str:
             f"the following: {get_default_images()}"
         )
 
-    image_path = os.path.join(dir_path, f"resources/{name}.jpg")
+    image_path = os.path.join(r"E:\GitHub\SimpleCVReproduction\easy-receptive-fields-pytorch\receptivefield\receptivefield", f"resources/{name}.jpg")
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"Image {name} does not exist :(")
 

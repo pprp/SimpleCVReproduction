@@ -4,9 +4,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from receptivefield.base import ReceptiveField
-from receptivefield.logging import get_logger
-from receptivefield.types import (
+from receptivefields.base import ReceptiveField
+from receptivefields.logging import get_logger
+from receptivefields.types import (
     ImageShape,
     GridPoint,
     GridShape,

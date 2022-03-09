@@ -2,8 +2,8 @@ from typing import Tuple, List
 
 import numpy as np
 
-from receptivefield.logging import get_logger
-from receptivefield.types import GridShape, ReceptiveFieldRect
+from receptivefields.logging import get_logger
+from receptivefields.types import GridShape, ReceptiveFieldRect
 
 _logger = get_logger()
 
