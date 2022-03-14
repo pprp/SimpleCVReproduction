@@ -82,7 +82,7 @@
 | siamese-triplet               | 孪生网络+Triplet Loss实现                                    | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/simple-faster-rcnn-pytorch) |
 | simple-faster-rcnn-pytorch    | 陈云老师的faster rcnn实现                                    | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/simple-faster-rcnn-pytorch) |
 | simple-triple-loss            | 笔者自己实现的triplet loss                                   | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/simple-triple-loss) |
-| simple_keypoint               | **[强烈推荐]** 笔者极简代码实现关键点识别，提供根据heatmap进行识别的方法 | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/simple_keypoint) |
+| simple_keypoint               | **[推荐]** 笔者极简代码实现关键点识别，提供根据heatmap进行识别的方法 | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/simple_keypoint) |
 | tikz_cnn                      | 使用latex绘制CNN图                                           | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/tikz_cnn) |
 | tsne                          | tsne可视化数据集                                             | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/tsne) |
 | tools                         | voc2coco脚本，yolo anchor聚类脚本                            | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/tools) |
@@ -104,5 +104,5 @@
 
 欢迎在issue中提出补充推荐的项目。
 
-欢迎关注“GiantPandaCV”公众号以及“神经网络架构搜索”公众号查看笔者发布的第一手博客。
+欢迎关注“GiantPandaCV”公众号以及“神经网络架构搜索”公众号查看相关博客。
 
