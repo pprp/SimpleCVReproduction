@@ -5,12 +5,13 @@ import os
 import random
 from collections import namedtuple
 
+from matplotlib import cm
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.init as init
-from matplotlib import cm, projections
+from matplotlib import cm, colors, projections
 from PIL import Image
 from torch.autograd import Variable
 from torchvision import transforms
@@ -22,6 +23,7 @@ from autorf.spaces import spatial_spaces
 from Smodules import *
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+plt.rcParams.update({"font.size":15})
 
 Genotype = namedtuple("Genotype", "normal normal_concat")
 
@@ -62,9 +64,10 @@ class RFBFeature(nn.Module):
         # self.Norm = DCN(256,256)
         # self.Norm = InceptionC(256, 256)
         # self.Norm = StripPool(256, 256)
-        # self.Norm = ReceptiveFieldAttention(256, genotype=RANDOMGENOTYPE)
+        self.Norm = ReceptiveFieldAttention(256, genotype=RANDOMGENOTYPE)
         # self.Norm = SE(256)
-        self.Norm = CBAM(256)
+        # self.Norm = CBAM(256)
+        # self.Norm = PSPModule(256,256)
         # self.Norm = None
         # self.Norm = BasicRFB(256, 256, scale = 1.0, visual=2)
         # self.Norm = nn.Conv2d(256, 256, 1, 1, 0)
@@ -114,11 +117,10 @@ class DeformNet(nn.Module):
         return x
 
 
-NAME = "TEST"
+NAME = "AutoRF"
 
 net = RFBFeature()  # build the net
 # net = DeformNet()
-
 
 def weights_init(m):
     for key in m.state_dict():
@@ -174,15 +176,26 @@ z = np.sum(np.abs(z), axis=1)
 # # z = np.array(z).mean(0).
 # z /= z.max()
 # z += (np.abs(z) > 0) * 0.2
+fig = plt.figure() 
+ax= plt.axes()
 
-
-# convert to 0-255
-z = z * 255 / np.max(z)
-z = np.uint8(z)
+# convert to 0-1
+z = (z - np.min(z)) / (np.max(z) - np.min(z))
 z = z[0, :, :]
 
-print(z.shape)
+# convert to 0-255
+# z = z * 255 / np.max(z)
+# z = np.uint8(z)
+# z = z[0, :, :]
 
-# img = Image.fromarray(z) #convert to image
+vmin = z.min()
+vmax = z.max()
+norm = colors.Normalize(vmin=vmin,vmax=vmax)
+
+# img = Image.fromarray(z) 
+# convert to image
+
 plt.imshow(z)
+plt.axis('off')
+# plt.colorbar()
 plt.savefig(f"{NAME}_{random.randint(0,100)}.png", dpi=200)

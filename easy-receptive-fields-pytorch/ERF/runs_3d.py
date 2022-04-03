@@ -67,13 +67,13 @@ class RFBFeature(nn.Module):
         # self.Norm = DCN(256,256)
         # self.Norm = InceptionC(256, 256)
         # self.Norm = StripPool(256, 256)
-        self.Norm = ReceptiveFieldAttention(256, genotype=RANDOMGENOTYPE)
-        # self.Norm = SE(256)
+        # self.Norm = ReceptiveFieldAttention(256, genotype=RANDOMGENOTYPE)
+        self.Norm = SE(256)
         # self.Norm = CBAM(256)
         # self.Norm = None
         # self.Norm = BasicRFB(256, 256, scale = 1.0, visual=2)
         # self.Norm = nn.Conv2d(256, 256, 1, 1, 0)
-        self.bn = nn.BatchNorm2d(256)
+        # self.bn = nn.BatchNorm2d(256)
 
     def forward(self, x):
         # print(x.shape)
@@ -81,8 +81,7 @@ class RFBFeature(nn.Module):
         # print("Before Norm: ", x.shape)
         if self.Norm:
             return self.Norm(x)
-        return self.bn(x)
-
+        return x
 
 class DeformNet(nn.Module):
     def __init__(self):
@@ -91,12 +90,12 @@ class DeformNet(nn.Module):
         self.bn1 = nn.BatchNorm2d(64)
         self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
 
-        self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-        self.bn2 = nn.BatchNorm2d(128)
+        self.conv2 = nn.Conv2d(64, 256, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(256)
 
-        self.offsets = nn.Conv2d(128, 18, kernel_size=3, padding=1)
-        self.conv4 = DeformConv2D(128, 128, kernel_size=3, padding=1)
-        self.bn4 = nn.BatchNorm2d(128)
+        self.offsets = nn.Conv2d(256, 18, kernel_size=3, padding=1)
+        self.conv4 = DeformConv2D(256, 256, kernel_size=3, padding=1)
+        self.bn4 = nn.BatchNorm2d(256)
 
     def forward(self, x):
         self.feature_maps = []
