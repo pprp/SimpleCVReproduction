@@ -8,11 +8,14 @@ from re import S
 
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 import torch
 import torch.nn as nn
 import torch.nn.init as init
 from matplotlib import cm, projections
+from mpl_toolkits.mplot3d import Axes3D
 from PIL import Image
+from scipy.ndimage import gaussian_filter
 from torch.autograd import Variable
 from torchvision import transforms
 
@@ -21,9 +24,9 @@ from autorf.components import ReceptiveFieldAttention
 from autorf.operations import *
 from autorf.spaces import spatial_spaces
 from Smodules import *
-from mpl_toolkits.mplot3d import Axes3D
-import seaborn as sns
-from scipy.ndimage import gaussian_filter
+
+plt.rcParams.update({'font.size': 12})     #设置图例字体大小
+
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -67,8 +70,8 @@ class RFBFeature(nn.Module):
         # self.Norm = DCN(256,256)
         # self.Norm = InceptionC(256, 256)
         # self.Norm = StripPool(256, 256)
-        # self.Norm = ReceptiveFieldAttention(256, genotype=RANDOMGENOTYPE)
-        self.Norm = SE(256)
+        self.Norm = ReceptiveFieldAttention(256, genotype=RANDOMGENOTYPE)
+        # self.Norm = SE(256)
         # self.Norm = CBAM(256)
         # self.Norm = None
         # self.Norm = BasicRFB(256, 256, scale = 1.0, visual=2)
@@ -176,7 +179,7 @@ z = x.grad.data.cpu().numpy()  # get input graident
 z = np.sum(np.abs(z), axis=1)
 
 # z = np.mean(z,axis=1) #calculate mean by channels
-# # z = np.array(z).mean(0).
+# # z = np.array(z).mean(0)
 # z /= z.max()
 # z += (np.abs(z) > 0) * 0.2
 
@@ -217,4 +220,4 @@ fig.colorbar(surf, shrink=0.5, aspect=5)
 #==========
 
 # plt.savefig(f"{NAME}_{random.randint(0,100)}.png", dpi=200)
-plt.savefig(f"{NAME}.png", dpi=200)
+plt.savefig(f"{NAME}_{random.randint(0,100)}.png", dpi=200)
