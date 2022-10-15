@@ -50,44 +50,37 @@
 
 ## 项目推荐
 
-| 项目                          | 介绍                                                         | 链接                                                         |
-| ----------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| CenterNet                     | 简化版本的CenterNet目标检测算法(第三方实现)                  | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/CenterNet) |
-| SmallObjectAugmentation       | 针对小目标进行数据增强库,在笔者数据集效果不理想              | [link](https://github.com/pprp/52RL)                         |
-| DBFace                        | 实时单阶段人脸检测器                                         | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/DBFace) |
-| DarkLabel                     | 专门用于[DarkLabel](https://zhuanlan.zhihu.com/p/141036498)软件转化的系列脚本 | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/DarkLabel) |
-| Latex/latex_algo              | 用latex写的伪代码示例                                        | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/Latex/latex_algo) |
-| MLP                           | MLP-Mixer,ResMLP,RepMLP简单源码                              | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/MLP) |
-| NAS                           | 感兴趣的神经网络结构搜索算法                                 | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/NAS) |
-| Plug-and-play Module          | 即插即用模块                                                 | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/Plug-and-play%20module) |
-| PyTorch-Lightning             | Lightning的基础使用案例                                      | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/PyTorch-Lightning) |
-| 52RL                          | 参加DataWhale深度强化学习课程代码 [code](https://github.com/pprp/52RL) | [link](https://github.com/pprp/52RL)                         |
-| Vision Transformer            | 最经典的ViT实现, 训练代码在[code](https://github.com/pprp/pytorch-cifar-model-zoo) | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/VisionTransformer) |
-| YOLOv3-complete-pruning       | YOLOv3经典的剪枝算法                                         | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/YOLOv3-complete-pruning) |
-| captcha-CTC-loss              | CTC loss+ LSTM                                               | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/captcha-CTC-loss) |
-| cifarTrick                    | 原先收集的部分Trick更多Trick在[Tricks](https://github.com/pprp/pytorch-cifar-model-zoo) | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/cifarTrick) |
-| cvtransforms                  | 数据增强方法, 可以替代pytorch中transform(PIL-based)，据说让数据读取快三倍 | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/cvtransforms) |
-| deep_sort                     | 官方实现的DeepSort算法                                       | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/deep_sort) |
-| deep_sort_yolov3_pytorch      | 笔者自己实现和改进的DeepSort算法                             | [link](https://github.com/pprp/deep_sort_yolov3_pytorch)     |
-| easy-receptive-fields-pytorch | 感受野计算                                                   | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/easy-receptive-fields-pytorch) |
-| fine_grained_baseline         | 细粒度识别baseline，Bilinear Pooling操作                     | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/fine_grained_baseline) |
-| flask-yolo                    | flask配合yolo算法实现网页                                    | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/flask-yolo) |
-| kalman                        | 卡尔曼滤波实现与测试                                         | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/kalman) |
-| libfacedetection.train        | 人脸检测训练代码                                             | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/kalman) |
-| opencv-mot                    | 使用Opencv实现多目标跟踪                                     | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/opencv-mot) |
-| pandoc-starter                | Pandoc是Markdown转化器，很方便                               | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/pandoc-starter) |
-| pytorch-commen-code           | 常用的pytorch代码片段                                        | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/pandoc-starter) |
-| pytorch-grad-cam              | Grad Cam代码实现，特征图可视化                               | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/pytorch-grad-cam-master) |
-| pytorch-semseg                | 语义分割代码库收集，经测试无法收敛(私有数据集)               | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/pytorch-semseg) |
-| siamese-triplet               | 孪生网络+Triplet Loss实现                                    | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/simple-faster-rcnn-pytorch) |
-| simple-faster-rcnn-pytorch    | 陈云老师的faster rcnn实现                                    | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/simple-faster-rcnn-pytorch) |
-| simple-triple-loss            | 笔者自己实现的triplet loss                                   | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/simple-triple-loss) |
-| simple_keypoint               | **[推荐]** 笔者极简代码实现关键点识别，提供根据heatmap进行识别的方法 | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/simple_keypoint) |
-| tikz_cnn                      | 使用latex绘制CNN图                                           | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/tikz_cnn) |
-| tsne                          | tsne可视化数据集                                             | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/tsne) |
-| tools                         | voc2coco脚本，yolo anchor聚类脚本                            | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/tools) |
-| tiny_classifier               | 超级简单的分类代码+focal loss使用                            | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/tiny_classifier) |
-| yolov3-6                      | 第六次release版本，属于老版本yolo实现                        | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/yolov3-6) |
+| 项目                     | 介绍                                                         | 链接                                                         |
+| ------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| CenterNet                | 简化版本的CenterNet目标检测算法(第三方实现)                  | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/CenterNet) |
+| SmallObjectAugmentation  | 针对小目标进行数据增强库,在笔者数据集效果不理想              | [link](https://github.com/pprp/52RL)                         |
+| DarkLabel                | 专门用于[DarkLabel](https://zhuanlan.zhihu.com/p/141036498)软件转化的系列脚本 | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/DarkLabel) |
+| Latex/latex_algo         | 用latex写的伪代码示例                                        | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/Latex/latex_algo) |
+| MLP                      | MLP-Mixer,ResMLP,RepMLP简单源码                              | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/MLP) |
+| NAS                      | 感兴趣的神经网络结构搜索算法                                 | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/NAS) |
+| Plug-and-play Module     | 即插即用模块                                                 | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/Plug-and-play%20module) |
+| 52RL                     | 参加DataWhale深度强化学习课程代码 [code](https://github.com/pprp/52RL) | [link](https://github.com/pprp/52RL)                         |
+| Vision Transformer       | 最经典的ViT实现, 训练代码在[code](https://github.com/pprp/pytorch-cifar-model-zoo) | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/VisionTransformer) |
+| captcha-CTC-loss         | CTC loss+ LSTM                                               | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/captcha-CTC-loss) |
+| cifarTrick               | 原先收集的部分Trick更多Trick在[Tricks](https://github.com/pprp/pytorch-cifar-model-zoo) | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/cifarTrick) |
+| deep_sort                | 官方实现的DeepSort算法                                       | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/deep_sort) |
+| deep_sort_yolov3_pytorch | 笔者自己实现和改进的DeepSort算法                             | [link](https://github.com/pprp/deep_sort_yolov3_pytorch)     |
+| easy-receptive-fields    | 感受野计算，分析，特征图可视化                               | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/easy-receptive-fields) |
+| fine_grained_baseline    | 细粒度识别baseline，Bilinear Pooling操作                     | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/fine_grained_baseline) |
+| flask-yolo               | flask配合yolo算法实现网页                                    | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/flask-yolo) |
+| kalman                   | 卡尔曼滤波实现与测试                                         | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/kalman) |
+| libfacedetection.train   | 人脸检测训练代码                                             | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/kalman) |
+| opencv-mot               | 使用Opencv实现多目标跟踪                                     | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/opencv-mot) |
+| pandoc-starter           | Pandoc是Markdown转化器，很方便                               | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/pandoc-starter) |
+| pytorch-commen-code      | 常用的pytorch代码片段                                        | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/pandoc-starter) |
+| siamese-triplet          | 孪生网络+Triplet Loss实现                                    | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/simple-faster-rcnn-pytorch) |
+| simple-triple-loss       | 笔者自己实现的triplet loss                                   | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/simple-triple-loss) |
+| simple_keypoint          | **[推荐]** 笔者极简代码实现关键点识别，提供根据heatmap进行识别的方法 | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/simple_keypoint) |
+| tikz_cnn                 | 使用latex绘制CNN图                                           | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/tikz_cnn) |
+| tsne                     | tsne可视化数据集                                             | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/tsne) |
+| tools                    | voc2coco脚本，yolo anchor聚类脚本                            | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/tools) |
+| tiny_classifier          | 超级简单的分类代码+focal loss使用                            | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/tiny_classifier) |
+| yolov3-6                 | 第六次release版本，属于老版本yolo实现                        | [link](https://github.com/pprp/SimpleCVReproduction/tree/master/yolov3-6) |
 
 
 ## 致谢
