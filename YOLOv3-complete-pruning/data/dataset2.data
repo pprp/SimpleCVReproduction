@@ -1,6 +1,0 @@
-classes=1
-train=/home/dongpeijie/datasets/dataset2/2007_train.txt
-valid=/home/dongpeijie/datasets/dataset2/2007_test.txt
-names=/home/dongpeijie/datasets/dataset2/dataset2.names
-backup=backup/
-eval=coco
