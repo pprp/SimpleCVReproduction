@@ -2,6 +2,9 @@
 
 ![](logo.png)
 
+Recommended models are listed in this repository. In order to simplify learning for beginners, comments are provided with running models, code ready to read, well-documented code, and a series of simple code snippets. The aim of this project is to provide a simplified version of easy-to-understand model files. Suggestions for easily learnable libraries are welcome within the Issues section. Most of the content in this project is from Github and shall not be used for commercial purposes. In case of any infringement, please contact the author for removal.
+
+
 将感兴趣/推荐的模型也放在这个库中，以供学习。由于好多库从头开始学习难度太大，在这里提供了笔者的部分注释，其中大部分都是跑过的模型、准备读的代码、已经读过的代码笔记、以及开发的simple系列简单代码、常用代码段等。
 
 本项目致力于提供简化版本的，便于理解的模型文件。
